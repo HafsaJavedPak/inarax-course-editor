@@ -1,0 +1,22 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Deploy with New + > Blueprint, pointing at this repo.
+services:
+  - type: web
+    name: inara-course-editor
+    runtime: node
+    # Persistent disks need a paid instance; on the free plan every deploy or
+    # restart wipes all courses and uploads.
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /courses
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Courses (course/) and uploads (uploads/) are stored here.
+      - key: DATA_DIR
+        value: /var/data
+    disk:
+      name: inara-data
+      mountPath: /var/data
+      sizeGB: 1

@@ -1,0 +1,49 @@
+{
+  "title": "helo",
+  "summary": "New course\nCourse title\nSummary\nLearning objectives: “By the end, learners can…”\n1\n+ Add objective\nImage URL\nUpload\nPaste a hosted URL, or upload a file.\nAudience\nCourse length\nShort (~2 h)\nStandard (~5 h)\nComprehensive (~10 h)\nhours\nLesson size\nShort · 400–900 words · ~8 min\nMedium · 900–1600 words · ~15 min\nLong · 1600–2500 words · ~22 min\n\nThat’s roughly 8 Associate · 7 Intermediate · 5 Advanced lessons.\nCreate course",
+  "learning_objectives": [
+    "hello"
+  ],
+  "cover_image_url": null,
+  "audience": "sss",
+  "length_hours": 5,
+  "lesson_size": "medium",
+  "pricing": {
+    "type": "free"
+  },
+  "id": "f53fa0fe-b4c0-45f1-9fa6-72878f08ec77",
+  "version": 1,
+  "revision": 5,
+  "levels": [
+    {
+      "id": "associate",
+      "modules": [
+        {
+          "id": "1734c754-e9a3-4b2a-ba2e-ea6e5c6e10fd",
+          "title": "Module 1",
+          "summary": "hello",
+          "lessons": [
+            {
+              "id": "c107dca3-7b73-4411-8e4c-bc1f7f2371b0",
+              "title": "Lesson 1"
+            },
+            {
+              "id": "685c31bc-b9d2-43e5-8101-bc92b1190c51",
+              "title": "Lesson 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "intermediate",
+      "modules": []
+    },
+    {
+      "id": "advanced",
+      "modules": []
+    }
+  ],
+  "created_at": "2026-09-24T11:22:33.294Z",
+  "updated_at": "2026-09-24T11:25:06.254Z"
+}

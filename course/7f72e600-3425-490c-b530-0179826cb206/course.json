@@ -1,0 +1,49 @@
+{
+  "title": "Imported lessons",
+  "summary": "Lessons created before courses existed. Edit this course's details.",
+  "learning_objectives": [
+    "TBD"
+  ],
+  "cover_image_url": null,
+  "audience": "TBD",
+  "length_hours": 2,
+  "lesson_size": "medium",
+  "pricing": {
+    "type": "free"
+  },
+  "id": "7f72e600-3425-490c-b530-0179826cb206",
+  "version": 1,
+  "revision": 1,
+  "levels": [
+    {
+      "id": "associate",
+      "modules": [
+        {
+          "id": "19bcc06b-e8f8-4d1a-962f-0d28aecb1a89",
+          "title": "Module 1",
+          "summary": "",
+          "lessons": [
+            {
+              "id": "27f204c3-5aef-41b7-a329-cae79326df2d",
+              "title": "Lesson Content"
+            },
+            {
+              "id": "1ebe7288-9791-4a25-afb7-0a36091c58a5",
+              "title": "Introduction"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "intermediate",
+      "modules": []
+    },
+    {
+      "id": "advanced",
+      "modules": []
+    }
+  ],
+  "created_at": "2026-09-24T11:15:07.769Z",
+  "updated_at": "2026-09-24T11:15:07.810Z"
+}

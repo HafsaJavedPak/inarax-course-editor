@@ -1,0 +1,57 @@
+{
+  "title": "hello",
+  "summary": "Course title\nSummary\nLearning objectives: “By the end, learners can…”\n1\n+ Add objective\nImage URL\nUpload\nPaste a hosted URL, or upload a file.\nAudience\nCourse length\nShort (~2 h)\nStandard (~5 h)\nComprehensive (~10 h)\nhours\nLesson size",
+  "learning_objectives": [
+    "hello",
+    "bye"
+  ],
+  "cover_image_url": "http://localhost:3000/uploads/a9779b88-49a0-4286-affd-66c1e36117c4.png",
+  "audience": "hello",
+  "length_hours": 5,
+  "lesson_size": "medium",
+  "pricing": {
+    "type": "free"
+  },
+  "id": "70bb5454-57df-4732-a2fc-58124d23aafc",
+  "version": 1,
+  "revision": 6,
+  "levels": [
+    {
+      "id": "associate",
+      "modules": [
+        {
+          "id": "01338bb3-7736-422c-bec4-a62deaa3b9b5",
+          "title": "Module 1",
+          "summary": "hiiiiiiiiii",
+          "lessons": [
+            {
+              "id": "ef476863-0d8f-49e9-ae6d-f5046d48f4ab",
+              "title": "Lesson 1"
+            }
+          ]
+        },
+        {
+          "id": "c5cbbe90-ee30-483e-9912-2cc0e93e943c",
+          "title": "Module 2",
+          "summary": "",
+          "lessons": [
+            {
+              "id": "bd4a9761-273d-4962-ad75-590d7013d5eb",
+              "title": "bye"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "intermediate",
+      "modules": []
+    },
+    {
+      "id": "advanced",
+      "modules": []
+    }
+  ],
+  "created_at": "2026-09-24T11:41:00.082Z",
+  "updated_at": "2026-09-24T12:49:45.295Z"
+}

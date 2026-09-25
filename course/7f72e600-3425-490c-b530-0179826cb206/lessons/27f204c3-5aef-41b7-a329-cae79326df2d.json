@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "format": "blocks",
+  "sections": [
+    {
+      "id": "a193c1fc-c787-4c64-9b42-ce64b4e37268",
+      "title": "Lesson Content",
+      "required_to_advance": false,
+      "blocks": [
+        {
+          "id": "be2ae538-4440-40e8-a04b-37730faabd20",
+          "type": "rich_text",
+          "personalized": false,
+          "data": {
+            "markdown": "## New Lesson\n\nStart building your lesson content here..."
+          }
+        }
+      ]
+    }
+  ]
+}

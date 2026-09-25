@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "format": "blocks",
+  "sections": [
+    {
+      "id": "ff031647-37e2-4a8e-80bd-35d5e6d731ca",
+      "title": "Introduction",
+      "required_to_advance": false,
+      "blocks": [
+        {
+          "id": "104bd35e-a0f0-4ebd-af3e-44052a52a8d5",
+          "type": "rich_text",
+          "personalized": false,
+          "data": {
+            "markdown": "# hello\n\n![Asset 6@3x (1)](http://localhost:3001/uploads/16a13e83-11ec-4eff-bda0-9e02f464180b.png \"Asset 6@3x (1)\")"
+          }
+        },
+        {
+          "id": "ca2b407a-eeb5-4fd1-be25-70664835e713",
+          "type": "categorization",
+          "personalized": false,
+          "data": {
+            "buckets": [
+              {
+                "id": "b1",
+                "label": ""
+              },
+              {
+                "id": "b2",
+                "label": ""
+              }
+            ],
+            "items": [
+              {
+                "id": "i1",
+                "label": "",
+                "correct_bucket_id": "b1"
+              }
+            ],
+            "points_per_match": 5
+          }
+        }
+      ]
+    }
+  ]
+}
