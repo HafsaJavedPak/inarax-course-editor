@@ -414,3 +414,9 @@ html body {
   margin-top: auto;
   padding-top: 0.25rem;
 }
+
+.in-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

@@ -20,9 +20,17 @@ export default async function Page() {
             <h1>Courses</h1>
             <p>Plan levels and modules, then write each lesson.</p>
           </div>
-          <Link href="/courses/new" className="in-btn in-btn-primary">
-            + New course
-          </Link>
+          <div className="in-actions">
+            {courses.length > 0 && (
+              // A plain link: the API answers with a zip attachment.
+              <a href="/api/export" className="in-btn in-btn-secondary" download>
+                Download all
+              </a>
+            )}
+            <Link href="/courses/new" className="in-btn in-btn-primary">
+              + New course
+            </Link>
+          </div>
         </div>
 
         {courses.length === 0 ? (

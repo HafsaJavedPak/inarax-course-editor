@@ -201,6 +201,22 @@ export function CourseBuilder({
         >
           Settings
         </button>
+        <button
+          type="button"
+          className="in-btn in-btn-secondary in-btn-sm"
+          title="Download this course, its lessons and images as a zip"
+          onClick={async () => {
+            // Save first so the zip matches what's on screen.
+            if (!(await flush())) return
+            // A file download, not a page: click a temporary download link.
+            const link = document.createElement("a")
+            link.href = `/api/courses/${course.id}/export`
+            link.download = ""
+            link.click()
+          }}
+        >
+          Download
+        </button>
         <SaveBar status={status} savedAt={savedAt} onSave={() => void save()} />
       </header>
 

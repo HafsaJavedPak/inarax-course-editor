@@ -239,6 +239,7 @@ export function LessonEditor({
             {showJson && (
               <JsonPanel
                 lesson={lesson}
+                fileName={`${lessonTitle.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "lesson"}.json`}
                 onClose={() => setShowJson(false)}
                 onApply={(next) => {
                   dispatch({ type: "replace", lesson: next })

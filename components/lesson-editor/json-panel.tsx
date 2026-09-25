@@ -10,6 +10,15 @@ import { AutoTextarea } from "@/components/lesson-editor/fields"
 import { parseLesson, type Lesson } from "@/lib/lesson"
 import { validateLesson } from "@/lib/lesson-validate"
 
+function downloadJson(text: string, fileName: string) {
+  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }))
+  const link = document.createElement("a")
+  link.href = url
+  link.download = fileName
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 /**
  * View the lesson as JSON, or paste JSON (e.g. from the AI authoring prompt
  * in json-guide/) to replace it. "NEW_UUID" placeholders get real ids.
@@ -18,10 +27,13 @@ export function JsonPanel({
   lesson,
   onApply,
   onClose,
+  fileName = "lesson.json",
 }: {
   lesson: Lesson
   onApply: (lesson: Lesson) => void
   onClose: () => void
+  /** Name for the downloaded file. */
+  fileName?: string
 }) {
   const [text, setText] = useState(() => JSON.stringify(lesson, null, 2))
   const [message, setMessage] = useState<{ tone: "error" | "ok"; text: string } | null>(null)
@@ -65,6 +77,9 @@ export function JsonPanel({
         <div className="le-topbar-spacer" />
         <Button variant="ghost" showTooltip={false} onClick={() => void navigator.clipboard.writeText(text)}>
           <span className="tiptap-button-text">Copy</span>
+        </Button>
+        <Button variant="ghost" showTooltip={false} onClick={() => downloadJson(text, fileName)}>
+          <span className="tiptap-button-text">Download</span>
         </Button>
         <Button variant="ghost" showTooltip={false} onClick={validate}>
           <span className="tiptap-button-text">Validate</span>
