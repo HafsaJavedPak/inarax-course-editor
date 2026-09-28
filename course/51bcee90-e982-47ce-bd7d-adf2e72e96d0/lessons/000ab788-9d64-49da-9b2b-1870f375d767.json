@@ -14,6 +14,34 @@
           "data": {
             "markdown": "Hello learners."
           }
+        },
+        {
+          "id": "7d5fef99-417b-41c3-b643-114bc7e2992c",
+          "type": "image_hotspot",
+          "personalized": false,
+          "data": {
+            "image_url": "http://localhost:3001/uploads/e671fcf1-8335-4bd2-8092-aafeedf1d047.png",
+            "alt": "",
+            "hotspots": []
+          }
+        },
+        {
+          "id": "667f63ea-d758-401d-ab04-f9884cbb75f5",
+          "type": "image_hotspot",
+          "personalized": false,
+          "data": {
+            "image_url": "http://localhost:3001/uploads/d8f9f527-1847-47cd-8f7c-c94fd532169c.png",
+            "alt": "",
+            "hotspots": [
+              {
+                "id": "h1",
+                "x": 25,
+                "y": 30,
+                "title": "Processor",
+                "info": ""
+              }
+            ]
+          }
         }
       ]
     }

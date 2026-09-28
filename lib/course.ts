@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { CURRENCY_CODES } from "@/lib/currencies"
+
 export const LEVELS = [
   { id: "associate", label: "Associate", share: 0.4 },
   { id: "intermediate", label: "Intermediate", share: 0.35 },
@@ -31,6 +33,12 @@ const uuid = z.uuid()
 const count = (label: string, min: number) =>
   z.number({ error: `${label} must be a number` }).int(`${label} must be a whole number`).min(min, `${label} must be at least ${min}`)
 
+const percent = (label: string) =>
+  z
+    .number({ error: `Enter the ${label.toLowerCase()}` })
+    .min(0, `${label} can't be negative`)
+    .max(100, `${label} can't be more than 100%`)
+
 const range = (label: string, min: number) =>
   z
     .object({ min: count(`Minimum ${label}`, min), max: count(`Maximum ${label}`, min) })
@@ -44,15 +52,21 @@ export const CourseLimitsSchema = z
   .object({
     words: range("words", 0),
     sections: range("sections", 1),
-    minutes_per_lesson: z.number().min(1, "A lesson must be at least 1 minute").max(240),
-    words_per_minute: z.number().min(50, "Reading speed must be at least 50").max(600),
+    minutes_per_lesson: z
+      .number({ error: "Enter the minutes per lesson" })
+      .min(1, "A lesson must be at least 1 minute")
+      .max(240, "A lesson can't be longer than 240 minutes"),
+    words_per_minute: z
+      .number({ error: "Enter a reading speed" })
+      .min(50, "Reading speed must be at least 50 words per minute")
+      .max(600, "Reading speed can't be more than 600 words per minute"),
     /** Percent of the course length per level; must add up to 100. */
     level_shares: z.object({
-      associate: z.number().min(0).max(100),
-      intermediate: z.number().min(0).max(100),
-      advanced: z.number().min(0).max(100),
+      associate: percent("Associate share"),
+      intermediate: percent("Intermediate share"),
+      advanced: percent("Advanced share"),
     }),
-    tolerance_percent: z.number().min(0).max(100),
+    tolerance_percent: percent("On-target margin"),
   })
   .refine(
     (l) => Math.abs(l.level_shares.associate + l.level_shares.intermediate + l.level_shares.advanced - 100) < 0.5,
@@ -98,8 +112,11 @@ export const PricingSchema = z.discriminatedUnion("type", [
   }),
 ])
 
-/** Step 1: the "basic info" form. */
-export const CourseInfoSchema = z.object({
+/**
+ * Course info as stored. Reading saved courses uses these rules, so tightening
+ * the form's rules below never makes an existing course file unreadable.
+ */
+export const CourseInfoStoredSchema = z.object({
   title: z.string().trim().min(3, "Give the course a title").max(120),
   summary: z.string().trim().min(20, "Write at least a sentence or two").max(1000),
   learning_objectives: z
@@ -114,7 +131,60 @@ export const CourseInfoSchema = z.object({
   /** null = use the defaults for `lesson_size` (courses created before limits existed). */
   limits: CourseLimitsSchema.nullable().default(null),
 })
-export type CourseInfo = z.infer<typeof CourseInfoSchema>
+export type CourseInfo = z.infer<typeof CourseInfoStoredSchema>
+
+const text = (label: string, min: number, max: number) =>
+  z
+    .string({ error: `Enter ${label}` })
+    .trim()
+    .min(1, `Enter ${label}`)
+    .min(min, `Must be at least ${min} characters`)
+    .max(max, `Must be ${max} characters or fewer`)
+
+/** Maximum lengths shown as counters in the form. */
+export const COURSE_TEXT_LIMITS = { title: 120, summary: 1000, objective: 200, audience: 200 } as const
+
+/**
+ * The course info form: what a creator enters when creating a course or
+ * changing its settings. Stricter than the stored schema, with a clear message
+ * for every field.
+ */
+export const CourseInfoSchema = CourseInfoStoredSchema.extend({
+  title: text("a course title", 3, COURSE_TEXT_LIMITS.title),
+  summary: text("a summary", 20, COURSE_TEXT_LIMITS.summary),
+  learning_objectives: z
+    .array(text("the objective", 3, COURSE_TEXT_LIMITS.objective))
+    .min(1, "Add at least one learning objective")
+    .max(12, "You can add up to 12 learning objectives")
+    .refine(
+      (list) => new Set(list.map((o) => o.toLowerCase())).size === list.length,
+      "Each learning objective must be different"
+    ),
+  cover_image_url: z
+    .url({ protocol: /^https?$/, error: "Enter a full image address starting with https:// (or upload a file)" })
+    .nullable()
+    .default(null),
+  audience: text("who the course is for", 3, COURSE_TEXT_LIMITS.audience),
+  length_hours: z
+    .number({ error: "Enter the course length in hours" })
+    .min(0.5, "A course must be at least 0.5 hours")
+    .max(100, "A course can't be longer than 100 hours")
+    .refine((h) => Number.isInteger(h * 2), "Use whole or half hours, e.g. 2 or 2.5"),
+  pricing: z
+    .discriminatedUnion("type", [
+      z.object({ type: z.literal("free") }),
+      z.object({
+        type: z.literal("paid"),
+        amount: z
+          .number({ error: "Enter a price" })
+          .positive("Price must be more than 0")
+          .max(1_000_000, "Price can't be more than 1,000,000")
+          .refine((n) => Number.isInteger(Math.round(n * 100 * 1e6) / 1e6), "Use at most 2 decimal places"),
+        currency: z.enum(CURRENCY_CODES, { error: "Choose a currency" }),
+      }),
+    ])
+    .default({ type: "free" }),
+})
 
 // ---------------------------------------------------------------------------
 // Review workflow
@@ -152,7 +222,7 @@ export const ChangeRequestSchema = z.object({
 })
 export type ChangeRequest = z.infer<typeof ChangeRequestSchema>
 
-export const CourseSchema = CourseInfoSchema.extend({
+export const CourseSchema = CourseInfoStoredSchema.extend({
   id: uuid,
   version: z.literal(1),
   /** The creator who owns the course (Clerk-style user id). */
@@ -166,6 +236,8 @@ export const CourseSchema = CourseInfoSchema.extend({
   change_requests: z.array(ChangeRequestSchema).default([]),
   created_at: z.iso.datetime(),
   updated_at: z.iso.datetime(),
+  /** When the course was last published to the platform database (Save button). */
+  published_at: z.iso.datetime().nullable().default(null),
 })
 export type Course = z.infer<typeof CourseSchema>
 export type CourseModule = z.infer<typeof ModuleSchema>
@@ -185,6 +257,7 @@ export function createCourse(info: CourseInfo, ownerId: string): Course {
     change_requests: [],
     created_at: now,
     updated_at: now,
+    published_at: null,
   }
 }
 

@@ -21,12 +21,15 @@ export function ImageUrlField({
   label = "Image URL",
   required,
   optional,
+  error: fieldError,
 }: {
   value: string
   onChange: (url: string) => void
   label?: string
   required?: boolean
   optional?: boolean
+  /** Validation message from the surrounding form. */
+  error?: string
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [progress, setProgress] = useState<number | null>(null)
@@ -49,18 +52,13 @@ export function ImageUrlField({
       label={label}
       required={required}
       optional={optional}
-      hint={
-        error ? (
-          <span className="le-error-text">{error}</span>
-        ) : (
-          "Paste a hosted URL, or upload a file."
-        )
-      }
+      error={error ?? fieldError}
+      hint="Paste a hosted URL, or upload a file."
     >
-      {(id) => (
+      {(id, control) => (
         <div className="le-inline">
           <Input
-            id={id}
+            {...control}
             type="url"
             value={value}
             placeholder="https://…"

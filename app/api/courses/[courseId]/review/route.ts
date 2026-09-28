@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { ChangeRequestSchema } from "@/lib/course"
 import { review } from "@/lib/course-status"
 import { updateCourseWorkflow } from "@/lib/course-store"
-import { workflowResponse } from "@/lib/workflow-response"
+import { publishedWorkflowResponse } from "@/lib/workflow-response"
 
 const ReviewSchema = z.object({
   decision: z.enum(["approved", "rejected", "changes_requested"]),
@@ -27,7 +27,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/courses/[co
 
   const { courseId } = await ctx.params
   const { decision, note, changes } = parsed.data
-  return workflowResponse(
+  return publishedWorkflowResponse(
     await updateCourseWorkflow(courseId, (current) => review(current, decision, note, changes, user.id))
   )
 }

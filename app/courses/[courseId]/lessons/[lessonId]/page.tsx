@@ -32,6 +32,7 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]/le
       }}
       wordsPerMinute={limits.words_per_minute}
       courseStatus={course.status}
+      publishedAt={course.published_at}
     />
   )
 }

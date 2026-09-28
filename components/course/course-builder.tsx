@@ -20,6 +20,7 @@ import { LevelTabs } from "@/components/course/level-tabs"
 import { StatusPanel, type Workflow } from "@/components/course/status-panel"
 import { courseReducer, type CourseAction } from "@/components/course/course-state"
 import { SaveBar, type SaveStatus } from "@/components/lesson-editor/save-bar"
+import { usePublish } from "@/components/lesson-editor/use-publish"
 import { CourseSchema, getCourseLimits, LEVELS, type Course, type CourseModule, type LevelId } from "@/lib/course"
 import { getSubmitBlockers, isLocked } from "@/lib/course-status"
 import { coursePaths, modeHeaders } from "@/lib/admin-mode"
@@ -52,6 +53,8 @@ export function CourseBuilder({
     review_history: initialCourse.review_history,
     change_requests: initialCourse.change_requests,
   })
+  const publisher = usePublish(initialCourse.id, isAdmin, initialCourse.published_at)
+  const { markChanged, publish } = publisher
   const readOnly = isLocked(workflow.status) && !isAdmin
   const paths = coursePaths(isAdmin)
 
@@ -74,8 +77,9 @@ export function CourseBuilder({
     courseRef.current = courseReducer(courseRef.current, action)
     dirtyRef.current = true
     setStatus("dirty")
+    markChanged()
     rawDispatch(action)
-  }, [])
+  }, [markChanged])
 
   /** Saves the latest course; if edits land mid-save, saves again afterwards. */
   const save = useCallback((): Promise<void> => {
@@ -126,7 +130,7 @@ export function CourseBuilder({
       }
     })()
     return savePromiseRef.current
-  }, [course.id])
+  }, [course.id, isAdmin])
 
   /** Saves now and waits for it; false if something stopped the save. */
   const flush = useCallback(async () => {
@@ -135,7 +139,13 @@ export function CourseBuilder({
     return !dirtyRef.current
   }, [save])
 
-  useHotkeys("mod+s", () => void save(), {
+  /** The Save button: save locally now, then publish to the database. */
+  const saveAndPublish = useCallback(async () => {
+    if (!(await flush())) return // save failed; the status bar says why
+    await publish()
+  }, [flush, publish])
+
+  useHotkeys("mod+s", () => void saveAndPublish(), {
     preventDefault: true,
     enableOnContentEditable: true,
     enableOnFormTags: true,
@@ -148,9 +158,9 @@ export function CourseBuilder({
   const openLesson = useCallback(
     async (lessonId: string) => {
       if (!(await flush())) return // save failed; the status bar says why
-      router.push(paths.lesson(course.id, lessonId))
+      router.push(coursePaths(isAdmin).lesson(course.id, lessonId))
     },
-    [course.id, flush, router],
+    [course.id, flush, isAdmin, router],
   )
 
   // Debounced autosave after each edit.
@@ -237,7 +247,7 @@ export function CourseBuilder({
         >
           Download
         </button>
-        <SaveBar status={status} savedAt={savedAt} onSave={() => void save()} />
+        <SaveBar status={status} savedAt={savedAt} publisher={publisher} onSave={() => void saveAndPublish()} />
       </header>
 
       <main className="course-builder">

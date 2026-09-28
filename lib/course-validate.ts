@@ -45,7 +45,7 @@ export type CourseReport = {
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
 
 /** Collects every learner-visible string in a lesson. */
-function lessonText(lesson: Lesson): string[] {
+export function lessonText(lesson: Lesson): string[] {
   const out: string[] = []
   const walk = (value: unknown) => {
     if (typeof value === "string") out.push(value)

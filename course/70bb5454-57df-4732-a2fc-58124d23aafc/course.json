@@ -12,9 +12,11 @@
   "pricing": {
     "type": "free"
   },
+  "limits": null,
   "id": "70bb5454-57df-4732-a2fc-58124d23aafc",
   "version": 1,
-  "revision": 6,
+  "owner_id": "user_local_creator",
+  "revision": 24,
   "levels": [
     {
       "id": "associate",
@@ -25,8 +27,28 @@
           "summary": "hiiiiiiiiii",
           "lessons": [
             {
-              "id": "ef476863-0d8f-49e9-ae6d-f5046d48f4ab",
-              "title": "Lesson 1"
+              "id": "21417f86-bc57-48d0-ad6a-561f3ef228f2",
+              "title": "Lesson 2"
+            },
+            {
+              "id": "7223a4a9-28f1-4ab4-831d-2c041472aa14",
+              "title": "Lesson 3"
+            },
+            {
+              "id": "8287ba60-258a-4656-944d-405d48a3d6e7",
+              "title": "Lesson 4"
+            },
+            {
+              "id": "f16d3241-5456-4e79-a35c-0794ba9d86a6",
+              "title": "Lesson 5"
+            },
+            {
+              "id": "415f2387-55ca-42bd-a4f8-973ba080a443",
+              "title": "Lesson 6"
+            },
+            {
+              "id": "5b9afe5f-6381-4e3c-b7ff-4d424e46b7bf",
+              "title": "Lesson 7"
             }
           ]
         },
@@ -45,24 +67,110 @@
     },
     {
       "id": "intermediate",
-      "modules": []
+      "modules": [
+        {
+          "id": "f8b4aae9-248b-4bdb-b66e-dd61b701654e",
+          "title": "Module 1",
+          "summary": "a",
+          "lessons": [
+            {
+              "id": "082aafff-9d51-4249-83d7-ca1a62488682",
+              "title": "a"
+            }
+          ]
+        },
+        {
+          "id": "5eb2d3d8-e0fa-4459-8a7d-bb465dbbfbba",
+          "title": "Module 2",
+          "summary": "aa",
+          "lessons": [
+            {
+              "id": "a6865efe-8850-43ba-a396-eec734f649e7",
+              "title": "Lesson 1"
+            },
+            {
+              "id": "d250f0f5-6b47-4f8a-8c97-d07839d8bde3",
+              "title": "Lesson 2"
+            },
+            {
+              "id": "327a5ecf-2315-4351-a150-b7eab6c128d1",
+              "title": "Lesson 3"
+            },
+            {
+              "id": "5ca0e57b-2828-4297-a447-f9a549b5b0ac",
+              "title": "Lesson 4"
+            },
+            {
+              "id": "31bcccbd-46ba-459b-a5ab-344bef34b3da",
+              "title": "Lesson 5"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "advanced",
-      "modules": []
+      "modules": [
+        {
+          "id": "e7591076-d8a0-4378-ae89-b52a7f7a3f6a",
+          "title": "Module 1",
+          "summary": "",
+          "lessons": [
+            {
+              "id": "4172ed56-8544-46b0-8867-84a7aa31446c",
+              "title": "Lesson 1"
+            },
+            {
+              "id": "b511bed0-15a3-49c0-970c-f898d008bc3d",
+              "title": "Lesson 2"
+            },
+            {
+              "id": "bc7dd752-9e75-4749-bcbc-8db420310833",
+              "title": "Lesson 3"
+            },
+            {
+              "id": "3e8c1bf5-5bed-48aa-87e0-cae9a4b77c1f",
+              "title": "Lesson 4"
+            },
+            {
+              "id": "416c7e44-b865-4cb6-b040-5e65d5886eb2",
+              "title": "Lesson 5"
+            }
+          ]
+        }
+      ]
     }
   ],
-  "created_at": "2026-09-24T11:41:00.082Z",
-  "updated_at": "2026-09-24T12:49:45.295Z",
-  "owner_id": "user_local_creator",
-  "status": "draft",
+  "status": "changes_requested",
   "review_history": [
     {
       "status": "draft",
       "at": "2026-09-24T11:41:00.082Z",
       "by": "user_local_creator",
       "note": "Course created"
+    },
+    {
+      "status": "in_review",
+      "at": "2026-09-28T16:15:34.645Z",
+      "by": "user_local_creator",
+      "note": ""
+    },
+    {
+      "status": "changes_requested",
+      "at": "2026-09-28T16:18:12.876Z",
+      "by": "user_local_creator",
+      "note": ""
     }
   ],
-  "change_requests": []
+  "change_requests": [
+    {
+      "id": "2889437b-b09d-4acd-af1b-9744b03a6b74",
+      "text": "a",
+      "done": false,
+      "creator_note": ""
+    }
+  ],
+  "created_at": "2026-09-24T11:41:00.082Z",
+  "updated_at": "2026-09-28T16:18:12.877Z",
+  "published_at": "2026-09-28T16:29:31.897Z"
 }

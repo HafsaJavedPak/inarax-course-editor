@@ -1,23 +1,32 @@
 "use client"
 
+import type { Publisher } from "@/components/lesson-editor/use-publish"
+
 export type SaveStatus = "saved" | "dirty" | "saving" | { error: string }
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" })
+const dateTimeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" })
+
+const formatWhen = (date: Date) =>
+  date.toDateString() === new Date().toDateString() ? timeFormat.format(date) : dateTimeFormat.format(date)
 
 /**
  * Save state plus a Save button, shared by the course builder and the lesson
- * editor. Both autosave; the button saves immediately (also Ctrl/⌘+S).
+ * editor. Both autosave to the local files; the button (also Ctrl/⌘+S) saves
+ * now and then publishes the course to the platform database.
  */
 export function SaveBar({
   status,
   savedAt,
   neverSaved = false,
+  publisher,
   onSave,
 }: {
   status: SaveStatus
   savedAt: Date | null
   /** True for a lesson whose file doesn't exist yet. */
   neverSaved?: boolean
+  publisher: Publisher
   onSave: () => void
 }) {
   const state = typeof status === "string" ? status : "error"
@@ -34,19 +43,44 @@ export function SaveBar({
             ? `Saved ${timeFormat.format(savedAt)}`
             : "All changes saved"
 
+  const publish = publisher.status
+  const publishState =
+    typeof publish !== "string"
+      ? "error"
+      : publish === "publishing"
+        ? "saving"
+        : publisher.pending || !publisher.publishedAt
+          ? "dirty"
+          : "saved"
+  const publishText =
+    typeof publish !== "string"
+      ? publish.error
+      : publish === "publishing"
+        ? "Publishing…"
+        : publisher.pending
+          ? "Changes not published"
+          : publisher.publishedAt
+            ? `Published ${formatWhen(publisher.publishedAt)}`
+            : "Not published yet"
+
+  const busy = status === "saving" || publish === "publishing"
+
   return (
     <div className="le-save">
       <span className="le-save-state" data-state={state} role="status" title={text}>
         {text}
       </span>
+      <span className="le-save-state" data-state={publishState} role="status" title={publishText}>
+        {publishText}
+      </span>
       <button
         type="button"
         className="in-btn in-btn-primary in-btn-sm"
         onClick={onSave}
-        disabled={status === "saving" || status === "saved"}
-        title="Save now (Ctrl/⌘+S)"
+        disabled={busy}
+        title="Save and publish to the platform (Ctrl/⌘+S)"
       >
-        {status === "saving" ? "Saving…" : typeof status !== "string" ? "Retry save" : "Save"}
+        {status === "saving" ? "Saving…" : publish === "publishing" ? "Publishing…" : "Save"}
       </button>
     </div>
   )

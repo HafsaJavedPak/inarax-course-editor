@@ -25,9 +25,9 @@ import { ImageBlock, OpaqueBlockView } from "@/components/lesson-editor/blocks/c
 import {
   AccordionTabsBlock,
   FlipCardsBlock,
-  ImageHotspotBlock,
   SteppedTimelineBlock,
 } from "@/components/lesson-editor/blocks/explore-blocks"
+import { ImageHotspotBlock } from "@/components/lesson-editor/blocks/image-hotspot-block"
 import {
   CategorizationBlock,
   FillBlankBlock,
@@ -159,19 +159,22 @@ export function AddBlockMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="le-add-block-menu">
         {BLOCK_CATEGORIES.map((category, i) => (
-          <DropdownMenuGroup key={category.id}>
+          <DropdownMenuGroup key={category.id} className="le-add-block-group">
             {i > 0 && <DropdownMenuSeparator />}
-            <DropdownMenuLabel>{category.label}</DropdownMenuLabel>
+            <DropdownMenuLabel className="le-add-block-label">{category.label}</DropdownMenuLabel>
             {(Object.keys(BLOCK_CATALOG) as AuthorableBlockType[])
               .filter((type) => BLOCK_CATALOG[type].category === category.id)
               .map((type) => (
-                <DropdownMenuItem key={type} asChild>
-                  <Button variant="ghost" showTooltip={false} onClick={() => onAdd(type)}>
-                    <span className="tiptap-button-text">
-                      {BLOCK_CATALOG[type].label}
-                      <span className="le-menu-description">{BLOCK_CATALOG[type].description}</span>
-                    </span>
-                  </Button>
+                // A plain menu row (not a toolbar button), so the name and
+                // description get their own lines.
+                <DropdownMenuItem
+                  key={type}
+                  className="le-add-block-item"
+                  data-category={category.id}
+                  onSelect={() => onAdd(type)}
+                >
+                  <span className="le-add-block-name">{BLOCK_CATALOG[type].label}</span>
+                  <span className="le-add-block-description">{BLOCK_CATALOG[type].description}</span>
                 </DropdownMenuItem>
               ))}
           </DropdownMenuGroup>

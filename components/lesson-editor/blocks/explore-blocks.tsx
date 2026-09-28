@@ -1,146 +1,20 @@
 "use client"
 
-import { useState, type MouseEvent } from "react"
-
 // --- UI Primitives ---
 import { Button } from "@/components/tiptap-ui-primitive/button"
 
 // --- Lesson editor ---
-import { ImageUrlField } from "@/components/lesson-editor/blocks/content-blocks"
 import {
   AutoTextarea,
-  ItemControls,
   ListEditor,
-  TextField,
 } from "@/components/lesson-editor/fields"
 import { Input } from "@/components/tiptap-ui-primitive/input"
 import {
   nextInnerId,
   type AccordionTabsData,
   type FlipCardsData,
-  type Hotspot,
-  type ImageHotspotData,
   type SteppedTimelineData,
 } from "@/lib/lesson"
-
-const round1 = (n: number) => Math.round(n * 10) / 10
-
-// ---------------------------------------------------------------------------
-// image_hotspot
-// ---------------------------------------------------------------------------
-
-export function ImageHotspotBlock({
-  data,
-  onChange,
-}: {
-  data: ImageHotspotData
-  onChange: (data: ImageHotspotData) => void
-}) {
-  // Clicking the image places the selected hotspot, or adds a new one.
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-
-  const setHotspots = (hotspots: Hotspot[]) => onChange({ ...data, hotspots })
-
-  const handleImageClick = (event: MouseEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect()
-    const x = round1(((event.clientX - rect.left) / rect.width) * 100)
-    const y = round1(((event.clientY - rect.top) / rect.height) * 100)
-
-    if (selectedId && data.hotspots.some((h) => h.id === selectedId)) {
-      setHotspots(data.hotspots.map((h) => (h.id === selectedId ? { ...h, x, y } : h)))
-      setSelectedId(null)
-      return
-    }
-    const id = nextInnerId("h", data.hotspots)
-    setHotspots([...data.hotspots, { id, x, y, title: "", info: "" }])
-  }
-
-  return (
-    <div className="le-stack">
-      <ImageUrlField value={data.image_url} onChange={(image_url) => onChange({ ...data, image_url })} />
-      <TextField
-        label="Alt text (optional)"
-        value={data.alt ?? ""}
-        onChange={(alt) => onChange({ ...data, alt })}
-      />
-
-      {data.image_url ? (
-        <>
-          <p className="le-muted">
-            {selectedId
-              ? `Click the image to move hotspot ${data.hotspots.findIndex((h) => h.id === selectedId) + 1}.`
-              : "Click the image to add a hotspot."}
-          </p>
-          <div className="le-hotspot-canvas" onClick={handleImageClick}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary author-supplied URLs */}
-            <img src={data.image_url} alt={data.alt ?? ""} draggable={false} />
-            {data.hotspots.map((h, i) => (
-              <span
-                key={h.id}
-                className="le-hotspot-pin"
-                data-selected={h.id === selectedId}
-                style={{ left: `${h.x}%`, top: `${h.y}%` }}
-                title={h.title}
-              >
-                {i + 1}
-              </span>
-            ))}
-          </div>
-        </>
-      ) : (
-        <p className="le-muted">Add an image to start placing hotspots.</p>
-      )}
-
-      <div className="le-list">
-        {data.hotspots.map((h, index) => (
-          <div className="le-list-item" key={h.id}>
-            <span className="le-list-index">{index + 1}</span>
-            <div className="le-list-body le-stack-tight">
-              <Input
-                value={h.title}
-                placeholder="Title"
-                aria-label={`Hotspot ${index + 1} title`}
-                onChange={(e) =>
-                  setHotspots(data.hotspots.map((x) => (x.id === h.id ? { ...x, title: e.target.value } : x)))
-                }
-              />
-              <AutoTextarea
-                value={h.info}
-                placeholder="What the learner sees when they click this pin"
-                aria-label={`Hotspot ${index + 1} info`}
-                onChange={(info) =>
-                  setHotspots(data.hotspots.map((x) => (x.id === h.id ? { ...x, info } : x)))
-                }
-              />
-              <div className="le-inline le-muted">
-                <span>
-                  x {h.x}% · y {h.y}%
-                </span>
-                <Button
-                  size="small"
-                  variant="ghost"
-                  showTooltip={false}
-                  data-active-state={selectedId === h.id ? "on" : "off"}
-                  onClick={() => setSelectedId(selectedId === h.id ? null : h.id)}
-                >
-                  <span className="tiptap-button-text">
-                    {selectedId === h.id ? "Click image to place…" : "Reposition"}
-                  </span>
-                </Button>
-              </div>
-            </div>
-            <ItemControls
-              index={index}
-              count={data.hotspots.length}
-              label="hotspot"
-              onRemove={() => setHotspots(data.hotspots.filter((x) => x.id !== h.id))}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // flip_cards

@@ -124,6 +124,7 @@ export async function saveCourseContent(course: Course, editor: CurrentUser): Pr
       review_history: current.review_history,
       change_requests: current.change_requests,
       created_at: current.created_at,
+      published_at: current.published_at,
       revision: current.revision + 1,
       updated_at: new Date().toISOString(),
     }
@@ -168,6 +169,14 @@ export async function recordLessonEdit(courseId: string, editor: CurrentUser): P
       await writeJson(courseFile(courseId), { ...next, updated_at: new Date().toISOString() })
     }
     return next
+  })
+}
+
+/** Records a successful publish. Like workflow changes, doesn't bump `revision`. */
+export async function recordPublish(courseId: string, at: string): Promise<void> {
+  await serialize(courseId, async () => {
+    const current = await readCourse(courseId)
+    if (current) await writeJson(courseFile(courseId), { ...current, published_at: at })
   })
 }
 

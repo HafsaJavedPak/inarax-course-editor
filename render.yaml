@@ -16,6 +16,9 @@ services:
       # Courses (course/) and uploads (uploads/) are stored here.
       - key: DATA_DIR
         value: /var/data
+      # Platform Postgres (Supabase session pooler URI); set in the dashboard.
+      - key: DATABASE_URL
+        sync: false
     disk:
       name: inara-data
       mountPath: /var/data

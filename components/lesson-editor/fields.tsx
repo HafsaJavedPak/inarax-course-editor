@@ -43,9 +43,17 @@ export function FieldLabel({
   )
 }
 
+/** Props for the control inside a Field, so screen readers hear the error. */
+export type FieldControlProps = {
+  id: string
+  "aria-invalid"?: boolean
+  "aria-describedby"?: string
+}
+
 export function Field({
   label,
   hint,
+  error,
   children,
   className,
   required,
@@ -53,18 +61,26 @@ export function Field({
 }: {
   label: string
   hint?: ReactNode
-  children: (id: string) => ReactNode
+  /** Shown in red under the control, which is marked invalid. */
+  error?: string
+  children: (id: string, control: FieldControlProps) => ReactNode
   className?: string
   required?: boolean
   optional?: boolean
 }) {
   const id = useId()
+  const errorId = `${id}-error`
   return (
-    <div className={`le-field ${className ?? ""}`}>
+    <div className={`le-field ${className ?? ""}`} data-invalid={!!error || undefined}>
       <FieldLabel htmlFor={id} required={required} optional={optional}>
         {label}
       </FieldLabel>
-      {children(id)}
+      {children(id, { id, "aria-invalid": error ? true : undefined, "aria-describedby": error ? errorId : undefined })}
+      {error && (
+        <div className="le-field-error" id={errorId}>
+          {error}
+        </div>
+      )}
       {hint && <div className="le-field-hint">{hint}</div>}
     </div>
   )
@@ -76,24 +92,35 @@ export function TextField({
   onChange,
   placeholder,
   hint,
+  error,
   type = "text",
   required,
   optional,
+  maxLength,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   placeholder?: string
   hint?: ReactNode
+  error?: string
   type?: "text" | "url"
   required?: boolean
   optional?: boolean
+  /** Shows a character counter (the input itself isn't capped). */
+  maxLength?: number
 }) {
   return (
-    <Field label={label} hint={hint} required={required} optional={optional}>
-      {(id) => (
+    <Field
+      label={label}
+      hint={maxLength ? <CharCount value={value} max={maxLength} extra={hint} /> : hint}
+      error={error}
+      required={required}
+      optional={optional}
+    >
+      {(id, control) => (
         <Input
-          id={id}
+          {...control}
           type={type}
           aria-required={required || undefined}
           value={value}
@@ -170,24 +197,35 @@ export function TextAreaField({
   onChange,
   placeholder,
   hint,
+  error,
   minRows,
   required,
   optional,
+  maxLength,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   placeholder?: string
   hint?: ReactNode
+  error?: string
   minRows?: number
   required?: boolean
   optional?: boolean
+  /** Shows a character counter (the textarea itself isn't capped). */
+  maxLength?: number
 }) {
   return (
-    <Field label={label} hint={hint} required={required} optional={optional}>
-      {(id) => (
+    <Field
+      label={label}
+      hint={maxLength ? <CharCount value={value} max={maxLength} extra={hint} /> : hint}
+      error={error}
+      required={required}
+      optional={optional}
+    >
+      {(id, control) => (
         <AutoTextarea
-          id={id}
+          {...control}
           aria-required={required || undefined}
           value={value}
           onChange={onChange}
@@ -196,6 +234,19 @@ export function TextAreaField({
         />
       )}
     </Field>
+  )
+}
+
+/** "84 / 120" under a text field; turns red past the limit. */
+export function CharCount({ value, max, extra }: { value: string; max: number; extra?: ReactNode }) {
+  const length = value.trim().length
+  return (
+    <span className="le-char-row">
+      {extra && <span>{extra}</span>}
+      <span className="le-char-count" data-over={length > max || undefined}>
+        {length} / {max}
+      </span>
+    </span>
   )
 }
 

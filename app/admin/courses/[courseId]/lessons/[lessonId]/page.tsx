@@ -30,6 +30,7 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
       }}
       wordsPerMinute={limits.words_per_minute}
       courseStatus={course.status}
+      publishedAt={course.published_at}
       isAdmin
     />
   )

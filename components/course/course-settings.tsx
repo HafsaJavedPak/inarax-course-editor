@@ -44,7 +44,7 @@ export function CourseSettings({ course, isAdmin = false }: { course: Course; is
     <>
       {locked && (
         <p className="cf-form-error" role="status">
-          This course is in review, so its settings can't be changed. Withdraw it from the course page to edit.
+          This course is in review, so its settings can&apos;t be changed. Withdraw it from the course page to edit.
         </p>
       )}
       {!isAdmin && course.status === "approved" && (

@@ -18,6 +18,9 @@
 }
 
 .le-app {
+  // The Tiptap template sets html/body to height: 100%; without this the app
+  // shrinks to one screen and the sticky top bar scrolls away.
+  flex-shrink: 0;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -337,14 +340,74 @@
 }
 
 .le-add-block-menu {
-  min-width: 16rem;
+  width: 18rem;
+  padding: 0.375rem;
 }
 
-.le-menu-description {
-  display: block;
+.le-add-block-label {
+  padding: 0.5rem 0.625rem 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--in-faint);
+}
+
+.le-add-block-item {
+  // Name and description on their own lines; height follows the content.
+  display: grid !important;
+  grid-template-columns: 0.5rem minmax(0, 1fr);
+  grid-template-areas:
+    "dot name"
+    ". description";
+  column-gap: 0.625rem;
+  row-gap: 0.0625rem;
+  align-items: center;
+  height: auto !important;
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--in-radius-lg);
+  cursor: pointer;
+  outline: none;
+
+  &::before {
+    content: "";
+    grid-area: dot;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--in-faint);
+  }
+
+  &[data-category="explore"]::before {
+    background: #2563eb;
+  }
+
+  &[data-category="assess"]::before {
+    background: var(--in-primary);
+  }
+
+  &[data-highlighted] {
+    background: var(--in-primary-50);
+
+    .le-add-block-name {
+      color: var(--in-primary-hover);
+    }
+  }
+}
+
+.le-add-block-name {
+  grid-area: name;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  color: var(--in-text);
+}
+
+.le-add-block-description {
+  grid-area: description;
   font-size: 0.75rem;
-  font-weight: 400;
-  color: var(--le-muted);
+  line-height: 1rem;
+  color: var(--in-muted);
 }
 
 // ---------------------------------------------------------------------------
@@ -587,43 +650,6 @@
     font-size: 0.8125rem;
     color: var(--le-muted);
     margin-top: 0.25rem;
-  }
-}
-
-.le-hotspot-canvas {
-  position: relative;
-  display: inline-block;
-  align-self: flex-start;
-  max-width: 100%;
-  cursor: crosshair;
-  user-select: none;
-
-  img {
-    display: block;
-    max-width: 100%;
-    border-radius: var(--tt-radius-md);
-  }
-}
-
-.le-hotspot-pin {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #fff;
-  background: var(--le-accent);
-  border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-  pointer-events: none;
-
-  &[data-selected="true"] {
-    background: var(--le-warning);
-    outline: 3px solid color-mix(in srgb, var(--le-warning) 40%, transparent);
   }
 }
 
@@ -993,4 +1019,223 @@
 .le-banner[data-tone="admin"] {
   background: var(--in-primary-50);
   color: var(--in-primary-hover);
+}
+
+// ---------------------------------------------------------------------------
+// Image hotspot editor
+// ---------------------------------------------------------------------------
+
+.hs-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  border: 2px dashed var(--in-border-strong);
+  border-radius: var(--in-radius-xl);
+  background: var(--in-bg);
+  transition: border-color 150ms, background-color 150ms;
+
+  &[data-dragging="true"] {
+    border-color: var(--in-primary);
+    background: var(--in-primary-50);
+  }
+}
+
+.hs-drop-icon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--in-primary);
+}
+
+.hs-drop-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--in-text);
+}
+
+.hs-drop-text {
+  margin: 0 0 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--in-muted);
+}
+
+.hs-drop-error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--in-error-text);
+}
+
+.hs-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hs-hint {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--in-radius-lg);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: var(--in-primary-50);
+  color: var(--in-primary-hover);
+
+  &[data-state="loading"] {
+    background: var(--in-surface-muted);
+    color: var(--in-muted);
+  }
+
+  &[data-state="error"] {
+    background: var(--in-error-bg);
+    color: var(--in-error-text);
+  }
+}
+
+// The image fills the block width; pins are positioned in % of it.
+.hs-canvas {
+  position: relative;
+  width: 100%;
+  border-radius: var(--in-radius-lg);
+  border: 1px solid var(--in-border);
+  overflow: hidden;
+  background: var(--in-bg);
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+
+  &[data-state="loading"],
+  &[data-state="error"] {
+    min-height: 12rem;
+    cursor: default;
+  }
+
+  &[data-state="error"] img {
+    display: none;
+  }
+
+  &[data-readonly="true"] {
+    cursor: default;
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    pointer-events: none;
+    -webkit-user-drag: none;
+  }
+}
+
+.hs-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--in-primary);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+  cursor: grab;
+  transition: transform 100ms;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--in-primary-200);
+  }
+
+  &[data-selected="true"] {
+    background: var(--in-warning-strong);
+    transform: translate(-50%, -50%) scale(1.15);
+    box-shadow:
+      0 0 0 4px rgb(217 119 6 / 0.3),
+      0 2px 6px rgb(0 0 0 / 0.35);
+  }
+
+  [data-readonly="true"] & {
+    cursor: default;
+  }
+}
+
+.hs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hs-item {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.75rem;
+  border: 1px solid var(--in-border);
+  border-radius: var(--in-radius-lg);
+  transition: border-color 150ms, box-shadow 150ms;
+
+  &[data-selected="true"] {
+    border-color: var(--in-warning-strong);
+    box-shadow: 0 0 0 3px rgb(217 119 6 / 0.15);
+
+    .hs-item-number {
+      background: var(--in-warning-strong);
+    }
+  }
+}
+
+.hs-item-number {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--in-primary);
+}
+
+.hs-item-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.hs-item-position {
+  font-size: 0.75rem;
+  color: var(--in-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hs-item-remove {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: var(--in-radius-md);
+  background: none;
+  color: var(--in-muted);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--in-danger-bg);
+    color: var(--in-danger);
+  }
 }

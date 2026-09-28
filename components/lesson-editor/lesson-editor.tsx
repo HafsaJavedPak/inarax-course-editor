@@ -23,6 +23,7 @@ import { ActiveEditorProvider } from "@/components/lesson-editor/active-editor"
 import { AddBlockMenu, BlockEditor } from "@/components/lesson-editor/block-editor"
 import { JsonPanel } from "@/components/lesson-editor/json-panel"
 import { SaveBar, type SaveStatus } from "@/components/lesson-editor/save-bar"
+import { usePublish } from "@/components/lesson-editor/use-publish"
 import { ReadOnlyContext } from "@/components/lesson-editor/read-only"
 import { lessonReducer, type LessonAction } from "@/components/lesson-editor/lesson-state"
 import { createSection, type Lesson } from "@/lib/lesson"
@@ -52,6 +53,8 @@ export interface LessonEditorProps {
   courseStatus: CourseStatus
   /** Admins can edit while in review; their edits don't change the status. */
   isAdmin?: boolean
+  /** When the course was last published to the platform database. */
+  publishedAt: string | null
 }
 
 const inRange = (value: number, [min, max]: Range) => value >= min && value <= max
@@ -69,6 +72,7 @@ export function LessonEditor({
   wordsPerMinute,
   courseStatus: initialCourseStatus,
   isAdmin = false,
+  publishedAt,
 }: LessonEditorProps) {
   const [lesson, rawDispatch] = useReducer(lessonReducer, initialLesson)
   const [selectedId, setSelectedId] = useState(initialLesson.sections[0]?.id ?? null)
@@ -79,6 +83,8 @@ export function LessonEditor({
   // Saving a lesson of an accepted course moves the course back to draft.
   const [courseStatus, setCourseStatus] = useState(initialCourseStatus)
   const readOnly = isLocked(courseStatus) && !isAdmin
+  const publisher = usePublish(courseId, isAdmin, publishedAt)
+  const { markChanged, publish } = publisher
   const [showJson, setShowJson] = useState(false)
   // Bumped when the whole lesson is replaced, to remount the block editors.
   const [generation, setGeneration] = useState(0)
@@ -90,7 +96,7 @@ export function LessonEditor({
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savingRef = useRef(false)
   // The in-flight save, so leaving the page can wait for it to land.
-  const savePromiseRef = useRef<Promise<void> | null>(null)
+  const savePromiseRef = useRef<Promise<boolean> | null>(null)
   const router = useRouter()
   const lessonRef = useRef(lesson)
   useEffect(() => {
@@ -100,8 +106,9 @@ export function LessonEditor({
   const dispatch = useCallback((action: LessonAction) => {
     revisionRef.current += 1
     setStatus("dirty")
+    markChanged()
     rawDispatch(action)
-  }, [])
+  }, [markChanged])
 
   const issues = useMemo(() => validateLesson(lesson), [lesson])
   const errorCount = issues.filter((i) => i.level === "error").length
@@ -109,9 +116,10 @@ export function LessonEditor({
 
   const selected = lesson.sections.find((s) => s.id === selectedId) ?? lesson.sections[0]
 
-  const save = useCallback((): Promise<void> => {
+  /** Saves the lesson file; resolves false if the save failed. */
+  const save = useCallback((): Promise<boolean> => {
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
-    if (savingRef.current) return savePromiseRef.current ?? Promise.resolve()
+    if (savingRef.current) return savePromiseRef.current ?? Promise.resolve(false)
     savingRef.current = true
     const revision = revisionRef.current
     setStatus("saving")
@@ -130,8 +138,10 @@ export function LessonEditor({
         setSavedAt(new Date())
         savedRevisionRef.current = revision
         setStatus(revision === revisionRef.current ? "saved" : "dirty")
+        return true
       } catch (error) {
         setStatus({ error: (error as Error).message })
+        return false
       } finally {
         savingRef.current = false
         // Edits made while saving get their own autosave.
@@ -141,7 +151,7 @@ export function LessonEditor({
       }
     })()
     return savePromiseRef.current
-  }, [courseId, lessonId])
+  }, [courseId, lessonId, isAdmin])
 
   const saveRef = useRef(save)
   useEffect(() => {
@@ -158,7 +168,14 @@ export function LessonEditor({
     }
   }, [lesson])
 
-  useHotkeys("mod+s", () => void save(), {
+  /** The Save button: save the lesson now, then publish the course to the database. */
+  const saveAndPublish = useCallback(async () => {
+    await savePromiseRef.current // let an in-flight autosave land, then save the latest
+    if (!(await save())) return
+    await publish()
+  }, [save, publish])
+
+  useHotkeys("mod+s", () => void saveAndPublish(), {
     preventDefault: true,
     enableOnContentEditable: true,
     enableOnFormTags: true,
@@ -236,7 +253,13 @@ export function LessonEditor({
               Read-only
             </span>
           ) : (
-            <SaveBar status={status} savedAt={savedAt} neverSaved={!hasFile} onSave={() => void save()} />
+            <SaveBar
+              status={status}
+              savedAt={savedAt}
+              neverSaved={!hasFile}
+              publisher={publisher}
+              onSave={() => void saveAndPublish()}
+            />
           )}
         </header>
 
