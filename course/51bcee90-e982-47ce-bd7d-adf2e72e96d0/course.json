@@ -1,0 +1,128 @@
+{
+  "title": "Admin flow test",
+  "summary": "Edited by an admin during review.",
+  "learning_objectives": [
+    "Test"
+  ],
+  "cover_image_url": null,
+  "audience": "testers",
+  "length_hours": 0.5,
+  "lesson_size": "short",
+  "pricing": {
+    "type": "free"
+  },
+  "limits": {
+    "words": {
+      "min": 1,
+      "max": 900
+    },
+    "sections": {
+      "min": 1,
+      "max": 5
+    },
+    "minutes_per_lesson": 8,
+    "words_per_minute": 200,
+    "level_shares": {
+      "associate": 100,
+      "intermediate": 0,
+      "advanced": 0
+    },
+    "tolerance_percent": 90
+  },
+  "id": "51bcee90-e982-47ce-bd7d-adf2e72e96d0",
+  "version": 1,
+  "owner_id": "user_local_creator",
+  "revision": 5,
+  "levels": [
+    {
+      "id": "associate",
+      "modules": [
+        {
+          "id": "d2d6a7d6-6650-4726-81f2-639708d1eac0",
+          "title": "Module 1 (edited by admin)",
+          "summary": "",
+          "lessons": [
+            {
+              "id": "000ab788-9d64-49da-9b2b-1870f375d767",
+              "title": "Lesson one"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "intermediate",
+      "modules": []
+    },
+    {
+      "id": "advanced",
+      "modules": []
+    }
+  ],
+  "status": "approved",
+  "review_history": [
+    {
+      "status": "draft",
+      "at": "2026-09-28T05:55:35.038Z",
+      "by": "user_local_creator",
+      "note": "Course created"
+    },
+    {
+      "status": "in_review",
+      "at": "2026-09-28T05:55:36.021Z",
+      "by": "user_local_creator",
+      "note": ""
+    },
+    {
+      "status": "changes_requested",
+      "at": "2026-09-28T05:55:40.188Z",
+      "by": "user_local_admin",
+      "note": "Nearly there."
+    },
+    {
+      "status": "in_review",
+      "at": "2026-09-28T05:55:41.279Z",
+      "by": "user_local_creator",
+      "note": ""
+    },
+    {
+      "status": "approved",
+      "at": "2026-09-28T05:55:41.411Z",
+      "by": "user_local_admin",
+      "note": "Great work."
+    },
+    {
+      "status": "rejected",
+      "at": "2026-09-28T05:55:41.907Z",
+      "by": "user_local_admin",
+      "note": "On second look the level balance is off."
+    },
+    {
+      "status": "in_review",
+      "at": "2026-09-28T05:56:03.489Z",
+      "by": "user_local_creator",
+      "note": ""
+    },
+    {
+      "status": "changes_requested",
+      "at": "2026-09-28T05:56:22.173Z",
+      "by": "user_local_admin",
+      "note": ""
+    },
+    {
+      "status": "in_review",
+      "at": "2026-09-28T06:05:26.237Z",
+      "by": "user_local_creator",
+      "note": ""
+    },
+    {
+      "status": "approved",
+      "at": "2026-09-28T06:05:43.480Z",
+      "by": "user_local_creator",
+      "note": "Accepted from the open admin area."
+    }
+  ],
+  "change_requests": [],
+  "created_at": "2026-09-28T05:55:35.038Z",
+  "updated_at": "2026-09-28T06:06:10.957Z"
+}

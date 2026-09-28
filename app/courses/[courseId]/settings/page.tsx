@@ -3,13 +3,16 @@ import { notFound } from "next/navigation"
 
 import { CourseSettings } from "@/components/course/course-settings"
 import { AppHeader } from "@/components/course/app-header"
-import { readCourse } from "@/lib/course-store"
+import { getCurrentUser } from "@/lib/auth"
+import { getAccessibleCourse } from "@/lib/course-store"
 
 import "@/components/lesson-editor/lesson-editor.scss"
+import "@/components/course/course-builder.scss"
 
 export default async function Page({ params }: PageProps<"/courses/[courseId]/settings">) {
   const { courseId } = await params
-  const course = await readCourse(courseId)
+  const user = await getCurrentUser()
+  const course = await getAccessibleCourse(courseId, user)
   if (!course) notFound()
 
   return (

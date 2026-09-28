@@ -953,3 +953,44 @@
     }
   }
 }
+
+// Lesson area as a fieldset, so it can be disabled while the course is in review.
+.le-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.le-banner {
+  margin: 0;
+  padding: 0.625rem 1.5rem;
+  font-size: 0.8125rem;
+  border-bottom: 1px solid var(--in-border);
+
+  a {
+    color: inherit;
+    font-weight: 600;
+  }
+
+  &[data-tone="review"] {
+    background: var(--in-warning-bg);
+    color: var(--in-warning);
+  }
+
+  &[data-tone="approved"] {
+    background: var(--in-success-bg);
+    color: var(--in-success);
+  }
+}
+
+// Keep the top bar and banner at full height inside the column layout.
+.le-topbar,
+.le-banner {
+  flex-shrink: 0;
+}
+
+.le-banner[data-tone="admin"] {
+  background: var(--in-primary-50);
+  color: var(--in-primary-hover);
+}

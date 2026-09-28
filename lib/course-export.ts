@@ -67,12 +67,6 @@ export async function exportCourses(courseIds: string[]): Promise<Uint8Array> {
   return zipSync(zip)
 }
 
-/** All course ids in the data folder. */
-export async function listCourseIds(): Promise<string[]> {
-  const entries = await fs.readdir(COURSE_DIR, { withFileTypes: true }).catch(() => [])
-  return entries.filter((e) => e.isDirectory() && isUuid(e.name)).map((e) => e.name)
-}
-
 export function zipResponse(data: Uint8Array, filename: string) {
   return new Response(data as Uint8Array<ArrayBuffer>, {
     headers: {

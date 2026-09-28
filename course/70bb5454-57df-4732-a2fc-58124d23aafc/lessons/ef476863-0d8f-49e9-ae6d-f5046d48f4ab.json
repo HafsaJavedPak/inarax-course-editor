@@ -14,6 +14,21 @@
           "data": {
             "markdown": "\n# hello"
           }
+        },
+        {
+          "id": "f7b8cd42-e109-48d8-9757-230225cafb1e",
+          "type": "mcq",
+          "personalized": false,
+          "data": {
+            "question": "",
+            "options": [
+              "",
+              ""
+            ],
+            "correct_index": 0,
+            "points": 10,
+            "explanation": ""
+          }
         }
       ]
     },

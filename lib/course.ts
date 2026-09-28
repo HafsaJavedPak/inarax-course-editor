@@ -116,12 +116,54 @@ export const CourseInfoSchema = z.object({
 })
 export type CourseInfo = z.infer<typeof CourseInfoSchema>
 
+// ---------------------------------------------------------------------------
+// Review workflow
+// ---------------------------------------------------------------------------
+
+export const COURSE_STATUSES = ["draft", "in_review", "changes_requested", "approved", "rejected"] as const
+export type CourseStatus = (typeof COURSE_STATUSES)[number]
+
+/** One entry in a course's review timeline. */
+export const ReviewEventSchema = z.object({
+  status: z.enum(COURSE_STATUSES),
+  at: z.iso.datetime(),
+  /** User id of whoever caused the change (creator or admin). */
+  by: z.string(),
+  /** Reviewer feedback, or a short system note ("Edited after approval"). */
+  note: z.string().default(""),
+})
+export type ReviewEvent = z.infer<typeof ReviewEventSchema>
+
+/** A change the admins asked for before the course can be accepted. */
+export const ChangeRequestSchema = z.object({
+  id: uuid,
+  text: z.string().trim().min(1),
+  /** Optional pointer so the creator can jump to the right place. */
+  target: z
+    .object({
+      levelId: z.enum(["associate", "intermediate", "advanced"]).optional(),
+      moduleId: uuid.optional(),
+      lessonId: uuid.optional(),
+    })
+    .optional(),
+  /** Ticked by the creator once the change is made. */
+  done: z.boolean().default(false),
+  creator_note: z.string().default(""),
+})
+export type ChangeRequest = z.infer<typeof ChangeRequestSchema>
+
 export const CourseSchema = CourseInfoSchema.extend({
   id: uuid,
   version: z.literal(1),
-  /** Bumped on every save; used to reject stale writes (two tabs). */
+  /** The creator who owns the course (Clerk-style user id). */
+  owner_id: z.string().min(1),
+  /** Bumped on every content save; used to reject stale writes (two tabs). */
   revision: z.number().int().nonnegative(),
   levels: z.array(LevelSchema).length(3),
+  // Review state. Only the server changes these (see lib/course-status.ts).
+  status: z.enum(COURSE_STATUSES).default("draft"),
+  review_history: z.array(ReviewEventSchema).default([]),
+  change_requests: z.array(ChangeRequestSchema).default([]),
   created_at: z.iso.datetime(),
   updated_at: z.iso.datetime(),
 })
@@ -129,14 +171,18 @@ export type Course = z.infer<typeof CourseSchema>
 export type CourseModule = z.infer<typeof ModuleSchema>
 export type LessonRef = z.infer<typeof LessonRefSchema>
 
-export function createCourse(info: CourseInfo): Course {
+export function createCourse(info: CourseInfo, ownerId: string): Course {
   const now = new Date().toISOString()
   return {
     ...info,
     id: crypto.randomUUID(),
     version: 1,
+    owner_id: ownerId,
     revision: 0,
     levels: LEVELS.map((l) => ({ id: l.id, modules: [] })),
+    status: "draft",
+    review_history: [{ status: "draft", at: now, by: ownerId, note: "Course created" }],
+    change_requests: [],
     created_at: now,
     updated_at: now,
   }

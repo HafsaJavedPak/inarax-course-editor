@@ -8,10 +8,10 @@ import "@/components/lesson-editor/lesson-editor.scss"
 export default function Page() {
   return (
     <div className="in-page">
-      <AppHeader current="courses" />
+      <AppHeader current="dashboard" />
       <main className="in-container">
-        <Link href="/courses" className="in-back">
-          ← Courses
+        <Link href="/dashboard" className="in-back">
+          ← Dashboard
         </Link>
         <div className="in-page-title">
           <h1>New course</h1>

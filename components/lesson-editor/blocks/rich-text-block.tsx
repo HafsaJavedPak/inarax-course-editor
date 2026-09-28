@@ -13,6 +13,7 @@ import { Button } from "@/components/tiptap-ui-primitive/button"
 // --- Lesson editor ---
 import { AutoTextarea } from "@/components/lesson-editor/fields"
 import { useActiveEditor } from "@/components/lesson-editor/active-editor"
+import { useReadOnly } from "@/components/lesson-editor/read-only"
 import type { RichTextData } from "@/lib/lesson"
 
 /**
@@ -30,16 +31,10 @@ function findUnsupported(markdown: string) {
   return UNSUPPORTED_MARKDOWN.filter(({ pattern }) => pattern.test(markdown)).map((u) => u.label)
 }
 
-export function RichTextBlock({
-  data,
-  onChange,
-}: {
-  data: RichTextData
-  onChange: (data: RichTextData) => void
-}) {
+export function RichTextBlock({ data, onChange }: { data: RichTextData; onChange: (data: RichTextData) => void }) {
   const unsupported = useMemo(() => findUnsupported(data.markdown), [data.markdown])
   const [mode, setMode] = useState<"visual" | "markdown">(() =>
-    findUnsupported(data.markdown).length > 0 ? "markdown" : "visual"
+    findUnsupported(data.markdown).length > 0 ? "markdown" : "visual",
   )
 
   return (
@@ -61,9 +56,7 @@ export function RichTextBlock({
           </Button>
         ))}
         {unsupported.length > 0 && (
-          <span className="le-rich-text-note">
-            Uses {unsupported.join(", ")}: edit as markdown to keep them intact
-          </span>
+          <span className="le-rich-text-note">Uses {unsupported.join(", ")}: edit as markdown to keep them intact</span>
         )}
       </div>
 
@@ -84,27 +77,21 @@ export function RichTextBlock({
   )
 }
 
-function VisualEditor({
-  markdown,
-  onChange,
-}: {
-  markdown: string
-  onChange: (markdown: string) => void
-}) {
+function VisualEditor({ markdown, onChange }: { markdown: string; onChange: (markdown: string) => void }) {
   const { setActiveEditor } = useActiveEditor()
+  const readOnly = useReadOnly()
   // useEditor keeps its first callbacks, so read the latest onChange via a ref.
   const onChangeRef = useRef(onChange)
   useEffect(() => {
     onChangeRef.current = onChange
   })
 
-  const [extensions] = useState(() =>
-    createSimpleEditorExtensions({ placeholder: "Write this part of the lesson…" })
-  )
+  const [extensions] = useState(() => createSimpleEditorExtensions({ placeholder: "Write this part of the lesson…" }))
 
   const editor = useEditor({
     immediatelyRender: false,
     extensions,
+    editable: !readOnly,
     // Initial value only; afterwards the editor is the source of truth.
     content: markdown,
     editorProps: {
@@ -124,6 +111,10 @@ function VisualEditor({
     if (!editor) return
     return () => setActiveEditor((current) => (current === editor ? null : current))
   }, [editor, setActiveEditor])
+
+  useEffect(() => {
+    editor?.setEditable(!readOnly)
+  }, [editor, readOnly])
 
   return <EditorContent editor={editor} role="presentation" className="simple-editor-content" />
 }

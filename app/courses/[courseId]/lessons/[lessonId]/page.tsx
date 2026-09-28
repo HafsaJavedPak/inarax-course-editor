@@ -2,13 +2,15 @@ import { notFound } from "next/navigation"
 
 import { LessonEditor } from "@/components/lesson-editor/lesson-editor"
 import { findLessonRef, getCourseLimits } from "@/lib/course"
-import { readCourse, readCourseLesson } from "@/lib/course-store"
+import { getCurrentUser } from "@/lib/auth"
+import { getAccessibleCourse, readCourseLesson } from "@/lib/course-store"
 import { createLesson } from "@/lib/lesson"
 
 export default async function Page({ params }: PageProps<"/courses/[courseId]/lessons/[lessonId]">) {
   const { courseId, lessonId } = await params
 
-  const course = await readCourse(courseId)
+  const user = await getCurrentUser()
+  const course = await getAccessibleCourse(courseId, user)
   const found = course ? findLessonRef(course, lessonId) : null
   if (!course || !found) notFound()
 
@@ -29,6 +31,7 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]/le
         sections: [limits.sections.min, limits.sections.max],
       }}
       wordsPerMinute={limits.words_per_minute}
+      courseStatus={course.status}
     />
   )
 }

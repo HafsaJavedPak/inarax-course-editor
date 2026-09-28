@@ -17,16 +17,12 @@ import { TrashIcon } from "@/components/tiptap-icons/trash-icon"
 
 // --- Course ---
 import { LevelTabs } from "@/components/course/level-tabs"
+import { StatusPanel, type Workflow } from "@/components/course/status-panel"
 import { courseReducer, type CourseAction } from "@/components/course/course-state"
 import { SaveBar, type SaveStatus } from "@/components/lesson-editor/save-bar"
-import {
-  CourseSchema,
-  getCourseLimits,
-  LEVELS,
-  type Course,
-  type CourseModule,
-  type LevelId,
-} from "@/lib/course"
+import { CourseSchema, getCourseLimits, LEVELS, type Course, type CourseModule, type LevelId } from "@/lib/course"
+import { getSubmitBlockers, isLocked } from "@/lib/course-status"
+import { coursePaths, modeHeaders } from "@/lib/admin-mode"
 import { validateCourse, type CourseReport, type LessonStats } from "@/lib/course-validate"
 
 import "@/components/lesson-editor/lesson-editor.scss"
@@ -37,15 +33,27 @@ const AUTOSAVE_DELAY_MS = 800
 export function CourseBuilder({
   initialCourse,
   initialReport,
+  isAdmin = false,
 }: {
   initialCourse: Course
   initialReport: CourseReport
+  /** Admins can edit courses in review; their edits don't change the status. */
+  isAdmin?: boolean
 }) {
   const [course, rawDispatch] = useReducer(courseReducer, initialCourse)
   const [serverReport, setServerReport] = useState(initialReport)
   const [status, setStatus] = useState<SaveStatus>("saved")
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   const [selectedLevel, setSelectedLevel] = useState<LevelId>("associate")
+  // Review state is owned by the server; it changes through the status panel,
+  // or when a save of an accepted course moves it back to draft.
+  const [workflow, setWorkflow] = useState<Workflow>({
+    status: initialCourse.status,
+    review_history: initialCourse.review_history,
+    change_requests: initialCourse.change_requests,
+  })
+  const readOnly = isLocked(workflow.status) && !isAdmin
+  const paths = coursePaths(isAdmin)
 
   const revision = useRef(initialCourse.revision)
   const courseRef = useRef(course)
@@ -58,6 +66,7 @@ export function CourseBuilder({
   // and recompute the level budgets locally on every structural edit.
   const lessonStats = serverReport.lessonStats
   const report = useMemo(() => validateCourse(course, lessonStats), [course, lessonStats])
+  const blockers = useMemo(() => getSubmitBlockers({ ...course, ...workflow }, report), [course, workflow, report])
 
   const dispatch = useCallback((action: CourseAction) => {
     // Apply to the ref right away so an immediate save (e.g. "Add & write")
@@ -76,7 +85,9 @@ export function CourseBuilder({
     // Don't send what the server will reject (e.g. a title being retyped).
     const parsed = CourseSchema.safeParse(courseRef.current)
     if (!parsed.success) {
-      setStatus({ error: parsed.error.issues[0]?.message ?? "Fix the highlighted fields" })
+      setStatus({
+        error: parsed.error.issues[0]?.message ?? "Fix the highlighted fields",
+      })
       return Promise.resolve()
     }
 
@@ -88,7 +99,7 @@ export function CourseBuilder({
       try {
         const res = await fetch(`/api/courses/${course.id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: modeHeaders(isAdmin, { "Content-Type": "application/json" }),
           body: JSON.stringify({ ...parsed.data, revision: revision.current }),
         })
         const data = await res.json().catch(() => ({}))
@@ -99,6 +110,11 @@ export function CourseBuilder({
         }
         revision.current = data.course.revision
         setServerReport(data.report)
+        setWorkflow({
+          status: data.course.status,
+          review_history: data.course.review_history,
+          change_requests: data.course.change_requests,
+        })
         setSavedAt(new Date())
         setStatus(dirtyRef.current ? "dirty" : "saved")
       } catch {
@@ -132,9 +148,9 @@ export function CourseBuilder({
   const openLesson = useCallback(
     async (lessonId: string) => {
       if (!(await flush())) return // save failed; the status bar says why
-      router.push(`/courses/${course.id}/lessons/${lessonId}`)
+      router.push(paths.lesson(course.id, lessonId))
     },
-    [course.id, flush, router]
+    [course.id, flush, router],
   )
 
   // Debounced autosave after each edit.
@@ -175,16 +191,20 @@ export function CourseBuilder({
       ? `Delete “${mod.title}” and its ${lessonCount} lesson${lessonCount === 1 ? "" : "s"}? Lesson content is deleted too.`
       : `Delete “${mod.title}”?`
     if (!window.confirm(message)) return
-    await Promise.all(mod.lessons.map((lesson) => deleteLessonFile(course.id, lesson.id)))
-    dispatch({ type: "removeModule", levelId: selectedLevel, moduleId: mod.id })
+    await Promise.all(mod.lessons.map((lesson) => deleteLessonFile(course.id, lesson.id, isAdmin)))
+    dispatch({
+      type: "removeModule",
+      levelId: selectedLevel,
+      moduleId: mod.id,
+    })
   }
 
   return (
     <div className="le-app">
       <header className="le-topbar">
-        <Link href="/courses" className="le-back">
+        <Link href={isAdmin ? `/admin/courses/${course.id}` : "/dashboard"} className="le-back">
           <ArrowLeftIcon className="tiptap-button-icon" />
-          Courses
+          {isAdmin ? "Review page" : "Dashboard"}
         </Link>
         <span className="le-lesson-title">{course.title}</span>
         <div className="le-topbar-spacer" />
@@ -196,7 +216,7 @@ export function CourseBuilder({
           type="button"
           className="in-btn in-btn-secondary in-btn-sm"
           onClick={async () => {
-            if (await flush()) router.push(`/courses/${course.id}/settings`)
+            if (await flush()) router.push(paths.settings(course.id))
           }}
         >
           Settings
@@ -221,34 +241,51 @@ export function CourseBuilder({
       </header>
 
       <main className="course-builder">
+        <StatusPanel
+          course={course}
+          workflow={workflow}
+          blockers={blockers}
+          onWorkflowChange={setWorkflow}
+          beforeSubmit={flush}
+          isAdmin={isAdmin}
+        />
+
         <LevelTabs budgets={report.levels} selected={selectedLevel} onSelect={setSelectedLevel} />
 
-        <section className="course-level" aria-label={`${levelLabel} modules`}>
-          {level.modules.length === 0 && (
-            <p className="le-empty">
-              No modules in {levelLabel} yet. Add a module, then add lessons to it.
-            </p>
-          )}
+        {/* In review: every control below is disabled; lessons open read-only. */}
+        <fieldset className="course-fieldset" disabled={readOnly}>
+          <section className="course-level" aria-label={`${levelLabel} modules`}>
+            {level.modules.length === 0 && (
+              <p className="le-empty">No modules in {levelLabel} yet. Add a module, then add lessons to it.</p>
+            )}
 
-          {level.modules.map((mod, moduleIndex) => (
-            <ModuleCard
-              key={mod.id}
-              courseId={course.id}
-              module={mod}
-              index={moduleIndex}
-              count={level.modules.length}
-              lessonStats={lessonStats}
-              lessonMinutes={limits.minutes_per_lesson}
-              dispatch={(action) => dispatch({ ...action, levelId: selectedLevel } as CourseAction)}
-              onRemove={() => void removeModule(mod)}
-              onOpenLesson={(lessonId) => void openLesson(lessonId)}
-            />
-          ))}
+            {level.modules.map((mod, moduleIndex) => (
+              <ModuleCard
+                key={mod.id}
+                courseId={course.id}
+                module={mod}
+                index={moduleIndex}
+                count={level.modules.length}
+                lessonStats={lessonStats}
+                lessonMinutes={limits.minutes_per_lesson}
+                dispatch={(action) =>
+                  dispatch({
+                    ...action,
+                    levelId: selectedLevel,
+                  } as CourseAction)
+                }
+                onRemove={() => void removeModule(mod)}
+                onOpenLesson={(lessonId) => void openLesson(lessonId)}
+                readOnly={readOnly}
+                isAdmin={isAdmin}
+              />
+            ))}
 
-          <Button variant="ghost" className="le-list-add" showTooltip={false} onClick={addModule}>
-            <span className="tiptap-button-text">+ Add module to {levelLabel}</span>
-          </Button>
-        </section>
+            <Button variant="ghost" className="le-list-add" showTooltip={false} onClick={addModule}>
+              <span className="tiptap-button-text">+ Add module to {levelLabel}</span>
+            </Button>
+          </section>
+        </fieldset>
 
         {levelIssues.length > 0 && (
           <section className="course-issues" aria-label="Course checks">
@@ -267,9 +304,12 @@ export function CourseBuilder({
   )
 }
 
-async function deleteLessonFile(courseId: string, lessonId: string) {
+async function deleteLessonFile(courseId: string, lessonId: string, isAdmin: boolean) {
   // 404 just means the lesson was never saved; nothing to clean up.
-  await fetch(`/api/courses/${courseId}/lessons/${lessonId}`, { method: "DELETE" }).catch(() => {})
+  await fetch(`/api/courses/${courseId}/lessons/${lessonId}`, {
+    method: "DELETE",
+    headers: modeHeaders(isAdmin),
+  }).catch(() => {})
 }
 
 /** A CourseAction without `levelId`; the builder adds the selected level. */
@@ -286,6 +326,8 @@ function ModuleCard({
   dispatch,
   onRemove,
   onOpenLesson,
+  readOnly,
+  isAdmin,
 }: {
   courseId: string
   module: CourseModule
@@ -296,6 +338,8 @@ function ModuleCard({
   dispatch: (action: ModuleAction) => void
   onRemove: () => void
   onOpenLesson: (lessonId: string) => void
+  readOnly: boolean
+  isAdmin: boolean
 }) {
   const [newLessonTitle, setNewLessonTitle] = useState("")
 
@@ -310,14 +354,11 @@ function ModuleCard({
 
   const removeLesson = async (lessonId: string, title: string) => {
     if (!window.confirm(`Delete lesson “${title}” and its content?`)) return
-    await deleteLessonFile(courseId, lessonId)
+    await deleteLessonFile(courseId, lessonId, isAdmin)
     dispatch({ type: "removeLesson", moduleId: mod.id, lessonId })
   }
 
-  const moduleMinutes = mod.lessons.reduce(
-    (sum, lesson) => sum + (lessonStats[lesson.id]?.minutes || lessonMinutes),
-    0
-  )
+  const moduleMinutes = mod.lessons.reduce((sum, lesson) => sum + (lessonStats[lesson.id]?.minutes || lessonMinutes), 0)
 
   return (
     <article className="le-block course-module">
@@ -329,18 +370,36 @@ function ModuleCard({
           placeholder="Module title"
           aria-label="Module title"
           aria-invalid={!mod.title.trim()}
-          onChange={(e) => dispatch({ type: "updateModule", moduleId: mod.id, patch: { title: e.target.value } })}
+          onChange={(e) =>
+            dispatch({
+              type: "updateModule",
+              moduleId: mod.id,
+              patch: { title: e.target.value },
+            })
+          }
         />
         <span className="le-muted">
           {mod.lessons.length} lesson{mod.lessons.length === 1 ? "" : "s"} · ~{moduleMinutes} min
         </span>
         <div className="le-block-actions">
-          <Button variant="ghost" size="small" tooltip="Move module up" aria-label="Move module up" disabled={index === 0}
-            onClick={() => dispatch({ type: "moveModule", moduleId: mod.id, offset: -1 })}>
+          <Button
+            variant="ghost"
+            size="small"
+            tooltip="Move module up"
+            aria-label="Move module up"
+            disabled={index === 0}
+            onClick={() => dispatch({ type: "moveModule", moduleId: mod.id, offset: -1 })}
+          >
             <ChevronUpIcon className="tiptap-button-icon" />
           </Button>
-          <Button variant="ghost" size="small" tooltip="Move module down" aria-label="Move module down" disabled={index === count - 1}
-            onClick={() => dispatch({ type: "moveModule", moduleId: mod.id, offset: 1 })}>
+          <Button
+            variant="ghost"
+            size="small"
+            tooltip="Move module down"
+            aria-label="Move module down"
+            disabled={index === count - 1}
+            onClick={() => dispatch({ type: "moveModule", moduleId: mod.id, offset: 1 })}
+          >
             <ChevronDownIcon className="tiptap-button-icon" />
           </Button>
           <Button variant="ghost" size="small" tooltip="Delete module" aria-label="Delete module" onClick={onRemove}>
@@ -354,7 +413,13 @@ function ModuleCard({
           value={mod.summary}
           placeholder="What this module covers (optional)"
           aria-label="Module summary"
-          onChange={(e) => dispatch({ type: "updateModule", moduleId: mod.id, patch: { summary: e.target.value } })}
+          onChange={(e) =>
+            dispatch({
+              type: "updateModule",
+              moduleId: mod.id,
+              patch: { summary: e.target.value },
+            })
+          }
         />
 
         <ol className="course-lessons">
@@ -369,7 +434,12 @@ function ModuleCard({
                   aria-label={`Lesson ${lessonIndex + 1} title`}
                   aria-invalid={!lesson.title.trim()}
                   onChange={(e) =>
-                    dispatch({ type: "renameLesson", moduleId: mod.id, lessonId: lesson.id, title: e.target.value })
+                    dispatch({
+                      type: "renameLesson",
+                      moduleId: mod.id,
+                      lessonId: lesson.id,
+                      title: e.target.value,
+                    })
                   }
                 />
                 <span className="course-lesson-stats" data-has-content={!!stats} data-errors={(stats?.errors ?? 0) > 0}>
@@ -379,26 +449,57 @@ function ModuleCard({
                 </span>
                 <Link
                   className="course-lesson-open"
-                  href={`/courses/${courseId}/lessons/${lesson.id}`}
+                  href={coursePaths(isAdmin).lesson(courseId, lesson.id)}
                   onClick={(e) => {
                     // Save pending course changes first so the lesson page can find it.
                     e.preventDefault()
                     onOpenLesson(lesson.id)
                   }}
                 >
-                  {stats ? "Edit" : "Write"}
+                  {readOnly ? "View" : stats ? "Edit" : "Write"}
                 </Link>
                 <div className="le-item-controls">
-                  <Button variant="ghost" size="small" tooltip="Move lesson up" aria-label="Move lesson up" disabled={lessonIndex === 0}
-                    onClick={() => dispatch({ type: "moveLesson", moduleId: mod.id, lessonId: lesson.id, offset: -1 })}>
+                  <Button
+                    variant="ghost"
+                    size="small"
+                    tooltip="Move lesson up"
+                    aria-label="Move lesson up"
+                    disabled={lessonIndex === 0}
+                    onClick={() =>
+                      dispatch({
+                        type: "moveLesson",
+                        moduleId: mod.id,
+                        lessonId: lesson.id,
+                        offset: -1,
+                      })
+                    }
+                  >
                     <ChevronUpIcon className="tiptap-button-icon" />
                   </Button>
-                  <Button variant="ghost" size="small" tooltip="Move lesson down" aria-label="Move lesson down" disabled={lessonIndex === mod.lessons.length - 1}
-                    onClick={() => dispatch({ type: "moveLesson", moduleId: mod.id, lessonId: lesson.id, offset: 1 })}>
+                  <Button
+                    variant="ghost"
+                    size="small"
+                    tooltip="Move lesson down"
+                    aria-label="Move lesson down"
+                    disabled={lessonIndex === mod.lessons.length - 1}
+                    onClick={() =>
+                      dispatch({
+                        type: "moveLesson",
+                        moduleId: mod.id,
+                        lessonId: lesson.id,
+                        offset: 1,
+                      })
+                    }
+                  >
                     <ChevronDownIcon className="tiptap-button-icon" />
                   </Button>
-                  <Button variant="ghost" size="small" tooltip="Delete lesson" aria-label="Delete lesson"
-                    onClick={() => void removeLesson(lesson.id, lesson.title)}>
+                  <Button
+                    variant="ghost"
+                    size="small"
+                    tooltip="Delete lesson"
+                    aria-label="Delete lesson"
+                    onClick={() => void removeLesson(lesson.id, lesson.title)}
+                  >
                     <TrashIcon className="tiptap-button-icon" />
                   </Button>
                 </div>

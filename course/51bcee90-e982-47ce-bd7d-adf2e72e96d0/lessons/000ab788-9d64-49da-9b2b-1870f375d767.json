@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "format": "blocks",
+  "sections": [
+    {
+      "id": "70253241-8891-4a82-b09a-0ef478c77bfb",
+      "title": "Intro",
+      "required_to_advance": false,
+      "blocks": [
+        {
+          "id": "de7f2fe2-0609-4d76-ad8a-b6273a2b6a89",
+          "type": "rich_text",
+          "personalized": false,
+          "data": {
+            "markdown": "Hello learners."
+          }
+        }
+      ]
+    }
+  ]
+}

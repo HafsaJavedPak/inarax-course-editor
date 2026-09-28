@@ -23,13 +23,16 @@ import { ActiveEditorProvider } from "@/components/lesson-editor/active-editor"
 import { AddBlockMenu, BlockEditor } from "@/components/lesson-editor/block-editor"
 import { JsonPanel } from "@/components/lesson-editor/json-panel"
 import { SaveBar, type SaveStatus } from "@/components/lesson-editor/save-bar"
+import { ReadOnlyContext } from "@/components/lesson-editor/read-only"
 import { lessonReducer, type LessonAction } from "@/components/lesson-editor/lesson-state"
 import { createSection, type Lesson } from "@/lib/lesson"
 import { validateLesson, type LessonIssue } from "@/lib/lesson-validate"
+import type { CourseStatus } from "@/lib/course"
+import { isLocked } from "@/lib/course-status"
+import { coursePaths, modeHeaders } from "@/lib/admin-mode"
 import { getLessonStats } from "@/lib/course-validate"
 
 import "@/components/lesson-editor/lesson-editor.scss"
-
 
 type Range = readonly [number, number]
 
@@ -45,6 +48,10 @@ export interface LessonEditorProps {
   sizeHint: { words: Range; sections: Range }
   /** The course's reading speed, for the minutes estimate. */
   wordsPerMinute: number
+  /** Review status of the course; lessons are read-only while it's in review. */
+  courseStatus: CourseStatus
+  /** Admins can edit while in review; their edits don't change the status. */
+  isAdmin?: boolean
 }
 
 const inRange = (value: number, [min, max]: Range) => value >= min && value <= max
@@ -60,6 +67,8 @@ export function LessonEditor({
   isNew,
   sizeHint,
   wordsPerMinute,
+  courseStatus: initialCourseStatus,
+  isAdmin = false,
 }: LessonEditorProps) {
   const [lesson, rawDispatch] = useReducer(lessonReducer, initialLesson)
   const [selectedId, setSelectedId] = useState(initialLesson.sections[0]?.id ?? null)
@@ -67,6 +76,9 @@ export function LessonEditor({
   // False until the lesson file exists on disk.
   const [hasFile, setHasFile] = useState(!isNew)
   const [savedAt, setSavedAt] = useState<Date | null>(null)
+  // Saving a lesson of an accepted course moves the course back to draft.
+  const [courseStatus, setCourseStatus] = useState(initialCourseStatus)
+  const readOnly = isLocked(courseStatus) && !isAdmin
   const [showJson, setShowJson] = useState(false)
   // Bumped when the whole lesson is replaced, to remount the block editors.
   const [generation, setGeneration] = useState(0)
@@ -108,12 +120,13 @@ export function LessonEditor({
       try {
         const response = await fetch(`/api/courses/${courseId}/lessons/${lessonId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: modeHeaders(isAdmin, { "Content-Type": "application/json" }),
           body: JSON.stringify(lessonRef.current),
         })
         const data = await response.json().catch(() => ({}))
         if (!response.ok) throw new Error(data.error ?? `Save failed (${response.status})`)
         setHasFile(true)
+        if (data.courseStatus) setCourseStatus(data.courseStatus)
         setSavedAt(new Date())
         savedRevisionRef.current = revision
         setStatus(revision === revisionRef.current ? "saved" : "dirty")
@@ -182,7 +195,7 @@ export function LessonEditor({
       <div className="le-app">
         <header className="le-topbar">
           <Link
-            href={`/courses/${courseId}`}
+            href={coursePaths(isAdmin).course(courseId)}
             className="le-back"
             onClick={(event) => {
               if (isDirty && !window.confirm("You have unsaved changes. Leave this lesson anyway?")) {
@@ -192,7 +205,7 @@ export function LessonEditor({
               // Let an in-flight save finish so the course page shows fresh stats.
               if (savingRef.current) {
                 event.preventDefault()
-                void savePromiseRef.current?.finally(() => router.push(`/courses/${courseId}`))
+                void savePromiseRef.current?.finally(() => router.push(coursePaths(isAdmin).course(courseId)))
               }
             }}
           >
@@ -218,111 +231,143 @@ export function LessonEditor({
           >
             <span className="tiptap-button-text">JSON</span>
           </Button>
-          <SaveBar status={status} savedAt={savedAt} neverSaved={!hasFile} onSave={() => void save()} />
+          {readOnly ? (
+            <span className="in-status" data-status="in_review">
+              Read-only
+            </span>
+          ) : (
+            <SaveBar status={status} savedAt={savedAt} neverSaved={!hasFile} onSave={() => void save()} />
+          )}
         </header>
 
-        <div className="le-layout">
-          <SectionSidebar
-            lesson={lesson}
-            issues={issues}
-            selectedId={selected?.id ?? null}
-            onSelect={setSelectedId}
-            onAdd={addSection}
-            onMove={(id, offset) => dispatch({ type: "moveSection", id, offset })}
-          />
+        {readOnly && (
+          <p className="le-banner" data-tone="review" role="status">
+            This course is in review, so its lessons are read-only. To make changes, withdraw it from the{" "}
+            <a href={coursePaths(isAdmin).course(courseId)}>course page</a>.
+          </p>
+        )}
+        {isAdmin && (
+          <p className="le-banner" data-tone="admin" role="status">
+            You&apos;re editing as an admin. This course stays{" "}
+            {courseStatus === "in_review" ? "in review" : "in its current status"}.
+          </p>
+        )}
+        {!isAdmin && courseStatus === "approved" && (
+          <p className="le-banner" data-tone="approved" role="status">
+            This course has been accepted. Saving a change here moves it back to Draft, and it will need another review.
+          </p>
+        )}
 
-          <main className="le-main">
-            <div className="le-format-toolbar">
-              <SimpleEditorToolbar />
-            </div>
+        <ReadOnlyContext.Provider value={readOnly}>
+          <fieldset className="le-layout le-fieldset" disabled={readOnly}>
+            <SectionSidebar
+              lesson={lesson}
+              issues={issues}
+              selectedId={selected?.id ?? null}
+              onSelect={setSelectedId}
+              onAdd={addSection}
+              onMove={(id, offset) => dispatch({ type: "moveSection", id, offset })}
+            />
 
-            {showJson && (
-              <JsonPanel
-                lesson={lesson}
-                fileName={`${lessonTitle.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "lesson"}.json`}
-                onClose={() => setShowJson(false)}
-                onApply={(next) => {
-                  dispatch({ type: "replace", lesson: next })
-                  setSelectedId(next.sections[0]?.id ?? null)
-                  setGeneration((g) => g + 1)
-                  setShowJson(false)
-                }}
-              />
-            )}
+            <main className="le-main">
+              <div className="le-format-toolbar">
+                <SimpleEditorToolbar />
+              </div>
 
-            {selected && !showJson && (
-              <div className="le-section" key={`${generation}-${selected.id}`}>
-                <div className="le-section-header">
-                  <input
-                    className="le-section-title"
-                    value={selected.title ?? ""}
-                    placeholder="Section title (optional)"
-                    aria-label="Section title"
-                    onChange={(e) =>
-                      dispatch({ type: "updateSection", id: selected.id, patch: { title: e.target.value } })
-                    }
-                  />
-                  <div className="le-section-settings">
-                    <label className="le-switch-label">
-                      <Switch
-                        checked={selected.required_to_advance}
-                        onCheckedChange={(checked) =>
-                          dispatch({
-                            type: "updateSection",
-                            id: selected.id,
-                            patch: { required_to_advance: checked },
-                          })
+              {showJson && (
+                <JsonPanel
+                  lesson={lesson}
+                  fileName={`${
+                    lessonTitle
+                      .trim()
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, "-")
+                      .replace(/^-+|-+$/g, "") || "lesson"
+                  }.json`}
+                  onClose={() => setShowJson(false)}
+                  onApply={(next) => {
+                    dispatch({ type: "replace", lesson: next })
+                    setSelectedId(next.sections[0]?.id ?? null)
+                    setGeneration((g) => g + 1)
+                    setShowJson(false)
+                  }}
+                />
+              )}
+
+              {selected && !showJson && (
+                <div className="le-section" key={`${generation}-${selected.id}`}>
+                  <div className="le-section-header">
+                    <input
+                      className="le-section-title"
+                      value={selected.title ?? ""}
+                      placeholder="Section title (optional)"
+                      aria-label="Section title"
+                      onChange={(e) =>
+                        dispatch({ type: "updateSection", id: selected.id, patch: { title: e.target.value } })
+                      }
+                    />
+                    <div className="le-section-settings">
+                      <label className="le-switch-label">
+                        <Switch
+                          checked={selected.required_to_advance}
+                          onCheckedChange={(checked) =>
+                            dispatch({
+                              type: "updateSection",
+                              id: selected.id,
+                              patch: { required_to_advance: checked },
+                            })
+                          }
+                        />
+                        Required to advance
+                      </label>
+                      <Button
+                        variant="ghost"
+                        size="small"
+                        tooltip={lesson.sections.length <= 1 ? "A lesson needs at least one section" : "Delete section"}
+                        aria-label="Delete section"
+                        disabled={lesson.sections.length <= 1}
+                        onClick={() => removeSection(selected.id)}
+                      >
+                        <TrashIcon className="tiptap-button-icon" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="le-muted le-section-hint">
+                    {selected.required_to_advance
+                      ? "Learners must complete every interactive block here before “Next”."
+                      : "“Next” is always available for this section."}
+                  </p>
+
+                  <div className="le-blocks">
+                    {selected.blocks.map((block, index) => (
+                      <BlockEditor
+                        key={block.id}
+                        block={block}
+                        index={index}
+                        count={selected.blocks.length}
+                        issues={issues.filter((i) => i.blockId === block.id)}
+                        onChange={(next) => dispatch({ type: "updateBlock", sectionId: selected.id, block: next })}
+                        onMove={(offset) =>
+                          dispatch({ type: "moveBlock", sectionId: selected.id, blockId: block.id, offset })
                         }
+                        onDuplicate={() =>
+                          dispatch({ type: "duplicateBlock", sectionId: selected.id, blockId: block.id })
+                        }
+                        onRemove={() => dispatch({ type: "removeBlock", sectionId: selected.id, blockId: block.id })}
                       />
-                      Required to advance
-                    </label>
-                    <Button
-                      variant="ghost"
-                      size="small"
-                      tooltip={lesson.sections.length <= 1 ? "A lesson needs at least one section" : "Delete section"}
-                      aria-label="Delete section"
-                      disabled={lesson.sections.length <= 1}
-                      onClick={() => removeSection(selected.id)}
-                    >
-                      <TrashIcon className="tiptap-button-icon" />
-                    </Button>
+                    ))}
+                    {selected.blocks.length === 0 && (
+                      <p className="le-empty">This section has no blocks yet. Add one below.</p>
+                    )}
+                    <AddBlockMenu
+                      onAdd={(blockType) => dispatch({ type: "addBlock", sectionId: selected.id, blockType })}
+                    />
                   </div>
                 </div>
-                <p className="le-muted le-section-hint">
-                  {selected.required_to_advance
-                    ? "Learners must complete every interactive block here before “Next”."
-                    : "“Next” is always available for this section."}
-                </p>
-
-                <div className="le-blocks">
-                  {selected.blocks.map((block, index) => (
-                    <BlockEditor
-                      key={block.id}
-                      block={block}
-                      index={index}
-                      count={selected.blocks.length}
-                      issues={issues.filter((i) => i.blockId === block.id)}
-                      onChange={(next) => dispatch({ type: "updateBlock", sectionId: selected.id, block: next })}
-                      onMove={(offset) =>
-                        dispatch({ type: "moveBlock", sectionId: selected.id, blockId: block.id, offset })
-                      }
-                      onDuplicate={() =>
-                        dispatch({ type: "duplicateBlock", sectionId: selected.id, blockId: block.id })
-                      }
-                      onRemove={() => dispatch({ type: "removeBlock", sectionId: selected.id, blockId: block.id })}
-                    />
-                  ))}
-                  {selected.blocks.length === 0 && (
-                    <p className="le-empty">This section has no blocks yet. Add one below.</p>
-                  )}
-                  <AddBlockMenu
-                    onAdd={(blockType) => dispatch({ type: "addBlock", sectionId: selected.id, blockType })}
-                  />
-                </div>
-              </div>
-            )}
-          </main>
-        </div>
+              )}
+            </main>
+          </fieldset>
+        </ReadOnlyContext.Provider>
       </div>
     </ActiveEditorProvider>
   )
@@ -368,10 +413,24 @@ function SectionSidebar({
               </button>
               {isSelected && (
                 <div className="le-section-tab-actions">
-                  <Button variant="ghost" size="small" aria-label="Move section up" tooltip="Move up" disabled={index === 0} onClick={() => onMove(section.id, -1)}>
+                  <Button
+                    variant="ghost"
+                    size="small"
+                    aria-label="Move section up"
+                    tooltip="Move up"
+                    disabled={index === 0}
+                    onClick={() => onMove(section.id, -1)}
+                  >
                     <ChevronUpIcon className="tiptap-button-icon" />
                   </Button>
-                  <Button variant="ghost" size="small" aria-label="Move section down" tooltip="Move down" disabled={index === lesson.sections.length - 1} onClick={() => onMove(section.id, 1)}>
+                  <Button
+                    variant="ghost"
+                    size="small"
+                    aria-label="Move section down"
+                    tooltip="Move down"
+                    disabled={index === lesson.sections.length - 1}
+                    onClick={() => onMove(section.id, 1)}
+                  >
                     <ChevronDownIcon className="tiptap-button-icon" />
                   </Button>
                 </div>
@@ -386,4 +445,3 @@ function SectionSidebar({
     </nav>
   )
 }
-
