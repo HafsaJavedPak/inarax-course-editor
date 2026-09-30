@@ -133,6 +133,9 @@ export const CourseInfoStoredSchema = z.object({
 })
 export type CourseInfo = z.infer<typeof CourseInfoStoredSchema>
 
+/** At least one word of two or more letters (any language), so "12333" or "%%$*&*" are refused. */
+const HAS_WORD = /\p{L}{2,}/u
+
 const text = (label: string, min: number, max: number) =>
   z
     .string({ error: `Enter ${label}` })
@@ -140,6 +143,7 @@ const text = (label: string, min: number, max: number) =>
     .min(1, `Enter ${label}`)
     .min(min, `Must be at least ${min} characters`)
     .max(max, `Must be ${max} characters or fewer`)
+    .refine((s) => s === "" || HAS_WORD.test(s), "Use words, not just numbers or symbols")
 
 /** Maximum lengths shown as counters in the form. */
 export const COURSE_TEXT_LIMITS = { title: 120, summary: 1000, objective: 200, audience: 200 } as const
