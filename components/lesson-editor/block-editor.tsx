@@ -101,7 +101,12 @@ export function BlockEditor({
   const warnings = issues.filter((i) => i.level === "warning")
 
   return (
-    <article className="le-block" data-category={meta?.category ?? "other"} data-invalid={errors.length > 0}>
+    <article
+      className="le-block"
+      data-block-id={block.id}
+      data-category={meta?.category ?? "other"}
+      data-invalid={errors.length > 0}
+    >
       <header className="le-block-header">
         <span className="le-block-type">{meta?.label ?? block.type}</span>
         {meta && <span className="le-block-category">{meta.category}</span>}

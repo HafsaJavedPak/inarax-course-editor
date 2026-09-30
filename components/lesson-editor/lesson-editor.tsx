@@ -114,6 +114,32 @@ export function LessonEditor({
   const errorCount = issues.filter((i) => i.level === "error").length
   const stats = useMemo(() => getLessonStats(lesson, wordsPerMinute), [lesson, wordsPerMinute])
 
+  // Everything that stops the course being submitted for review: problems in
+  // blocks, plus the course's word and section limits for lessons.
+  const sizeProblems = [
+    !inRange(stats.words, sizeHint.words) &&
+      `Needs ${sizeHint.words[0]}–${sizeHint.words[1]} words (has ${stats.words.toLocaleString()})`,
+    !inRange(stats.sections, sizeHint.sections) &&
+      `Needs ${sizeHint.sections[0]}–${sizeHint.sections[1]} sections (has ${stats.sections})`,
+  ].filter((p): p is string => !!p)
+  const problemCount = errorCount + sizeProblems.length
+  const problemList = [
+    ...sizeProblems,
+    ...issues.filter((i) => i.level === "error").map((i) => i.message),
+  ].join("\n")
+
+  /** Opens the section with the first block problem and scrolls to it. */
+  const showFirstProblem = () => {
+    const first = issues.find((i) => i.level === "error")
+    if (!first) return
+    setSelectedId(first.sectionId)
+    requestAnimationFrame(() =>
+      document
+        .querySelector(first.blockId ? `[data-block-id="${first.blockId}"]` : ".le-section")
+        ?.scrollIntoView({ block: "center", behavior: "smooth" })
+    )
+  }
+
   const selected = lesson.sections.find((s) => s.id === selectedId) ?? lesson.sections[0]
 
   /** Saves the lesson file; resolves false if the save failed. */
@@ -237,9 +263,15 @@ export function LessonEditor({
           <span className="le-size" data-ok={inRange(stats.sections, sizeHint.sections)}>
             {stats.sections} / {sizeHint.sections[0]}–{sizeHint.sections[1]} sections
           </span>
-          <span className="le-issue-count" data-ok={errorCount === 0}>
-            {errorCount === 0 ? "Valid" : `${errorCount} issue${errorCount === 1 ? "" : "s"}`}
-          </span>
+          <button
+            type="button"
+            className="le-issue-count"
+            data-ok={problemCount === 0}
+            title={problemCount === 0 ? "Nothing blocks submitting this lesson" : `Fix before submitting:\n${problemList}`}
+            onClick={showFirstProblem}
+          >
+            {problemCount === 0 ? "Ready" : `${problemCount} to fix`}
+          </button>
           <Button
             variant="ghost"
             showTooltip={false}

@@ -1239,3 +1239,21 @@
     color: var(--in-danger);
   }
 }
+
+// The issue badge is a button that jumps to the first problem.
+button.le-issue-count {
+  border: none;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &[data-ok="true"] {
+    cursor: default;
+  }
+}
+
+// Word/section counts outside the course limits block submitting: show them in red.
+.le-size:not([data-ok="true"]) {
+  color: var(--in-error-text);
+}

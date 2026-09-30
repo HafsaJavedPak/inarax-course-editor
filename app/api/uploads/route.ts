@@ -35,7 +35,11 @@ export async function POST(request: Request) {
   await fs.mkdir(UPLOAD_DIR, { recursive: true })
   await fs.writeFile(path.join(UPLOAD_DIR, name), Buffer.from(await file.arrayBuffer()))
 
-  // Absolute URL: lesson image_url fields must be full URLs.
-  const url = new URL(`/uploads/${name}`, request.url).toString()
+  // Absolute URL: lesson image_url fields must be full URLs. request.url holds
+  // the server's own address (localhost:<port>), so use the host the browser
+  // called, which a proxy (e.g. Render) passes on in the forwarded headers.
+  const origin = new URL(request.url)
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? origin.host
+  const url = new URL(`/uploads/${name}`, `${origin.protocol}//${host}`).toString()
   return Response.json({ url }, { status: 201 })
 }

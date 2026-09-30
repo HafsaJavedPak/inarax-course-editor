@@ -25,6 +25,7 @@ import { CourseSchema, getCourseLimits, LEVELS, type Course, type CourseModule, 
 import { getSubmitBlockers, isLocked } from "@/lib/course-status"
 import { coursePaths, modeHeaders } from "@/lib/admin-mode"
 import { validateCourse, type CourseReport, type LessonStats } from "@/lib/course-validate"
+import { imageSrc } from "@/lib/uploads"
 
 import "@/components/lesson-editor/lesson-editor.scss"
 import "@/components/course/course-builder.scss"
@@ -251,6 +252,11 @@ export function CourseBuilder({
       </header>
 
       <main className="course-builder">
+        {course.cover_image_url && (
+          // eslint-disable-next-line @next/next/no-img-element -- arbitrary author-supplied URLs
+          <img className="course-cover" src={imageSrc(course.cover_image_url)} alt="" />
+        )}
+
         <StatusPanel
           course={course}
           workflow={workflow}
