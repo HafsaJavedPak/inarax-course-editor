@@ -9,7 +9,7 @@ import { describeChangeTarget, type ChangeRequest, type Course } from "@/lib/cou
 import { STATUS_DESCRIPTIONS, STATUS_LABELS } from "@/lib/course-status"
 
 /** The parts of a course the review workflow changes. */
-export type Workflow = Pick<Course, "status" | "review_history" | "change_requests">
+export type Workflow = Pick<Course, "status" | "review_history" | "change_requests" | "content_updated_at">
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" })
 
@@ -51,6 +51,7 @@ export function StatusPanel({
       status: data.course.status,
       review_history: data.course.review_history,
       change_requests: data.course.change_requests,
+      content_updated_at: data.course.content_updated_at,
     })
 
   const call = async (action: "submit" | "withdraw") => {

@@ -125,6 +125,7 @@ export async function saveCourseContent(course: Course, editor: CurrentUser): Pr
       change_requests: current.change_requests,
       created_at: current.created_at,
       published_at: current.published_at,
+      content_updated_at: current.content_updated_at,
       revision: current.revision + 1,
       updated_at: new Date().toISOString(),
     }
@@ -156,7 +157,8 @@ export async function updateCourseWorkflow(
 
 /**
  * Called when one of a course's lessons is saved: refuses while in review,
- * and moves an accepted course back to draft (admins are exempt from both).
+ * records the edit time, and moves an accepted course back to draft (admins
+ * are exempt from all three).
  */
 export async function recordLessonEdit(courseId: string, editor: CurrentUser): Promise<Course> {
   return serialize(courseId, async () => {
@@ -165,9 +167,7 @@ export async function recordLessonEdit(courseId: string, editor: CurrentUser): P
     if (editor.role === "admin") return current
     if (isLocked(current.status)) throw new CourseLockedError()
     const next = afterEdit(current, editor.id)
-    if (next !== current) {
-      await writeJson(courseFile(courseId), { ...next, updated_at: new Date().toISOString() })
-    }
+    await writeJson(courseFile(courseId), { ...next, updated_at: new Date().toISOString() })
     return next
   })
 }

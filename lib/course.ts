@@ -246,6 +246,8 @@ export const CourseSchema = CourseInfoStoredSchema.extend({
   updated_at: z.iso.datetime(),
   /** When the course was last published to the platform database (Save button). */
   published_at: z.iso.datetime().nullable().default(null),
+  /** When its creator last saved the course or one of its lessons (admin edits don't count). */
+  content_updated_at: z.iso.datetime().nullable().default(null),
 })
 export type Course = z.infer<typeof CourseSchema>
 export type CourseModule = z.infer<typeof ModuleSchema>
@@ -266,6 +268,7 @@ export function createCourse(info: CourseInfo, ownerId: string): Course {
     created_at: now,
     updated_at: now,
     published_at: null,
+    content_updated_at: null,
   }
 }
 

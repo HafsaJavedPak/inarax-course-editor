@@ -53,6 +53,7 @@ export function CourseBuilder({
     status: initialCourse.status,
     review_history: initialCourse.review_history,
     change_requests: initialCourse.change_requests,
+    content_updated_at: initialCourse.content_updated_at,
   })
   const publisher = usePublish(initialCourse.id, isAdmin, initialCourse.published_at)
   const { markChanged, publish } = publisher
@@ -119,6 +120,7 @@ export function CourseBuilder({
           status: data.course.status,
           review_history: data.course.review_history,
           change_requests: data.course.change_requests,
+          content_updated_at: data.course.content_updated_at,
         })
         setSavedAt(new Date())
         setStatus(dirtyRef.current ? "dirty" : "saved")

@@ -55,6 +55,14 @@ export function getSubmitBlockers(course: Course, report: CourseReport): string[
     const open = course.change_requests.filter((c) => !c.done).length
     if (open > 0) blockers.push(`${open} requested change${open === 1 ? " is" : "s are"} not ticked off yet`)
   }
+
+  // A rejected course needs an edit after the rejection before it can go back to review.
+  if (course.status === "rejected") {
+    const rejectedAt = course.review_history.findLast((e) => e.status === "rejected")?.at
+    if (rejectedAt && !(course.content_updated_at && course.content_updated_at > rejectedAt)) {
+      blockers.push("Update the course to address the rejection feedback before resubmitting")
+    }
+  }
   return blockers
 }
 
@@ -130,7 +138,11 @@ export function canReview(status: CourseStatus) {
   return status === "in_review" || status === "approved"
 }
 
-/** Applied when a creator saves content: accepted courses go back to draft. */
+/**
+ * Applied when a creator saves content: records when, and moves accepted
+ * courses back to draft.
+ */
 export function afterEdit(course: Course, by: string): Course {
-  return course.status === "approved" ? withEvent(course, "draft", by, "Edited after acceptance") : course
+  const edited = { ...course, content_updated_at: new Date().toISOString() }
+  return course.status === "approved" ? withEvent(edited, "draft", by, "Edited after acceptance") : edited
 }
