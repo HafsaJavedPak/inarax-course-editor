@@ -129,7 +129,7 @@ export function LessonEditor({
   ].join("\n")
 
   /** Opens the section with the first block problem and scrolls to it. */
-  const showFirstProblem = () => {
+  const showFirstProblem = useCallback(() => {
     const first = issues.find((i) => i.level === "error")
     if (!first) return
     setSelectedId(first.sectionId)
@@ -138,7 +138,7 @@ export function LessonEditor({
         .querySelector(first.blockId ? `[data-block-id="${first.blockId}"]` : ".le-section")
         ?.scrollIntoView({ block: "center", behavior: "smooth" })
     )
-  }
+  }, [issues])
 
   const selected = lesson.sections.find((s) => s.id === selectedId) ?? lesson.sections[0]
 
@@ -194,12 +194,20 @@ export function LessonEditor({
     }
   }, [lesson])
 
-  /** The Save button: save the lesson now, then publish the course to the database. */
+  /**
+   * The Save button: save the lesson now, then publish the course to the
+   * database. A lesson with problems is saved but not published; the editor
+   * jumps to the first problem instead.
+   */
   const saveAndPublish = useCallback(async () => {
     await savePromiseRef.current // let an in-flight autosave land, then save the latest
     if (!(await save())) return
+    if (problemCount > 0) {
+      showFirstProblem()
+      return
+    }
     await publish()
-  }, [save, publish])
+  }, [save, publish, problemCount, showFirstProblem])
 
   useHotkeys("mod+s", () => void saveAndPublish(), {
     preventDefault: true,
@@ -290,6 +298,9 @@ export function LessonEditor({
               savedAt={savedAt}
               neverSaved={!hasFile}
               publisher={publisher}
+              publishBlocked={
+                problemCount > 0 ? `Fix ${problemCount} problem${problemCount === 1 ? "" : "s"} to publish` : undefined
+              }
               onSave={() => void saveAndPublish()}
             />
           )}
