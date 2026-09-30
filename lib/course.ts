@@ -197,6 +197,14 @@ export const CourseInfoSchema = CourseInfoStoredSchema.extend({
 export const COURSE_STATUSES = ["draft", "in_review", "changes_requested", "approved", "rejected"] as const
 export type CourseStatus = (typeof COURSE_STATUSES)[number]
 
+/** Where in the course a requested change applies; omitted = the whole course. */
+const ChangeTargetSchema = z.object({
+  levelId: z.enum(["associate", "intermediate", "advanced"]).optional(),
+  moduleId: uuid.optional(),
+  lessonId: uuid.optional(),
+})
+export type ChangeTarget = z.infer<typeof ChangeTargetSchema>
+
 /** One entry in a course's review timeline. */
 export const ReviewEventSchema = z.object({
   status: z.enum(COURSE_STATUSES),
@@ -205,6 +213,8 @@ export const ReviewEventSchema = z.object({
   by: z.string(),
   /** Reviewer feedback, or a short system note ("Edited after approval"). */
   note: z.string().default(""),
+  /** For "changes_requested": the changes asked for in this round, kept after later rounds replace them. */
+  changes: z.array(z.object({ text: z.string(), target: ChangeTargetSchema.optional() })).default([]),
 })
 export type ReviewEvent = z.infer<typeof ReviewEventSchema>
 
@@ -213,13 +223,7 @@ export const ChangeRequestSchema = z.object({
   id: uuid,
   text: z.string().trim().min(1),
   /** Optional pointer so the creator can jump to the right place. */
-  target: z
-    .object({
-      levelId: z.enum(["associate", "intermediate", "advanced"]).optional(),
-      moduleId: uuid.optional(),
-      lessonId: uuid.optional(),
-    })
-    .optional(),
+  target: ChangeTargetSchema.optional(),
   /** Ticked by the creator once the change is made. */
   done: z.boolean().default(false),
   creator_note: z.string().default(""),
@@ -257,7 +261,7 @@ export function createCourse(info: CourseInfo, ownerId: string): Course {
     revision: 0,
     levels: LEVELS.map((l) => ({ id: l.id, modules: [] })),
     status: "draft",
-    review_history: [{ status: "draft", at: now, by: ownerId, note: "Course created" }],
+    review_history: [{ status: "draft", at: now, by: ownerId, note: "Course created", changes: [] }],
     change_requests: [],
     created_at: now,
     updated_at: now,
@@ -277,6 +281,35 @@ export function findLessonRef(course: Course, lessonId: string) {
 }
 
 
+
+/**
+ * Where a requested change applies, e.g. "Associate · Module 1 · Lesson title",
+ * plus the lesson to link to. Null means the whole course.
+ */
+export function describeChangeTarget(
+  course: Pick<Course, "levels">,
+  target: ChangeTarget | undefined
+): { label: string; lessonId?: string } | null {
+  if (!target) return null
+  const levelLabel = (id: LevelId) => LEVELS.find((l) => l.id === id)!.label
+  const places = course.levels.flatMap((level) => level.modules.map((mod) => ({ levelId: level.id, mod })))
+
+  const withLesson = target.lessonId && places.find((p) => p.mod.lessons.some((l) => l.id === target.lessonId))
+  if (withLesson) {
+    const lesson = withLesson.mod.lessons.find((l) => l.id === target.lessonId)!
+    return { label: [levelLabel(withLesson.levelId), withLesson.mod.title, lesson.title].join(" · "), lessonId: lesson.id }
+  }
+
+  // Anything it points to that has since been deleted is named as removed.
+  const place = target.moduleId ? places.find((p) => p.mod.id === target.moduleId) : undefined
+  const levelId = place?.levelId ?? target.levelId
+  const parts = [
+    levelId && levelLabel(levelId),
+    place ? place.mod.title : target.moduleId && "(module removed)",
+    target.lessonId && "(lesson removed)",
+  ].filter(Boolean)
+  return parts.length ? { label: parts.join(" · ") } : null
+}
 
 /** The limits a course is checked against: its own, or its lesson size's defaults. */
 export function getCourseLimits(course: Pick<Course, "limits" | "lesson_size">): CourseLimits {

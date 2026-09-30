@@ -5,7 +5,7 @@ import Link from "next/link"
 
 import { StatusBadge } from "@/components/course/status-badge"
 import { coursePaths } from "@/lib/admin-mode"
-import { LEVELS, type ChangeRequest, type Course } from "@/lib/course"
+import { describeChangeTarget, type ChangeRequest, type Course } from "@/lib/course"
 import { STATUS_DESCRIPTIONS, STATUS_LABELS } from "@/lib/course-status"
 
 /** The parts of a course the review workflow changes. */
@@ -271,23 +271,10 @@ function describeTarget(
   change: ChangeRequest,
   isAdmin: boolean
 ): { label: string; href?: string } | null {
-  const t = change.target
-  if (!t) return null
-  const parts: string[] = []
-  let href: string | undefined
-  for (const level of course.levels) {
-    for (const mod of level.modules) {
-      const lesson = t.lessonId ? mod.lessons.find((l) => l.id === t.lessonId) : undefined
-      if (lesson || mod.id === t.moduleId) {
-        parts.push(LEVELS.find((l) => l.id === level.id)!.label, mod.title)
-        if (lesson) {
-          parts.push(lesson.title)
-          href = coursePaths(isAdmin).lesson(course.id, lesson.id)
-        }
-        return { label: parts.join(" · "), href }
-      }
-    }
+  const target = describeChangeTarget(course, change.target)
+  if (!target) return null
+  return {
+    label: target.label,
+    href: target.lessonId ? coursePaths(isAdmin).lesson(course.id, target.lessonId) : undefined,
   }
-  if (t.levelId) return { label: LEVELS.find((l) => l.id === t.levelId)!.label }
-  return null
 }

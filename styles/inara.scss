@@ -1099,6 +1099,28 @@ html body {
   color: var(--in-text-2);
 }
 
+.adm-history-changes {
+  margin: 0.25rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.8125rem;
+  color: var(--in-text-2);
+
+  li {
+    gap: 0;
+  }
+}
+
+// "Associate · Module 1 · Lesson title" under a requested change.
+.adm-change-location {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--in-muted);
+
+  a {
+    color: var(--in-primary);
+  }
+}
+
 // Required / optional markers (FieldLabel in lesson-editor/fields.tsx)
 .le-req {
   margin-left: 0.125rem;

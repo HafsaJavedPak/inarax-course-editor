@@ -76,9 +76,9 @@ export function statusBeforeSubmission(history: ReviewEvent[]): CourseStatus {
 export type WorkflowResult = { course: Course } | { error: string; status: number }
 type Result = WorkflowResult
 
-function withEvent(course: Course, status: CourseStatus, by: string, note = ""): Course {
+function withEvent(course: Course, status: CourseStatus, by: string, note = "", changes: ReviewEvent["changes"] = []): Course {
   const at = new Date().toISOString()
-  return { ...course, status, review_history: [...course.review_history, { status, at, by, note }] }
+  return { ...course, status, review_history: [...course.review_history, { status, at, by, note, changes }] }
 }
 
 export function submit(course: Course, report: CourseReport, by: string): Result {
@@ -110,7 +110,8 @@ export function review(
     return { error: "List at least one change.", status: 400 }
   }
 
-  const next = withEvent(course, decision, by, note.trim())
+  const requested = decision === "changes_requested" ? changes.map((c) => ({ text: c.text, target: c.target })) : []
+  const next = withEvent(course, decision, by, note.trim(), requested)
   return {
     course: {
       ...next,
