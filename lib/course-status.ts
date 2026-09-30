@@ -55,6 +55,14 @@ export function getSubmitBlockers(course: Course, report: CourseReport): string[
     const open = course.change_requests.filter((c) => !c.done).length
     if (open > 0) blockers.push(`${open} requested change${open === 1 ? " is" : "s are"} not ticked off yet`)
   }
+
+  // A rejected course needs an edit after the rejection before it can go back to review.
+  if (course.status === "rejected") {
+    const rejectedAt = course.review_history.findLast((e) => e.status === "rejected")?.at
+    if (rejectedAt && !(course.content_updated_at && course.content_updated_at > rejectedAt)) {
+      blockers.push("Update the course to address the rejection feedback before resubmitting")
+    }
+  }
   return blockers
 }
 
@@ -76,9 +84,9 @@ export function statusBeforeSubmission(history: ReviewEvent[]): CourseStatus {
 export type WorkflowResult = { course: Course } | { error: string; status: number }
 type Result = WorkflowResult
 
-function withEvent(course: Course, status: CourseStatus, by: string, note = ""): Course {
+function withEvent(course: Course, status: CourseStatus, by: string, note = "", changes: ReviewEvent["changes"] = []): Course {
   const at = new Date().toISOString()
-  return { ...course, status, review_history: [...course.review_history, { status, at, by, note }] }
+  return { ...course, status, review_history: [...course.review_history, { status, at, by, note, changes }] }
 }
 
 export function submit(course: Course, report: CourseReport, by: string): Result {
@@ -110,7 +118,8 @@ export function review(
     return { error: "List at least one change.", status: 400 }
   }
 
-  const next = withEvent(course, decision, by, note.trim())
+  const requested = decision === "changes_requested" ? changes.map((c) => ({ text: c.text, target: c.target })) : []
+  const next = withEvent(course, decision, by, note.trim(), requested)
   return {
     course: {
       ...next,
@@ -129,7 +138,11 @@ export function canReview(status: CourseStatus) {
   return status === "in_review" || status === "approved"
 }
 
-/** Applied when a creator saves content: accepted courses go back to draft. */
+/**
+ * Applied when a creator saves content: records when, and moves accepted
+ * courses back to draft.
+ */
 export function afterEdit(course: Course, by: string): Course {
-  return course.status === "approved" ? withEvent(course, "draft", by, "Edited after acceptance") : course
+  const edited = { ...course, content_updated_at: new Date().toISOString() }
+  return course.status === "approved" ? withEvent(edited, "draft", by, "Edited after acceptance") : edited
 }

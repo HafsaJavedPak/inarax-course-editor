@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import { AppHeader } from "@/components/course/app-header"
+import { CourseThumb } from "@/components/course/course-thumb"
 import { StatusBadge } from "@/components/course/status-badge"
 import { Input } from "@/components/tiptap-ui-primitive/input"
 import { COURSE_STATUSES, type CourseStatus } from "@/lib/course"
@@ -91,13 +92,16 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
           <ul className="db-rows">
             {rows.map(({ course, planned, written, errors, submittedAt }) => (
               <li key={course.id} className="db-row adm-row">
-                <div className="db-row-main">
-                  <Link href={`/admin/courses/${course.id}`} className="db-row-title">
-                    {course.title}
-                  </Link>
-                  <span className="db-row-meta">
-                    by <code>{course.owner_id}</code> · {course.length_hours} h
-                  </span>
+                <div className="db-row-lead">
+                  <CourseThumb src={course.cover_image_url} />
+                  <div className="db-row-main">
+                    <Link href={`/admin/courses/${course.id}`} className="db-row-title">
+                      {course.title}
+                    </Link>
+                    <span className="db-row-meta">
+                      by <code>{course.owner_id}</code> · {course.length_hours} h
+                    </span>
+                  </div>
                 </div>
                 <StatusBadge status={course.status} />
                 <div className="db-row-progress">

@@ -12,6 +12,7 @@ import { ImagePlusIcon } from "@/components/tiptap-icons/image-plus-icon"
 // --- Lesson editor ---
 import { Field, TextField } from "@/components/lesson-editor/fields"
 import { handleImageUpload } from "@/lib/tiptap-utils"
+import { imageSrc } from "@/lib/uploads"
 import type { ImageData, OpaqueBlock } from "@/lib/lesson"
 
 /** URL input plus an upload button that fills it in. */
@@ -105,7 +106,7 @@ export function ImageBlock({
       {data.image_url && (
         <figure className="le-image-preview">
           {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary author-supplied URLs */}
-          <img src={data.image_url} alt={data.alt} />
+          <img src={imageSrc(data.image_url)} alt={data.alt} />
           {data.caption && <figcaption>{data.caption}</figcaption>}
         </figure>
       )}

@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import { AppHeader } from "@/components/course/app-header"
+import { CourseThumb } from "@/components/course/course-thumb"
 import { StatusBadge } from "@/components/course/status-badge"
 import { CourseActions } from "@/components/dashboard/course-actions"
 import { getCurrentUser } from "@/lib/auth"
@@ -101,13 +102,16 @@ export default async function Page({ searchParams }: PageProps<"/dashboard">) {
           <ul className="db-rows">
             {visible.map(({ course, planned, written, errors, blockers }) => (
               <li key={course.id} className="db-row">
-                <div className="db-row-main">
-                  <Link href={`/courses/${course.id}`} className="db-row-title">
-                    {course.title}
-                  </Link>
-                  <span className="db-row-meta">
-                    {course.length_hours} h · updated {timeAgo(course.updated_at)}
-                  </span>
+                <div className="db-row-lead">
+                  <CourseThumb src={course.cover_image_url} />
+                  <div className="db-row-main">
+                    <Link href={`/courses/${course.id}`} className="db-row-title">
+                      {course.title}
+                    </Link>
+                    <span className="db-row-meta">
+                      {course.length_hours} h · updated {timeAgo(course.updated_at)}
+                    </span>
+                  </div>
                 </div>
                 <StatusBadge status={course.status} />
                 <div className="db-row-progress">

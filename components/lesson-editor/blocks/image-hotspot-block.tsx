@@ -15,6 +15,7 @@ import { AutoTextarea, TextField } from "@/components/lesson-editor/fields"
 import { useReadOnly } from "@/components/lesson-editor/read-only"
 import { nextInnerId, type Hotspot, type ImageHotspotData } from "@/lib/lesson"
 import { handleImageUpload } from "@/lib/tiptap-utils"
+import { imageSrc } from "@/lib/uploads"
 
 const round1 = (n: number) => Math.round(n * 10) / 10
 const clamp = (n: number) => Math.min(100, Math.max(0, n))
@@ -135,7 +136,7 @@ export function ImageHotspotBlock({
             {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary author-supplied URLs */}
             <img
               key={data.image_url}
-              src={data.image_url}
+              src={imageSrc(data.image_url)}
               alt={data.alt ?? ""}
               draggable={false}
               // A cached image can finish before React attaches onLoad.

@@ -114,6 +114,32 @@ export function LessonEditor({
   const errorCount = issues.filter((i) => i.level === "error").length
   const stats = useMemo(() => getLessonStats(lesson, wordsPerMinute), [lesson, wordsPerMinute])
 
+  // Everything that stops the course being submitted for review: problems in
+  // blocks, plus the course's word and section limits for lessons.
+  const sizeProblems = [
+    !inRange(stats.words, sizeHint.words) &&
+      `Needs ${sizeHint.words[0]}–${sizeHint.words[1]} words (has ${stats.words.toLocaleString()})`,
+    !inRange(stats.sections, sizeHint.sections) &&
+      `Needs ${sizeHint.sections[0]}–${sizeHint.sections[1]} sections (has ${stats.sections})`,
+  ].filter((p): p is string => !!p)
+  const problemCount = errorCount + sizeProblems.length
+  const problemList = [
+    ...sizeProblems,
+    ...issues.filter((i) => i.level === "error").map((i) => i.message),
+  ].join("\n")
+
+  /** Opens the section with the first block problem and scrolls to it. */
+  const showFirstProblem = useCallback(() => {
+    const first = issues.find((i) => i.level === "error")
+    if (!first) return
+    setSelectedId(first.sectionId)
+    requestAnimationFrame(() =>
+      document
+        .querySelector(first.blockId ? `[data-block-id="${first.blockId}"]` : ".le-section")
+        ?.scrollIntoView({ block: "center", behavior: "smooth" })
+    )
+  }, [issues])
+
   const selected = lesson.sections.find((s) => s.id === selectedId) ?? lesson.sections[0]
 
   /** Saves the lesson file; resolves false if the save failed. */
@@ -168,12 +194,20 @@ export function LessonEditor({
     }
   }, [lesson])
 
-  /** The Save button: save the lesson now, then publish the course to the database. */
+  /**
+   * The Save button: save the lesson now, then publish the course to the
+   * database. A lesson with problems is saved but not published; the editor
+   * jumps to the first problem instead.
+   */
   const saveAndPublish = useCallback(async () => {
     await savePromiseRef.current // let an in-flight autosave land, then save the latest
     if (!(await save())) return
+    if (problemCount > 0) {
+      showFirstProblem()
+      return
+    }
     await publish()
-  }, [save, publish])
+  }, [save, publish, problemCount, showFirstProblem])
 
   useHotkeys("mod+s", () => void saveAndPublish(), {
     preventDefault: true,
@@ -237,9 +271,15 @@ export function LessonEditor({
           <span className="le-size" data-ok={inRange(stats.sections, sizeHint.sections)}>
             {stats.sections} / {sizeHint.sections[0]}–{sizeHint.sections[1]} sections
           </span>
-          <span className="le-issue-count" data-ok={errorCount === 0}>
-            {errorCount === 0 ? "Valid" : `${errorCount} issue${errorCount === 1 ? "" : "s"}`}
-          </span>
+          <button
+            type="button"
+            className="le-issue-count"
+            data-ok={problemCount === 0}
+            title={problemCount === 0 ? "Nothing blocks submitting this lesson" : `Fix before submitting:\n${problemList}`}
+            onClick={showFirstProblem}
+          >
+            {problemCount === 0 ? "Ready" : `${problemCount} to fix`}
+          </button>
           <Button
             variant="ghost"
             showTooltip={false}
@@ -258,6 +298,9 @@ export function LessonEditor({
               savedAt={savedAt}
               neverSaved={!hasFile}
               publisher={publisher}
+              publishBlocked={
+                problemCount > 0 ? `Fix ${problemCount} problem${problemCount === 1 ? "" : "s"} to publish` : undefined
+              }
               onSave={() => void saveAndPublish()}
             />
           )}

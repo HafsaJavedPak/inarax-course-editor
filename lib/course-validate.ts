@@ -102,27 +102,32 @@ export function validateCourse(
     let lessonCount = 0
     let sectionCount = 0
 
+    // Anything below that is an "error" blocks submitting the course for review.
     for (const mod of level.modules) {
       if (mod.lessons.length === 0) {
-        issues.push({ level: "warning", message: `Module “${mod.title}” has no lessons`, target: { levelId: id, moduleId: mod.id } })
+        issues.push({ level: "error", message: `Module “${mod.title}” has no lessons. Add one or delete the module`, target: { levelId: id, moduleId: mod.id } })
       }
       for (const ref of mod.lessons) {
         const stats = lessons[ref.id]
         lessonCount++
         plannedMinutes += stats?.minutes || limits.minutes_per_lesson
         sectionCount += stats?.sections ?? 0
-        if (!stats) continue
 
         const target = { levelId: id, moduleId: mod.id, lessonId: ref.id }
+        if (!stats) {
+          issues.push({ level: "error", target, message: `“${ref.title}” hasn't been written yet` })
+          continue
+        }
+
         const { words, sections } = limits
         if (stats.words < words.min || stats.words > words.max) {
-          issues.push({ level: "warning", target, message: `“${ref.title}” has ${plural(stats.words, "word")}; lessons should be ${words.min}–${words.max}` })
+          issues.push({ level: "error", target, message: `“${ref.title}” has ${plural(stats.words, "word")}; lessons must have ${words.min}–${words.max}` })
         }
         if (stats.sections < sections.min || stats.sections > sections.max) {
-          issues.push({ level: "warning", target, message: `“${ref.title}” has ${plural(stats.sections, "section")}; lessons should have ${sections.min}–${sections.max}` })
+          issues.push({ level: "error", target, message: `“${ref.title}” has ${plural(stats.sections, "section")}; lessons must have ${sections.min}–${sections.max}` })
         }
         if (stats.errors > 0) {
-          issues.push({ level: "error", target, message: `“${ref.title}” has ${plural(stats.errors, "validation error")}` })
+          issues.push({ level: "error", target, message: `“${ref.title}” has ${plural(stats.errors, "problem")} to fix in the lesson editor` })
         }
       }
     }

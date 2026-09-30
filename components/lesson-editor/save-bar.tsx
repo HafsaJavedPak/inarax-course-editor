@@ -20,6 +20,7 @@ export function SaveBar({
   savedAt,
   neverSaved = false,
   publisher,
+  publishBlocked,
   onSave,
 }: {
   status: SaveStatus
@@ -27,6 +28,8 @@ export function SaveBar({
   /** True for a lesson whose file doesn't exist yet. */
   neverSaved?: boolean
   publisher: Publisher
+  /** Why Save won't publish right now (e.g. the lesson has problems); Save still saves. */
+  publishBlocked?: string
   onSave: () => void
 }) {
   const state = typeof status === "string" ? status : "error"
@@ -45,7 +48,7 @@ export function SaveBar({
 
   const publish = publisher.status
   const publishState =
-    typeof publish !== "string"
+    typeof publish !== "string" || (publishBlocked && publish !== "publishing")
       ? "error"
       : publish === "publishing"
         ? "saving"
@@ -57,7 +60,9 @@ export function SaveBar({
       ? publish.error
       : publish === "publishing"
         ? "Publishing…"
-        : publisher.pending
+        : publishBlocked
+          ? publishBlocked
+          : publisher.pending
           ? "Changes not published"
           : publisher.publishedAt
             ? `Published ${formatWhen(publisher.publishedAt)}`

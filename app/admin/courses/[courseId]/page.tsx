@@ -6,7 +6,7 @@ import { DeleteCourseButton } from "@/components/admin/delete-course-button"
 import { AppHeader } from "@/components/course/app-header"
 import { StatusBadge } from "@/components/course/status-badge"
 import { coursePaths } from "@/lib/admin-mode"
-import { getCourseLimits, LEVELS } from "@/lib/course"
+import { describeChangeTarget, getCourseLimits, LEVELS, type ChangeTarget, type Course } from "@/lib/course"
 import { STATUS_LABELS } from "@/lib/course-status"
 import { readCourse } from "@/lib/course-store"
 import { summarizeCourse, timeAgo } from "@/lib/course-summary"
@@ -172,6 +172,7 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
                       </span>
                       <div>
                         <p>{change.text}</p>
+                        <ChangeLocation course={course} target={change.target} />
                         {change.creator_note && <p className="adm-muted">Creator: “{change.creator_note}”</p>}
                       </div>
                     </li>
@@ -194,6 +195,16 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
                       {dateFormat.format(new Date(event.at))} · <code>{event.by}</code>
                     </span>
                     {event.note && <span className="adm-history-note">{event.note}</span>}
+                    {event.changes.length > 0 && (
+                      <ul className="adm-history-changes">
+                        {event.changes.map((change, j) => (
+                          <li key={j}>
+                            {change.text}
+                            <ChangeLocation course={course} target={change.target} />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 ))}
               </ol>
@@ -202,5 +213,21 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
         </div>
       </main>
     </div>
+  )
+}
+
+/** Where a requested change applies, linking to the lesson when there is one. */
+function ChangeLocation({ course, target }: { course: Course; target?: ChangeTarget }) {
+  const place = describeChangeTarget(course, target)
+  return (
+    <span className="adm-change-location">
+      {!place ? (
+        "Whole course"
+      ) : place.lessonId ? (
+        <Link href={coursePaths(true).lesson(course.id, place.lessonId)}>{place.label}</Link>
+      ) : (
+        place.label
+      )}
+    </span>
   )
 }
