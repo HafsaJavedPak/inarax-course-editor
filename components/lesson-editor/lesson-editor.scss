@@ -257,21 +257,6 @@
   top: var(--le-topbar-height);
   z-index: 50;
 
-  // Explains the greyed-out buttons until a text block is focused.
-  .le-format-hint {
-    position: absolute;
-    top: 50%;
-    left: 1rem;
-    transform: translateY(-50%);
-    font-size: 0.75rem;
-    color: var(--in-muted);
-    pointer-events: none;
-
-    @media (max-width: 1100px) {
-      display: none;
-    }
-  }
-
   // Keep the template toolbar docked at the top on phones too.
   .tiptap-toolbar[data-variant="fixed"] {
     position: relative;

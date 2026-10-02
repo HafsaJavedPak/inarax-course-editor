@@ -31,13 +31,3 @@ export function useActiveEditor() {
   return value
 }
 
-/** Shown on the formatting toolbar until a text block has been clicked into. */
-export function FormatToolbarHint() {
-  const { activeEditor } = useActiveEditor()
-  if (activeEditor) return null
-  return (
-    <span className="le-format-hint" role="note">
-      Click into a text block to format it
-    </span>
-  )
-}

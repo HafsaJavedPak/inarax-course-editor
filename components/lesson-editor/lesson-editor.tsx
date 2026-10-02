@@ -19,7 +19,7 @@ import { ChevronUpIcon } from "@/components/tiptap-icons/chevron-up-icon"
 import { TrashIcon } from "@/components/tiptap-icons/trash-icon"
 
 // --- Lesson editor ---
-import { ActiveEditorProvider, FormatToolbarHint } from "@/components/lesson-editor/active-editor"
+import { ActiveEditorProvider } from "@/components/lesson-editor/active-editor"
 import { AddBlockMenu, BlockEditor } from "@/components/lesson-editor/block-editor"
 import { JsonPanel } from "@/components/lesson-editor/json-panel"
 import { SaveBar, type SaveStatus } from "@/components/lesson-editor/save-bar"
@@ -362,7 +362,6 @@ export function LessonEditor({
             <main className="le-main">
               <div className="le-format-toolbar">
                 <SimpleEditorToolbar />
-                <FormatToolbarHint />
               </div>
 
               {showJson && (
