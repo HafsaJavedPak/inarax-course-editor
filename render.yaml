@@ -16,8 +16,14 @@ services:
       # Courses (course/) and uploads (uploads/) are stored here.
       - key: DATA_DIR
         value: /var/data
-      # Platform Postgres (Supabase session pooler URI); set in the dashboard.
-      - key: DATABASE_URL
+      # Publishing to inara-next (docs/platform-integration.md); set in the dashboard.
+      - key: PLATFORM_ADAPTER
+        value: inara-next
+      - key: INARA_API_URL
+        sync: false
+      - key: INARA_AUTH
+        value: bearer
+      - key: INARA_API_TOKEN
         sync: false
     disk:
       name: inara-data

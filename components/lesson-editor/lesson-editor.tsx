@@ -19,12 +19,13 @@ import { ChevronUpIcon } from "@/components/tiptap-icons/chevron-up-icon"
 import { TrashIcon } from "@/components/tiptap-icons/trash-icon"
 
 // --- Lesson editor ---
-import { ActiveEditorProvider } from "@/components/lesson-editor/active-editor"
+import { ActiveEditorProvider, FormatToolbarHint } from "@/components/lesson-editor/active-editor"
 import { AddBlockMenu, BlockEditor } from "@/components/lesson-editor/block-editor"
 import { JsonPanel } from "@/components/lesson-editor/json-panel"
 import { SaveBar, type SaveStatus } from "@/components/lesson-editor/save-bar"
 import { usePublish } from "@/components/lesson-editor/use-publish"
 import { ReadOnlyContext } from "@/components/lesson-editor/read-only"
+import { LessonPlayer } from "@/components/preview/lesson-player"
 import { lessonReducer, type LessonAction } from "@/components/lesson-editor/lesson-state"
 import { createSection, type Lesson } from "@/lib/lesson"
 import { validateLesson, type LessonIssue } from "@/lib/lesson-validate"
@@ -86,6 +87,8 @@ export function LessonEditor({
   const publisher = usePublish(courseId, isAdmin, publishedAt)
   const { markChanged, publish } = publisher
   const [showJson, setShowJson] = useState(false)
+  // "preview" shows the lesson (including unsaved edits) as learners see it.
+  const [mode, setMode] = useState<"edit" | "preview">("edit")
   // Bumped when the whole lesson is replaced, to remount the block editors.
   const [generation, setGeneration] = useState(0)
 
@@ -280,14 +283,29 @@ export function LessonEditor({
           >
             {problemCount === 0 ? "Ready" : `${problemCount} to fix`}
           </button>
-          <Button
-            variant="ghost"
-            showTooltip={false}
-            data-active-state={showJson ? "on" : "off"}
-            onClick={() => setShowJson((open) => !open)}
-          >
-            <span className="tiptap-button-text">JSON</span>
-          </Button>
+          <div className="le-mode-switch" role="group" aria-label="View">
+            <button type="button" aria-pressed={mode === "edit"} onClick={() => setMode("edit")}>
+              Edit
+            </button>
+            <button
+              type="button"
+              aria-pressed={mode === "preview"}
+              title="See this lesson as learners will, including unsaved changes"
+              onClick={() => setMode("preview")}
+            >
+              Preview
+            </button>
+          </div>
+          {mode === "edit" && (
+            <Button
+              variant="ghost"
+              showTooltip={false}
+              data-active-state={showJson ? "on" : "off"}
+              onClick={() => setShowJson((open) => !open)}
+            >
+              <span className="tiptap-button-text">JSON</span>
+            </Button>
+          )}
           {readOnly ? (
             <span className="in-status" data-status="in_review">
               Read-only
@@ -324,8 +342,14 @@ export function LessonEditor({
           </p>
         )}
 
+        {mode === "preview" && (
+          <div className="le-preview">
+            <LessonPlayer lesson={lesson} lessonTitle={lessonTitle} />
+          </div>
+        )}
+
         <ReadOnlyContext.Provider value={readOnly}>
-          <fieldset className="le-layout le-fieldset" disabled={readOnly}>
+          <fieldset className="le-layout le-fieldset" disabled={readOnly} hidden={mode === "preview"}>
             <SectionSidebar
               lesson={lesson}
               issues={issues}
@@ -338,6 +362,7 @@ export function LessonEditor({
             <main className="le-main">
               <div className="le-format-toolbar">
                 <SimpleEditorToolbar />
+                <FormatToolbarHint />
               </div>
 
               {showJson && (

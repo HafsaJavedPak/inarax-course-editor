@@ -2,6 +2,7 @@ import {
   DEFAULT_WORDS_PER_MINUTE,
   getCourseLimits,
   LEVELS,
+  titleKey,
   type Course,
   type CourseLimits,
   type LevelId,
@@ -10,7 +11,18 @@ import { isAuthorableBlock, type Lesson } from "@/lib/lesson"
 import { validateLesson } from "@/lib/lesson-validate"
 
 const MINUTES_PER_INTERACTION = { explore: 1, assess: 1.5 } as const
-const EXPLORE_TYPES = new Set(["image_hotspot", "flip_cards", "accordion_tabs", "stepped_timeline"])
+const EXPLORE_TYPES = new Set([
+  "image_hotspot",
+  "flip_cards",
+  "accordion_tabs",
+  "stepped_timeline",
+  "wheel_diagram",
+  "nested_layers",
+  "add_next_layer",
+  "format_switcher",
+  "image_switcher",
+  "vertical_roadmap",
+])
 const ASSESS_TYPES = new Set(["mcq", "categorization", "sequencing", "fill_blank"])
 
 export type LessonStats = {
@@ -161,12 +173,54 @@ export function validateCourse(
     return { levelId: id, targetMinutes, plannedMinutes, status, lessons: lessonCount, sections: sectionCount }
   })
 
+  issues.push(...duplicateTitleIssues(course))
+
   return {
     levels,
     issues,
     totalMinutes: levels.reduce((sum, l) => sum + l.plannedMinutes, 0),
     lessonStats: lessons,
   }
+}
+
+/**
+ * Module titles must be unique across the course and lesson titles within
+ * their module (the platform refuses duplicates). Errors, so they block
+ * submitting.
+ */
+function duplicateTitleIssues(course: Course): CourseIssue[] {
+  const issues: CourseIssue[] = []
+  const modules = new Map<string, string>() // title key → level label where first seen
+  for (const { id: levelId, label } of LEVELS) {
+    const level = course.levels.find((l) => l.id === levelId)!
+    for (const mod of level.modules) {
+      const key = titleKey(mod.title)
+      const firstIn = modules.get(key)
+      if (firstIn) {
+        issues.push({
+          level: "error",
+          target: { levelId, moduleId: mod.id },
+          message: `Module title “${mod.title.trim()}” is already used${firstIn === label ? "" : ` in ${firstIn}`}. Module titles must be unique across the course`,
+        })
+      } else {
+        modules.set(key, label)
+      }
+
+      const lessons = new Set<string>()
+      for (const ref of mod.lessons) {
+        const lessonKey = titleKey(ref.title)
+        if (lessons.has(lessonKey)) {
+          issues.push({
+            level: "error",
+            target: { levelId, moduleId: mod.id, lessonId: ref.id },
+            message: `Lesson title “${ref.title.trim()}” appears more than once in “${mod.title}”. Lesson titles must be unique within a module`,
+          })
+        }
+        lessons.add(lessonKey)
+      }
+    }
+  }
+  return issues
 }
 
 /** For the course form: how many lessons fit each level with the given limits. */

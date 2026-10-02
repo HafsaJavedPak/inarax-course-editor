@@ -13,7 +13,7 @@ const formatWhen = (date: Date) =>
 /**
  * Save state plus a Save button, shared by the course builder and the lesson
  * editor. Both autosave to the local files; the button (also Ctrl/⌘+S) saves
- * now and then publishes the course to the platform database.
+ * now and then publishes the course to the platform (see lib/platform).
  */
 export function SaveBar({
   status,
@@ -65,7 +65,11 @@ export function SaveBar({
           : publisher.pending
           ? "Changes not published"
           : publisher.publishedAt
-            ? `Published ${formatWhen(publisher.publishedAt)}`
+            ? `Published ${formatWhen(publisher.publishedAt)}${
+                publisher.warnings.length
+                  ? ` · ${publisher.warnings.length} warning${publisher.warnings.length === 1 ? "" : "s"}`
+                  : ""
+              }`
             : "Not published yet"
 
   const busy = status === "saving" || publish === "publishing"
@@ -75,7 +79,12 @@ export function SaveBar({
       <span className="le-save-state" data-state={state} role="status" title={text}>
         {text}
       </span>
-      <span className="le-save-state" data-state={publishState} role="status" title={publishText}>
+      <span
+        className="le-save-state"
+        data-state={publishState}
+        role="status"
+        title={[publishText, ...publisher.warnings].join("\n")}
+      >
         {publishText}
       </span>
       <button

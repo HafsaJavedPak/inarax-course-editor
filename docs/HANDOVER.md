@@ -10,7 +10,7 @@ The Inara Course Editor is a Next.js web app where **creators** build interactiv
 - Lessons are made of sections and blocks: text, images, interactive explore blocks and graded
   questions.
 - Work is saved as local JSON files. The **Save** button also publishes the course to the Inara
-  platform's Supabase (Postgres) database.
+  platform (inara-next) through its admin REST API. The editor never connects to a database.
 
 The flowcharts below use Mermaid. They render on GitHub and GitLab, and in VS Code with a Mermaid
 extension. For how the code fits together (every page, component, API route and module), see
@@ -31,12 +31,13 @@ npm run dev        # http://localhost:3000
 
 | Variable | Needed for | Notes |
 |---|---|---|
-| `DATABASE_URL` | publishing to the database | Supabase **Session pooler** URI. Without it, Save still saves locally but publishing fails with a clear error. |
+| `PLATFORM_ADAPTER` | publishing | `inara-next`, or `none` (default: Save only saves locally) |
+| `INARA_API_URL`, `INARA_AUTH`, `INARA_API_TOKEN`, … | publishing to inara-next | See `.env.example` and [platform-integration.md](platform-integration.md) |
 | `DATA_DIR` | optional | Folder holding `course/` and `uploads/`. Defaults to the project folder. On Render it's `/var/data`, a persistent disk. |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | not used by the code | Present in `.env.local`. Safe to remove. |
+| `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | no longer used | Left over from direct database publishing. Safe to remove from `.env.local`. |
 
 **Deploying:** `render.yaml` is a Render Blueprint. It needs a paid plan (for the persistent disk),
-and `DATABASE_URL` must be set in the Render dashboard.
+and `INARA_API_URL` and `INARA_API_TOKEN` must be set in the Render dashboard.
 
 ---
 
@@ -48,7 +49,8 @@ and `DATABASE_URL` must be set in the Render dashboard.
 | New course | `/courses/new` | creators | Course info form (step 1) |
 | Course builder | `/courses/[courseId]` | creators | Levels → modules → lessons, review status panel, Save, Download |
 | Course settings | `/courses/[courseId]/settings` | creators | Edit the course info form |
-| Lesson editor | `/courses/[courseId]/lessons/[lessonId]` | creators | Sections and blocks, JSON import/export, Save |
+| Lesson editor | `/courses/[courseId]/lessons/[lessonId]` | creators | Sections and blocks, JSON import/export, Edit / Preview, Save |
+| Course preview | `/courses/[courseId]/preview` (admin: `/admin/courses/[courseId]/preview`) | creators, admins | The course and every lesson as learners see them, rendered with inara-next's player |
 | Admin dashboard | `/admin` | admins | All courses, filter by status |
 | Admin review page | `/admin/courses/[courseId]` | admins | Read the course, accept / reject / request changes, delete |
 | Admin edit | `/admin/courses/[courseId]/edit`, `.../lessons/[lessonId]`, `.../settings` | admins | Edit any course, even while it is in review |
@@ -79,7 +81,7 @@ flowchart TD
     J --> K{Lesson has problems?}
     K -- yes --> L[Show first problem<br/>nothing is published]
     L --> G
-    K -- no --> M[(Publish whole course<br/>to Supabase)]
+    K -- no --> M[(Publish whole course<br/>to inara-next API)]
     M --> D
     D --> N{Submit blockers?<br/>see section 6}
     N -- yes --> E
@@ -134,7 +136,7 @@ sequenceDiagram
     participant UI as Editor (browser)
     participant API as Editor API (Next.js)
     participant FS as Local files<br/>course/, uploads/
-    participant DB as Supabase Postgres
+    participant DB as inara-next<br/>admin API
 
     U->>UI: types / edits
     UI->>API: autosave after 0.8–1.5 s pause<br/>PUT /api/courses/{id} or .../lessons/{lessonId}
@@ -146,11 +148,11 @@ sequenceDiagram
     API->>FS: write JSON
     UI->>API: POST /api/courses/{id}/publish
     API->>FS: read course + all lesson files
-    API->>DB: ONE transaction:<br/>courses → levels → modules → lessons → generated_lessons
-    DB-->>API: ok / error
+    API->>DB: compare with inara-next's copy, then only the calls needed:<br/>course → levels → modules → lessons → content → status
+    DB-->>API: ok / error (+ warnings)
     API->>FS: record published_at
     API-->>UI: "Published 3:42" or the error
-    Note over UI,DB: If publishing fails, the local save still stands.
+    Note over UI,DB: If publishing fails, the local save still stands, and the next Save continues where it stopped.
 ```
 
 **When publishing happens:**
@@ -159,30 +161,14 @@ sequenceDiagram
   then, the status change still happens and the panel shows "…but not published to the platform".
 - **never** on autosave
 
-**What gets written to the database:**
+**What gets sent to inara-next:** the course (title, summary, cover image, review status), its 3
+levels, modules, lessons, each saved lesson's content, and each lesson's review status. The editor
+calls only the endpoints it needs, and remembers which inara-next record belongs to which editor
+record in `course/<id>/inara-next.links.json`. Lessons never saved are created on inara-next without
+content.
 
-| Table | Matched on | Written |
-|---|---|---|
-| `courses` | `uuid` = editor course id | title, description (summary), cover_image_url, status, created_at, updated_at |
-| `levels` | course + `level_number` (1–3) | name: Associate / Intermediate / Advanced |
-| `modules` | `uuid` = editor module id | title, course_id, level_id, order_index (0-based within the level) |
-| `lessons` | `uuid` = editor lesson id | title, module_id, order_index (0-based within the module) |
-| `generated_lessons` | lesson + language `English` | structured_content (lesson JSON), generated_text (plain text), word_count, title, status, approved_by / approved_at, rejected_by / rejection_comments, is_canonical=true |
-
-- Modules and lessons deleted in the editor are **deleted** from the database.
-- Lessons that have never been saved get a `lessons` row but **no** `generated_lessons` row.
-
-**Status mapping:**
-
-| Editor | `courses.status` | `generated_lessons.status` |
-|---|---|---|
-| draft | DRAFT | DRAFT |
-| in_review | UNDER_REVIEW | UNDER_REVIEW |
-| changes_requested | CHANGES_REQUESTED | CHANGES_REQUESTED |
-| approved | APPROVED | APPROVED |
-| rejected | REJECTED | REJECTED |
-
-The editor never sets `PUBLISHED` or `RETIRED`. A course already in either state keeps it.
+Endpoints, status mapping and behaviour details are in
+[platform-integration.md](platform-integration.md).
 
 ---
 
@@ -204,6 +190,8 @@ The editor never sets `PUBLISHED` or `RETIRED`. A course already in either state
 
 ### Submitting for review (blockers: these stop Submit)
 
+- Two modules share a title anywhere in the course, or two lessons share a title in a module
+  (compared case-insensitively). New modules and lessons get free default names ("Module 6").
 - A level has no lessons. A level given 0% of the time may stay empty.
 - A module has no lessons.
 - A lesson hasn't been written yet (no saved content).
@@ -219,17 +207,30 @@ The editor never sets `PUBLISHED` or `RETIRED`. A course already in either state
 - Every section needs at least one block. Section and block ids must be unique UUIDs.
 - Each block type has its own checks (`lib/lesson-validate.ts`). For example, a multiple-choice
   question needs a correct answer, and sequencing must list every item.
+- **Fill in the blanks:** each blank needs at least two options (matches inara-next).
+- **New Explore blocks** (wheel diagram, nested layers, add the next layer, format switcher, image
+  switcher, roadmap): item limits as in [preview.md](preview.md#block-types). Every item needs a
+  label and text; images need a URL and alt text; roadmap events need a date, text and an era.
 - **Save with problems:** the lesson is saved locally, but **not published**. The Save bar shows
   "Fix N problems to publish" and jumps to the first one.
 - **JSON panel:** Copy, Download, **Validate**, Apply to editor. Validation only checks the shape; it
   can't tell whether the AI marked the wrong answer as correct.
 
-### Publishing (refused with a message)
+### Publishing
 
-- Two lessons in the same module have the same title.
-- Another course on the platform already uses this title.
-- The database is missing a status value. The message names the migration to run.
+**Lessons with errors are skipped, not refused.** The rest of the course publishes, the lesson keeps
+its last published version on inara-next, and the Save bar shows "Published · N warnings". Hover it
+to see which lessons and why.
+
+**Refused with a message:**
+
+- Two modules in the course have the same title, even in different levels, or two lessons in a module do.
+- Another course on inara-next already uses this title.
+- A live lesson or module (course `PUBLISHED` or lesson `APPROVED`) was moved to another module or
+  level. inara-next can't move content, so this would wipe learners' progress.
+- inara-next can't be reached, or refuses access.
 - A creator tries to publish while the course is in review.
+- Publishing isn't set up (`PLATFORM_ADAPTER` unset). Save then only saves locally.
 
 ### Uploads
 
@@ -268,13 +269,25 @@ Each row is a scenario and the expected result.
 - [ ] Admin revokes an acceptance → Changes requested or Rejected.
 - [ ] Admin edits a course in review → allowed; the status is unchanged.
 
-**Publishing (check in Supabase → Table Editor)**
-- [ ] Save → `courses`, `levels` (3), `modules`, `lessons` and `generated_lessons` rows appear with the values from section 5.
-- [ ] Save again with no changes → no duplicate rows.
-- [ ] Delete a lesson or module and Save → its rows are gone.
-- [ ] Each workflow action → `courses.status` and `generated_lessons.status` follow the mapping table.
-- [ ] Duplicate lesson title in a module → the publish is refused with a message naming it.
-- [ ] Wrong or missing `DATABASE_URL` → the local save works and the publish shows an error.
+**Publishing (check in inara-next's admin, e.g. `/admin`, or `GET /api/admin/courses/{id}`)**
+
+Set up local inara-next first: [platform-integration.md § 4](platform-integration.md#4-testing-locally).
+- [ ] Save → the course, its 3 levels, modules, lessons and lesson content appear on inara-next.
+- [ ] Save again with no changes → nothing changes on inara-next and no duplicates appear.
+- [ ] Rename, reorder, move or delete modules and lessons, then Save → inara-next matches.
+- [ ] Each workflow action → course and lesson statuses follow the mapping table in platform-integration.md.
+- [ ] Same module title in two levels → shown as an error in the builder; publishing is refused, naming it.
+- [ ] A lesson with a validation error (e.g. hotspot block with no pins) → Save → "Published · 1 warning" naming that lesson; other lessons arrive.
+- [ ] Approve a course, then move one of its lessons (via JSON) → publishing is refused, and nothing is deleted on inara-next.
+- [ ] Stop inara-next and press Save → the local save works and the publish shows "Couldn't reach inara-next".
+- [ ] Image in a lesson, inara-next without Firebase, `EDITOR_PUBLIC_URL` set → "Published · 1 warning"; the image on inara-next points at `EDITOR_PUBLIC_URL/uploads/…`.
+
+**Preview** ([preview.md](preview.md))
+- [ ] Lesson editor → Preview → the lesson shows in inara-next's style; Continue, answering questions and points work; Edit returns with nothing lost, including unsaved changes.
+- [ ] Builder → Preview → saves, then shows the overview (cover, facts, objectives, content); every lesson opens from the outline and with previous/next.
+- [ ] A lesson that isn't written → "hasn't been written yet"; an invalid lesson → its problems listed by field.
+- [ ] A lesson containing a block the editor can't author (e.g. `wheel_diagram` via JSON import) → renders in the preview.
+- [ ] Admin review page → Preview as learner → same preview, Back to editing returns to the review page.
 
 **Downloads and uploads**
 - [ ] Course Download → a zip containing `course/<id>/course.json`, the lesson files and the images used.
@@ -299,12 +312,12 @@ Each row is a scenario and the expected result.
 | `lib/course-validate.ts` | Lesson stats, level budgets, submit blockers |
 | `lib/course-status.ts` | Review state machine |
 | `lib/course-store.ts` | Reads and writes local JSON (atomic writes, writes queued per course, revision check) |
-| `lib/course-publish.ts`, `lib/db.ts` | Publishing to Postgres |
+| `lib/platform/` | Publishing: `PlatformPort` interface, HTTP client, inara-next adapter |
 | `lib/course-export.ts` | Zip downloads |
 | `lib/auth.ts`, `lib/admin-mode.ts` | Placeholder "current user" and admin mode |
 | `json-guide/` | Lesson format reference and AI prompt for writing lessons in JSON |
-| `db/migrations/` | SQL run on the Supabase database |
-| `docs/database-publishing.md` | Publishing in more detail |
+| `db/migrations/` | SQL for the platform's status enums (for the platform team) |
+| `docs/platform-integration.md` | Publishing to inara-next in detail, and local testing |
 
 ### API endpoints
 
@@ -313,7 +326,7 @@ Each row is a scenario and the expected result.
 | `GET/POST /api/courses` | list / create courses |
 | `GET/PUT/DELETE /api/courses/[id]` | read / autosave / delete a course |
 | `GET/PUT/DELETE /api/courses/[id]/lessons/[lessonId]` | read / autosave / delete lesson content |
-| `POST /api/courses/[id]/publish` | publish to the database (the Save button) |
+| `POST /api/courses/[id]/publish` | publish to inara-next (the Save button) |
 | `POST /api/courses/[id]/submit`, `/withdraw` | creator workflow (also publishes) |
 | `POST /api/courses/[id]/review` | admin decision (also publishes) |
 | `PATCH /api/courses/[id]/changes/[changeId]` | tick off a requested change or add a note |
@@ -322,11 +335,15 @@ Each row is a scenario and the expected result.
 
 ### Database migrations (`db/migrations/`)
 
-| File | State |
+The editor no longer touches a database. These files record status values that were added to the
+Supabase database earlier, and that inara-next's Prisma schema now includes (commit `3991c573`). The
+platform team applies them to its databases through Alembic.
+
+| File | Content |
 |---|---|
-| `001_changes_requested_status.sql` | **Run on Supabase.** Adds `CHANGES_REQUESTED` to `generated_lesson_status`. |
-| `002_course_status_review_values.sql` | **Run on Supabase.** Adds `UNDER_REVIEW`, `CHANGES_REQUESTED`, `APPROVED`, `REJECTED` to `course_status`. |
-| `002_course_review_status.sql` | **Not run and not used by the code.** An alternative design (a separate `review_status` column). Delete it or keep it on purpose; it also shares the `002` number. |
+| `001_changes_requested_status.sql` | Adds `CHANGES_REQUESTED` to `generated_lesson_status` |
+| `002_course_status_review_values.sql` | Adds `UNDER_REVIEW`, `CHANGES_REQUESTED`, `APPROVED`, `REJECTED` to `course_status` |
+| `002_course_review_status.sql` | **Unused**, an alternative design (a separate `review_status` column). Never run. Delete it or keep it on purpose. |
 
 ### Checks
 
@@ -342,13 +359,14 @@ npx eslint .       # errors only in the Tiptap template code and hooks/ (React C
 
 | # | Item | Impact |
 |---|---|---|
-| 1 | **No authentication.** One shared creator; `/admin` is open to anyone; admin mode is a header. | Must be fixed before real users. Planned: Clerk, using the same app as inara-next. |
-| 2 | **Writes directly to the platform database.** The planned move to calling inara-next's API (one adapter, Clerk session forwarding) **hasn't been built**. | The editor duplicates platform rules (title uniqueness, deletes), and doesn't create the `course_organizations` link, so its courses may not show in inara-next. |
-| 3 | **New enum values vs inara-next.** inara-next's `prisma/schema.prisma` was updated (uncommitted, branch `local-dev-auth`), with a learner-access fix in `enroll-level` / `unlock-level`. Other environments still need the values added via Alembic. | Without that, inara-next can error when it reads these courses. |
-| 4 | **Module titles must be unique per course** in the production schema (across all levels). The editor doesn't check this; it defaults every module to "Module 1", "Module 2"… in each level. | Publishing will fail on the real schema. |
-| 5 | **The dev Supabase database has no primary keys, unique constraints or foreign keys.** | Dev doesn't behave like production. |
-| 6 | **Images are stored on the editor's own disk.** `cover_image_url` and lesson image URLs point at the editor's host, not Firebase / Supabase Storage. | Images break if the editor host changes. |
-| 7 | Only English is published. `key_concepts` and `lesson_type` aren't set. | |
-| 8 | Course data (`course/`) is tracked in git, so editing in the app creates git changes. | |
-| 9 | No automated tests. | |
-| 10 | The lesson editor supports 10 block types; the platform supports 16 (e.g. `wheel_diagram`, `vertical_roadmap`). Unknown blocks are shown read-only and kept unchanged. | |
+| 1 | **No authentication.** One shared creator; `/admin` is open to anyone; admin mode is a header. | Must be fixed before real users. Planned: Clerk, using the same app as inara-next. The editor would then forward each user's session to inara-next. |
+| 2 | **Lesson rules are duplicated** between the editor and inara-next. They match today (all 16 authored block types compared), and lessons with errors are never sent. | If inara-next adds a rule, update `lib/lesson-validate.ts` too. |
+| 3 | **Existing courses may have duplicate module titles** (e.g. "hello"). | The builder flags them; rename before publishing. |
+| 4 | **inara-next can't move lessons or modules.** | Moving live content is refused; moving unpublished content recreates it. A move option in inara-next would remove this limit. |
+| 5 | **Images** are copied to inara-next only if its Firebase storage is configured (and not AVIF). | Otherwise they link to `EDITOR_PUBLIC_URL`, which must stay reachable. |
+| 6 | **inara-next's latest commit `0fc5c642` removes its local dev auth bypass** and local database scripts, despite its message. | Local testing needs `3991c573` or those files restored. |
+| 7 | Publishing is many API calls, not one transaction. | A failure leaves a partial copy; the next Save completes it. |
+| 8 | Deleting a course in the editor doesn't delete it on inara-next. | |
+| 9 | Course data (`course/`) is tracked in git, so editing in the app creates git changes. | |
+| 10 | No automated tests. | |
+| 11 | The lesson editor authors 16 of the platform's 17 block types; `workplace_scenario` is platform-generated and shown read-only. | |

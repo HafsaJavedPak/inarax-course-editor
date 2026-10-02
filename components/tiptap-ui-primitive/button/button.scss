@@ -388,3 +388,12 @@
     }
   }
 }
+
+// Hover target for a disabled button's tooltip (see Button in button.tsx).
+.tiptap-button-disabled-wrap {
+  display: inline-flex;
+
+  > .tiptap-button:disabled {
+    pointer-events: none;
+  }
+}

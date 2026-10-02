@@ -5,7 +5,8 @@ import { publishAndRecord } from "@/lib/workflow-response"
 
 /**
  * Publish the course as saved on disk (structure and every saved lesson) to
- * the platform database. The editors save locally first, then call this.
+ * the configured platform (lib/platform). The editors save locally first,
+ * then call this.
  */
 export async function POST(_request: Request, ctx: RouteContext<"/api/courses/[courseId]/publish">) {
   const { courseId } = await ctx.params
@@ -16,7 +17,7 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/courses/[c
     return Response.json({ error: "This course is in review and can't be published. Withdraw it first." }, { status: 409 })
   }
 
-  const result = await publishAndRecord(course)
+  const result = await publishAndRecord(course, user.id)
   if ("error" in result) return Response.json({ error: result.error }, { status: result.status })
   return Response.json(result)
 }

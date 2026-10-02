@@ -48,6 +48,9 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
             <Link href={coursePaths(true).course(course.id)} className="in-btn in-btn-secondary in-btn-sm">
               Edit course
             </Link>
+            <Link href={coursePaths(true).preview(course.id)} className="in-btn in-btn-secondary in-btn-sm">
+              Preview as learner
+            </Link>
             <a href={`/api/courses/${course.id}/export`} className="in-btn in-btn-secondary in-btn-sm" download>
               Download
             </a>

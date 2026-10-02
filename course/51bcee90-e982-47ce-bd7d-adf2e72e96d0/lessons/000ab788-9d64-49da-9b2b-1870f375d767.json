@@ -21,8 +21,16 @@
           "personalized": false,
           "data": {
             "image_url": "http://localhost:3001/uploads/e671fcf1-8335-4bd2-8092-aafeedf1d047.png",
-            "alt": "",
-            "hotspots": []
+            "alt": "ddddd",
+            "hotspots": [
+              {
+                "id": "h1",
+                "x": 38,
+                "y": 80.7,
+                "title": "ddddd",
+                "info": "dddddd"
+              }
+            ]
           }
         },
         {
@@ -38,9 +46,31 @@
                 "x": 25,
                 "y": 30,
                 "title": "Processor",
-                "info": ""
+                "info": "ddddddd"
               }
             ]
+          }
+        },
+        {
+          "id": "b6e77d0e-b0b2-4cb8-8425-6a87a84747e1",
+          "type": "sequencing",
+          "personalized": false,
+          "data": {
+            "items": [
+              {
+                "id": "a",
+                "label": "d"
+              },
+              {
+                "id": "b",
+                "label": "d"
+              }
+            ],
+            "correct_order": [
+              "a",
+              "b"
+            ],
+            "points": 15
           }
         }
       ]

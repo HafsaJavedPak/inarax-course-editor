@@ -1,1 +1,5 @@
 @import "tailwindcss";
+
+/* The copied inara-next lesson player brings its own compiled, scoped CSS
+   (vendor/inara-player/player.css); don't generate Tailwind 4 classes for it. */
+@source not "../vendor";

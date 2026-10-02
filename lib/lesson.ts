@@ -34,6 +34,45 @@ export type SequencingData = { items: SequencingItem[]; correct_order: string[];
 export type Blank = { id: string; options: string[]; correct_index: number }
 export type FillBlankData = { template: string; blanks: Blank[]; points_per_blank?: number }
 
+/** One labelled item with a markdown body: a wheel slice, a layer, a format option. */
+export type LabeledItem = { id: string; label: string; body: string }
+export type WheelDiagramData = { center_label?: string; slices: LabeledItem[] }
+export type NestedLayersData = { layers: LabeledItem[] }
+export type FormatSwitcherData = {
+  title?: string
+  prompt?: string
+  /** Complete after opening any option, or all of them. */
+  complete_on?: "any" | "all"
+  options: LabeledItem[]
+}
+export type ImageSwitcherOption = { id: string; label: string; image_url: string; alt: string; caption?: string }
+export type ImageSwitcherData = { options: ImageSwitcherOption[] }
+export const ROADMAP_COLORS = ["indigo", "emerald", "amber", "rose", "sky", "violet", "slate", "orange"] as const
+export type RoadmapColor = (typeof ROADMAP_COLORS)[number]
+export type RoadmapEra = { id: string; name: string; color: RoadmapColor }
+export type RoadmapEvent = { id: string; date: string; era_id: string; text: string }
+export type VerticalRoadmapData = { eras: RoadmapEra[]; events: RoadmapEvent[] }
+export type AddNextLayerData = {
+  /** The reveal button's wording; inara-next shows "Add the next layer" when empty. */
+  button_label?: string
+  layers: LabeledItem[]
+}
+
+/**
+ * Item limits per block, from inara-next's lesson schema
+ * (lib/lesson-content/schema.ts). Used by the editors and validation.
+ */
+export const BLOCK_LIMITS = {
+  wheel_diagram: { min: 2, max: 8 },
+  nested_layers: { min: 2, max: 6 },
+  format_switcher: { min: 2, max: 6 },
+  image_switcher: { min: 2, max: 6 },
+  add_next_layer: { min: 2, max: 6 },
+  roadmap_eras: { min: 1, max: 6 },
+  roadmap_events: { min: 2, max: 30 },
+  button_label: { max: 40 },
+} as const
+
 export type BlockDataMap = {
   rich_text: RichTextData
   image: ImageData
@@ -45,6 +84,12 @@ export type BlockDataMap = {
   categorization: CategorizationData
   sequencing: SequencingData
   fill_blank: FillBlankData
+  wheel_diagram: WheelDiagramData
+  nested_layers: NestedLayersData
+  format_switcher: FormatSwitcherData
+  image_switcher: ImageSwitcherData
+  vertical_roadmap: VerticalRoadmapData
+  add_next_layer: AddNextLayerData
 }
 
 export type AuthorableBlockType = keyof BlockDataMap
@@ -102,6 +147,12 @@ export const BLOCK_CATALOG: Record<
   flip_cards: { label: "Flip cards", category: "explore", description: "Term / definition cards" },
   accordion_tabs: { label: "Accordion / tabs", category: "explore", description: "Expandable sections" },
   stepped_timeline: { label: "Stepped timeline", category: "explore", description: "Ordered phases" },
+  wheel_diagram: { label: "Wheel diagram", category: "explore", description: "2–8 slices around a central idea" },
+  nested_layers: { label: "Nested layers", category: "explore", description: "2–6 layers, each inside the next" },
+  add_next_layer: { label: "Add the next layer", category: "explore", description: "Reveal 2–6 layers one at a time" },
+  format_switcher: { label: "Format switcher", category: "explore", description: "One idea shown 2–6 ways" },
+  image_switcher: { label: "Image switcher", category: "explore", description: "Toggle between 2–6 images" },
+  vertical_roadmap: { label: "Roadmap", category: "explore", description: "Eras and dated events" },
   mcq: { label: "Multiple choice", category: "assess", description: "One correct answer" },
   categorization: { label: "Categorization", category: "assess", description: "Sort items into buckets" },
   sequencing: { label: "Sequencing", category: "assess", description: "Put items in order" },
@@ -147,6 +198,9 @@ export function nextInnerId(prefix: string, existing: { id: string }[]) {
 // Factories
 // ---------------------------------------------------------------------------
 
+const labeledItems = (prefix: string, count: number): LabeledItem[] =>
+  Array.from({ length: count }, (_, i) => ({ id: `${prefix}${i + 1}`, label: "", body: "" }))
+
 export function createBlockData<T extends AuthorableBlockType>(type: T): BlockDataMap[T] {
   const data: { [K in AuthorableBlockType]: () => BlockDataMap[K] } = {
     rich_text: () => ({ markdown: "" }),
@@ -179,6 +233,23 @@ export function createBlockData<T extends AuthorableBlockType>(type: T): BlockDa
       template: "",
       blanks: [],
       points_per_blank: 5,
+    }),
+    wheel_diagram: () => ({ center_label: "", slices: labeledItems("s", 3) }),
+    nested_layers: () => ({ layers: labeledItems("l", 2) }),
+    add_next_layer: () => ({ button_label: "", layers: labeledItems("l", 2) }),
+    format_switcher: () => ({ title: "", prompt: "", complete_on: "any", options: labeledItems("f", 2) }),
+    image_switcher: () => ({
+      options: [
+        { id: "o1", label: "", image_url: "", alt: "", caption: "" },
+        { id: "o2", label: "", image_url: "", alt: "", caption: "" },
+      ],
+    }),
+    vertical_roadmap: () => ({
+      eras: [{ id: "e1", name: "", color: "indigo" }],
+      events: [
+        { id: "v1", date: "", era_id: "e1", text: "" },
+        { id: "v2", date: "", era_id: "e1", text: "" },
+      ],
     }),
   }
   return data[type]() as BlockDataMap[T]

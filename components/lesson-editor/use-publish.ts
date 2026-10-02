@@ -17,6 +17,8 @@ export function usePublish(courseId: string, isAdmin: boolean, initialPublishedA
   )
   // True once something was edited here after the last publish.
   const [pending, setPending] = useState(false)
+  // From the last publish: things that went through but need attention.
+  const [warnings, setWarnings] = useState<string[]>([])
   const changesRef = useRef(0)
 
   /** Call on every edit. */
@@ -40,6 +42,7 @@ export function usePublish(courseId: string, isAdmin: boolean, initialPublishedA
         return false
       }
       setPublishedAt(new Date(data.publishedAt))
+      setWarnings(data.summary?.warnings ?? [])
       setPending(changesRef.current !== changesAtStart)
       setStatus("idle")
       return true
@@ -49,7 +52,7 @@ export function usePublish(courseId: string, isAdmin: boolean, initialPublishedA
     }
   }, [courseId, isAdmin])
 
-  return { status, publishedAt, pending, markChanged, publish }
+  return { status, publishedAt, pending, warnings, markChanged, publish }
 }
 
 export type Publisher = ReturnType<typeof usePublish>

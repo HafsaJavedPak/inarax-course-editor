@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Copied from inara-next by scripts/sync-inara-player.mjs; not edited here.
+    "vendor/**",
   ]),
 ]);
 

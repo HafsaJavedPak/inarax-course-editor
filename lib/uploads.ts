@@ -15,3 +15,14 @@ export function imageSrc(url: string): string {
     return url
   }
 }
+
+// Our uploads anywhere inside a string (image fields, markdown image links).
+const UPLOAD_URL_IN_TEXT_RE = /https?:\/\/[^\s"'()<>]+?(\/uploads\/[0-9a-f-]{36}\.(?:png|jpg|gif|webp|avif))/gi
+
+/**
+ * A copy of `value` (e.g. lesson content) with every one of our uploads
+ * pointed at the current host, as imageSrc does for a single URL.
+ */
+export function withLocalUploads<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value).replace(UPLOAD_URL_IN_TEXT_RE, "$1"))
+}

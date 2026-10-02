@@ -272,6 +272,25 @@ export function createCourse(info: CourseInfo, ownerId: string): Course {
   }
 }
 
+/**
+ * Titles are compared trimmed and case-insensitively: module titles must be
+ * unique across the whole course and lesson titles within their module (the
+ * platform refuses duplicates).
+ */
+export const titleKey = (title: string) => title.trim().toLowerCase()
+
+/** "Module 3", "Lesson 2"…: the first `<base> <n>` (from `start`) not in `taken`. */
+export function uniqueTitle(base: string, taken: string[], start = taken.length + 1): string {
+  const used = new Set(taken.map(titleKey))
+  let n = start
+  while (used.has(titleKey(`${base} ${n}`))) n++
+  return `${base} ${n}`
+}
+
+/** Every module title in the course, all levels. */
+export const allModuleTitles = (course: Pick<Course, "levels">) =>
+  course.levels.flatMap((level) => level.modules.map((m) => m.title))
+
 /** Finds a lesson reference anywhere in the course (level → module → lesson). */
 export function findLessonRef(course: Course, lessonId: string) {
   for (const level of course.levels) {

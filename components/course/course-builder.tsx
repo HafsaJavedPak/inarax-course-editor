@@ -21,7 +21,16 @@ import { StatusPanel, type Workflow } from "@/components/course/status-panel"
 import { courseReducer, type CourseAction } from "@/components/course/course-state"
 import { SaveBar, type SaveStatus } from "@/components/lesson-editor/save-bar"
 import { usePublish } from "@/components/lesson-editor/use-publish"
-import { CourseSchema, getCourseLimits, LEVELS, type Course, type CourseModule, type LevelId } from "@/lib/course"
+import {
+  allModuleTitles,
+  CourseSchema,
+  getCourseLimits,
+  LEVELS,
+  uniqueTitle,
+  type Course,
+  type CourseModule,
+  type LevelId,
+} from "@/lib/course"
 import { getSubmitBlockers, isLocked } from "@/lib/course-status"
 import { coursePaths, modeHeaders } from "@/lib/admin-mode"
 import { validateCourse, type CourseReport, type LessonStats } from "@/lib/course-validate"
@@ -192,7 +201,7 @@ export function CourseBuilder({
       levelId: selectedLevel,
       module: {
         id: crypto.randomUUID(),
-        title: `Module ${level.modules.length + 1}`,
+        title: uniqueTitle("Module", allModuleTitles(course)),
         summary: "",
         lessons: [],
       },
@@ -225,6 +234,16 @@ export function CourseBuilder({
           {course.length_hours} h · {limits.words.min}–{limits.words.max} words per lesson · {report.totalMinutes} min
           planned
         </span>
+        <button
+          type="button"
+          className="in-btn in-btn-secondary in-btn-sm"
+          title="See the course as learners will (saves first)"
+          onClick={async () => {
+            if (await flush()) router.push(paths.preview(course.id))
+          }}
+        >
+          Preview
+        </button>
         <button
           type="button"
           className="in-btn in-btn-secondary in-btn-sm"
@@ -364,7 +383,7 @@ function ModuleCard({
   /** Adds a lesson; with `write`, opens it in the lesson editor straight away. */
   const addLesson = (write: boolean) => {
     const id = crypto.randomUUID()
-    const title = newLessonTitle.trim() || `Lesson ${mod.lessons.length + 1}`
+    const title = newLessonTitle.trim() || uniqueTitle("Lesson", mod.lessons.map((l) => l.title))
     dispatch({ type: "addLesson", moduleId: mod.id, lesson: { id, title } })
     setNewLessonTitle("")
     if (write) onOpenLesson(id)
