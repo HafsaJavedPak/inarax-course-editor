@@ -30,3 +30,4 @@ export function useActiveEditor() {
   if (!value) throw new Error("useActiveEditor must be used inside <ActiveEditorProvider>")
   return value
 }
+

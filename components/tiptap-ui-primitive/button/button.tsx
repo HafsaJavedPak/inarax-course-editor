@@ -131,6 +131,37 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       )
     }
 
+    // A disabled button gets no mouse events, so its tooltip would never open
+    // (e.g. formatting buttons before any text is focused). Let a wrapper
+    // receive the hover instead, so people can still see what the button is.
+    if (props.disabled) {
+      return (
+        <Tooltip delay={200}>
+          <TooltipTrigger asChild>
+            <span className="tiptap-button-disabled-wrap">
+              <button
+                data-slot="tiptap-button"
+                className={cn("tiptap-button", className)}
+                ref={ref}
+                data-style={buttonStyle}
+                data-size={buttonSize}
+                data-variant={isCheckVariant ? "check" : undefined}
+                role={buttonRole}
+                aria-checked={buttonAriaChecked}
+                {...props}
+              >
+                {content}
+              </button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            {tooltip}
+            <ShortcutDisplay shortcuts={shortcuts} />
+          </TooltipContent>
+        </Tooltip>
+      )
+    }
+
     return (
       <Tooltip delay={200}>
         <TooltipTrigger

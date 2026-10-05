@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -43,3 +44,7 @@ next-env.d.ts
 
 # ignoe uploaded images
 uploads/
+
+# Which platform record belongs to which editor record; specific to this
+# installation and platform environment (lib/platform/link-store.ts)
+course/*/*.links.json

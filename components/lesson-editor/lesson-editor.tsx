@@ -25,6 +25,7 @@ import { JsonPanel } from "@/components/lesson-editor/json-panel"
 import { SaveBar, type SaveStatus } from "@/components/lesson-editor/save-bar"
 import { usePublish } from "@/components/lesson-editor/use-publish"
 import { ReadOnlyContext } from "@/components/lesson-editor/read-only"
+import { LessonPlayer } from "@/components/preview/lesson-player"
 import { lessonReducer, type LessonAction } from "@/components/lesson-editor/lesson-state"
 import { createSection, type Lesson } from "@/lib/lesson"
 import { validateLesson, type LessonIssue } from "@/lib/lesson-validate"
@@ -55,6 +56,8 @@ export interface LessonEditorProps {
   isAdmin?: boolean
   /** When the course was last published to the platform database. */
   publishedAt: string | null
+  /** False when no platform is set up: Save only saves locally. */
+  publishingEnabled: boolean
 }
 
 const inRange = (value: number, [min, max]: Range) => value >= min && value <= max
@@ -73,6 +76,7 @@ export function LessonEditor({
   courseStatus: initialCourseStatus,
   isAdmin = false,
   publishedAt,
+  publishingEnabled,
 }: LessonEditorProps) {
   const [lesson, rawDispatch] = useReducer(lessonReducer, initialLesson)
   const [selectedId, setSelectedId] = useState(initialLesson.sections[0]?.id ?? null)
@@ -83,9 +87,11 @@ export function LessonEditor({
   // Saving a lesson of an accepted course moves the course back to draft.
   const [courseStatus, setCourseStatus] = useState(initialCourseStatus)
   const readOnly = isLocked(courseStatus) && !isAdmin
-  const publisher = usePublish(courseId, isAdmin, publishedAt)
+  const publisher = usePublish(courseId, isAdmin, publishedAt, publishingEnabled)
   const { markChanged, publish } = publisher
   const [showJson, setShowJson] = useState(false)
+  // "preview" shows the lesson (including unsaved edits) as learners see it.
+  const [mode, setMode] = useState<"edit" | "preview">("edit")
   // Bumped when the whole lesson is replaced, to remount the block editors.
   const [generation, setGeneration] = useState(0)
 
@@ -202,12 +208,13 @@ export function LessonEditor({
   const saveAndPublish = useCallback(async () => {
     await savePromiseRef.current // let an in-flight autosave land, then save the latest
     if (!(await save())) return
+    if (!publishingEnabled) return // saved locally; there's nowhere to publish
     if (problemCount > 0) {
       showFirstProblem()
       return
     }
     await publish()
-  }, [save, publish, problemCount, showFirstProblem])
+  }, [save, publish, problemCount, showFirstProblem, publishingEnabled])
 
   useHotkeys("mod+s", () => void saveAndPublish(), {
     preventDefault: true,
@@ -280,14 +287,29 @@ export function LessonEditor({
           >
             {problemCount === 0 ? "Ready" : `${problemCount} to fix`}
           </button>
-          <Button
-            variant="ghost"
-            showTooltip={false}
-            data-active-state={showJson ? "on" : "off"}
-            onClick={() => setShowJson((open) => !open)}
-          >
-            <span className="tiptap-button-text">JSON</span>
-          </Button>
+          <div className="le-mode-switch" role="group" aria-label="View">
+            <button type="button" aria-pressed={mode === "edit"} onClick={() => setMode("edit")}>
+              Edit
+            </button>
+            <button
+              type="button"
+              aria-pressed={mode === "preview"}
+              title="See this lesson as learners will, including unsaved changes"
+              onClick={() => setMode("preview")}
+            >
+              Preview
+            </button>
+          </div>
+          {mode === "edit" && (
+            <Button
+              variant="ghost"
+              showTooltip={false}
+              data-active-state={showJson ? "on" : "off"}
+              onClick={() => setShowJson((open) => !open)}
+            >
+              <span className="tiptap-button-text">JSON</span>
+            </Button>
+          )}
           {readOnly ? (
             <span className="in-status" data-status="in_review">
               Read-only
@@ -324,8 +346,14 @@ export function LessonEditor({
           </p>
         )}
 
+        {mode === "preview" && (
+          <div className="le-preview">
+            <LessonPlayer lesson={lesson} lessonTitle={lessonTitle} />
+          </div>
+        )}
+
         <ReadOnlyContext.Provider value={readOnly}>
-          <fieldset className="le-layout le-fieldset" disabled={readOnly}>
+          <fieldset className="le-layout le-fieldset" disabled={readOnly} hidden={mode === "preview"}>
             <SectionSidebar
               lesson={lesson}
               issues={issues}

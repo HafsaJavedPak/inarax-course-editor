@@ -1,13 +1,13 @@
 # Inara Course Editor: architecture and component map
 
-Last updated: 2026-10-01. Companion to [HANDOVER.md](HANDOVER.md), which covers running, testing and
+Last updated: 2026-10-05. Companion to [HANDOVER.md](HANDOVER.md), which covers running, testing and
 known issues.
 
 Every page, component, API route and library module in the editor appears below, along with how
 they connect. Every request follows the same path:
 
 **page** (server) → **component** (browser) → **API route** (server) → **lib module** → **local
-files / Supabase**
+files**, or the **host platform** (inara-next) through the Course Publishing Protocol when publishing
 
 The diagrams were built from the actual `import` statements and `fetch` calls in the code. If you
 add or move a file, update the diagram and the index (section 7).
@@ -28,15 +28,17 @@ flowchart LR
     end
     subgraph Storage
         FS[("Local files<br/>DATA_DIR/course/&lt;id&gt;/course.json<br/>DATA_DIR/course/&lt;id&gt;/lessons/&lt;id&gt;.json<br/>DATA_DIR/uploads/&lt;uuid&gt;.&lt;ext&gt;")]
-        DB[("Supabase Postgres<br/>courses · levels · modules ·<br/>lessons · generated_lessons")]
     end
+    PL["Protocol adapter<br/>lib/platform/ · lib/protocol/"]
+    DB["Host platform (inara-next)<br/>/v1 protocol API"]
 
     P -- "reads course data directly<br/>(lib/course-store)" --> L
     P --> C
     C -- "fetch() JSON" --> R
     R --> L
     L -- "autosave, read" --> FS
-    L -- "publish (Save button,<br/>review actions)" --> DB
+    L -- "publish (Save button,<br/>review actions)" --> PL
+    PL -- "signed HTTPS + JSON<br/>manifest · assets · one PUT per course" --> DB
 ```
 
 - **Pages** run on the server. They read course data with `lib/course-store` and pass it to the
@@ -44,8 +46,12 @@ flowchart LR
 - **Client components** do everything interactive and talk to the server only through `fetch()`
   calls to `/api/...`.
 - **API routes** are thin. They check access, validate input with zod, and call `lib/`.
-- **`lib/`** holds all the rules (schemas, validation, review state machine, storage, publishing).
-  It's the only layer that touches files or the database.
+- **`lib/`** holds all the rules (schemas, validation, review state machine, storage). It's the only
+  layer that touches files.
+- **`lib/platform/`** is the only code that talks to the platform. The editor calls one interface,
+  `PlatformPort` (`publishCourse`, `deleteCourse`); the protocol adapter turns that into signed
+  Course Publishing Protocol requests. It contains no host-specific code (see
+  [platform-integration.md](platform-integration.md) and [contract/README.md](../contract/README.md)).
 
 ---
 
@@ -68,14 +74,14 @@ flowchart TD
     S7["7 · Uploads an image (optional)<br/>ImageBlock / ImageHotspotBlock → lib/tiptap-utils.handleImageUpload<br/>POST /api/uploads → served by GET /uploads/[file]"]:::api
     S8["8 · Autosave lesson (1.5 s)<br/>PUT /api/courses/[id]/lessons/[lessonId]<br/>lib/lesson.parseLesson → course-store.saveCourseLesson + recordLessonEdit"]:::api
     S9["9 · Presses Save / Ctrl+S<br/>SaveBar → usePublish.publish<br/>POST /api/courses/[id]/publish"]:::api
-    S10["10 · Publish in one transaction<br/>lib/workflow-response.publishAndRecord<br/>→ lib/course-publish.publishCourse → lib/db"]:::store
+    S10["10 · Publish to the platform<br/>lib/workflow-response.publishAndRecord<br/>→ lib/platform getPlatform().publishCourse<br/>→ adapters/protocol (package.ts · assets.ts → http-client.ts)"]:::store
     S11["11 · Submits for review<br/>StatusPanel or dashboard CourseActions<br/>POST /api/courses/[id]/submit<br/>lib/course-status.submit (blockers from course-validate)"]:::api
     S12["12 · Admin reviews<br/>app/admin → app/admin/courses/[id] → DecisionPanel<br/>POST /api/courses/[id]/review · lib/course-status.review"]:::api
     S13["13 · Creator responds to requested changes<br/>StatusPanel ticks → PATCH /api/courses/[id]/changes/[changeId]<br/>then edits (steps 4–9) and resubmits"]:::api
     S14["14 · Download (any time)<br/>CourseBuilder Download / dashboard Download all<br/>GET /api/courses/[id]/export · GET /api/export → lib/course-export"]:::api
 
     FS[("Local files<br/>course/ · uploads/")]:::store
-    DB[("Supabase Postgres")]:::store
+    DB["Host platform (inara-next)<br/>/v1 protocol API"]:::store
 
     S1 --> S2 --> S3 --> S4
     S4 <--> S5
@@ -155,8 +161,12 @@ flowchart LR
 ```
 
 - The admin pages reuse the creator components with `isAdmin` set.
-- `lib/admin-mode.ts` then adds the `x-inara-mode: admin` header to their requests and switches
-  their links to `/admin/...`.
+- `lib/admin-mode.ts` then switches their links to `/admin/...` (and, locally without a platform,
+  adds the `x-inara-mode: admin` header that grants admin rules there).
+- With a platform connected, who is an admin comes only from the sign-in session: `proxy.ts` +
+  `lib/auth-gate.ts` keep non-admins out of `/admin`, and `lib/auth.ts` checks again in every page
+  and route. Sign-in is a platform launch token posted to `app/launch/route.ts`
+  ([platform-integration.md § Sign-in and roles](platform-integration.md#sign-in-and-roles)).
 
 ---
 
@@ -221,6 +231,12 @@ flowchart TD
 | `flip_cards` | Explore | `FlipCardsBlock` |
 | `accordion_tabs` | Explore | `AccordionTabsBlock` |
 | `stepped_timeline` | Explore | `SteppedTimelineBlock` |
+| `wheel_diagram` | Explore | `WheelDiagramBlock` (`layer-blocks.tsx`) |
+| `nested_layers` | Explore | `NestedLayersBlock` (`layer-blocks.tsx`) |
+| `add_next_layer` | Explore | `AddNextLayerBlock` (`layer-blocks.tsx`) |
+| `format_switcher` | Explore | `FormatSwitcherBlock` (`layer-blocks.tsx`) |
+| `image_switcher` | Explore | `ImageSwitcherBlock` (`layer-blocks.tsx`) |
+| `vertical_roadmap` | Explore | `VerticalRoadmapBlock` (`layer-blocks.tsx`) |
 | `mcq` | Assess | `McqBlock` |
 | `categorization` | Assess | `CategorizationBlock` |
 | `sequencing` | Assess | `SequencingBlock` |
@@ -252,22 +268,25 @@ flowchart LR
         COURSE["course.ts<br/>course schema"]
         LESSON["lesson.ts · lesson-validate.ts<br/>lesson model + checks"]
         WR["workflow-response.ts<br/>publishAndRecord"]
-        PUBL["course-publish.ts<br/>publishCourse"]
-        DBM["db.ts<br/>Postgres client"]
+        PUBL["platform/index.ts → PlatformPort<br/>adapters/protocol: index · package · assets · locate"]
+        DBM["platform/http-client.ts<br/>signing · timeouts · retries · problem+json"]
+        PROT["protocol/<br/>wire.ts (messages) · signing.ts (HMAC)"]
         EXP["course-export.ts<br/>zip (fflate)"]
         STG["storage.ts<br/>DATA_DIR paths"]
     end
     FS[("Local files")]
-    DB[("Supabase Postgres")]
+    DB["Host platform (inara-next)<br/>/v1 protocol API"]
 
     R1 & R2 & R3 & R4 & R5 & R6 & R7 & R8 --> AUTH
     R1 & R2 & R3 & R4 & R5 & R6 & R7 & R8 --> STORE
+    R2 -- "DELETE: platform first" --> PUBL
     R2 & R1 --> COURSE
     R3 --> LESSON & CVAL
     R5 & R6 --> STAT
     R4 & R5 & R6 & R7 --> WR
     WR --> PUBL --> DBM --> DB
-    PUBL --> CVAL & STORE
+    PUBL & DBM --> PROT
+    PUBL -. "reads images" .-> STG
     R8 --> EXP --> STG
     R9 --> STG
     STORE --> STAT & CVAL & STG
@@ -277,7 +296,10 @@ flowchart LR
 
 - `lib/course-store.ts` is the only module that writes course and lesson files. Uploads are written
   by `app/api/uploads/route.ts`, and reads for the zip go through `course-export.ts`.
-- `lib/course-publish.ts` (through `lib/db.ts`) is the only module that writes to the database.
+- `lib/platform/` is the only code that calls the platform. It knows only the protocol
+  (`lib/protocol/`), never a host's URLs, ids or rules; the host is chosen by `PLATFORM_URL`.
+- `DELETE /api/courses/[id]` deletes the course on the platform first and keeps the local course if
+  that fails.
 - `lib/course-status.ts` is used by both the API, to enforce the rules, and the UI, to decide which
   buttons to show. So the review rules exist in exactly one place.
 
@@ -295,8 +317,8 @@ sequenceDiagram
     participant ST as lib/course-store
     participant PR as POST /api/courses/[id]/publish
     participant WR as lib/workflow-response
-    participant CP as lib/course-publish
-    participant DB as Supabase
+    participant CP as lib/platform (protocol adapter)
+    participant DB as Host platform (/v1)
 
     U->>SB: click Save (or Ctrl+S)
     SB->>LE: onSave → saveAndPublish()
@@ -310,12 +332,17 @@ sequenceDiagram
         LE->>UP: publish()
         UP->>PR: POST
         PR->>WR: publishAndRecord(course)
-        WR->>CP: publishCourse(course)
-        CP->>ST: read every lesson file
-        CP->>DB: BEGIN · lock · upsert courses/levels/modules/lessons/generated_lessons · delete removed · COMMIT
+        WR->>ST: read every lesson file
+        WR->>CP: getPlatform().publishCourse(course, lessons)
+        CP->>DB: GET /v1/manifest (cached 5 min)
+        CP->>DB: GET /v1/assets/{sha256}, PUT only the missing ones
+        CP->>DB: one signed PUT /v1/courses/{id} with the whole package
+        Note over DB: applies it in one transaction
+        DB-->>CP: counts + warnings, or a problem with paths
+        CP-->>WR: summary, or PlatformError with located issues
         WR->>ST: recordPublish(published_at)
-        PR-->>UP: { publishedAt, summary }
-        UP-->>SB: "Published 3:42"
+        PR-->>UP: { publishedAt, summary (incl. warnings) }
+        UP-->>SB: "Published 3:42" (· N warnings)
     end
 ```
 
@@ -347,6 +374,9 @@ sequenceDiagram
 | `read-only.tsx` | `components/lesson-editor/read-only.tsx` | Read-only state for in-review courses | — |
 | `DecisionPanel` | `components/admin/decision-panel.tsx` | Accept / reject / request changes (with targets) | `POST /api/courses/[id]/review` |
 | `DeleteCourseButton` | `components/admin/delete-course-button.tsx` | Delete a course (admin) | `DELETE /api/courses/[id]` |
+| `LessonPlayer` | `components/preview/lesson-player.tsx` | A lesson as learners see it, via inara-next's copied player (validates with inara-next's schema) | `vendor/inara-player` |
+| `CoursePreview` | `components/preview/course-preview.tsx` | Course overview, outline, every lesson in order with previous/next | `LessonPlayer` |
+| inara-next player | `vendor/inara-player/` | Copied by `scripts/sync-inara-player.mjs`; never edited here ([preview.md](preview.md)) | — |
 | Tiptap UI | `components/tiptap-*`, `hooks/` | Rich-text editor template (toolbar, nodes, icons) | `lib/tiptap-utils` (`POST /api/uploads`) |
 
 | Library module | What it does | Used by |
@@ -358,12 +388,20 @@ sequenceDiagram
 | `lib/course-status.ts` | Review state machine, labels, transitions | routes, status panel, decision panel, badges |
 | `lib/course-store.ts` | Local JSON read/write, access check, revision check, write queue | pages, routes, publish |
 | `lib/course-summary.ts` | Dashboard / admin list summaries | dashboard and admin pages |
-| `lib/course-publish.ts` | Publish the course to Postgres in one transaction | `workflow-response` |
-| `lib/workflow-response.ts` | `publishAndRecord`; JSON responses for workflow routes | publish / submit / withdraw / review routes |
-| `lib/db.ts` | Postgres client (`postgres` package) | `course-publish` |
+| `lib/platform/port.ts` | `PlatformPort` interface (`publishCourse`, `deleteCourse`), `PlatformError` with located issues | everything that publishes or deletes |
+| `lib/platform/index.ts` | `getPlatform()`: picks the adapter from env | `workflow-response` |
+| `lib/platform/http-client.ts` | HTTP client: request signing, timeouts, retries, request ids, response validation, RFC 9457 problems | adapters |
+| `lib/protocol/wire.ts` | Course Publishing Protocol messages (zod): manifest, package, result, asset, problem; source of `contract/schemas/` | adapter, `scripts/generate-contract.ts`, tests |
+| `lib/protocol/signing.ts` | HMAC-SHA256 request signing and verification | `http-client`, `scripts/verify-host.ts`, tests |
+| `lib/platform/adapters/protocol/` | `index.ts` (manifest, publish, delete, error mapping), `package.ts` (course → package), `assets.ts` (content-addressed image upload), `locate.ts` (error paths → lesson / section / block) | `getPlatform()` |
+| `lib/workflow-response.ts` | `publishAndRecord` (reads lessons, calls the platform); JSON responses for workflow routes | publish / submit / withdraw / review routes |
 | `lib/course-export.ts` | Zip building (fflate) | export routes |
 | `lib/storage.ts` | `DATA_DIR`, `COURSE_DIR`, `UPLOAD_DIR` paths | store, export, uploads |
 | `lib/uploads.ts` | `imageSrc`: serve own uploads from the current host | thumbnails, image blocks |
-| `lib/auth.ts`, `lib/admin-mode.ts` | Current user (placeholder) and admin mode header / paths | routes, pages, components |
+| `lib/auth.ts` | Current user from the sign-in session (`getCurrentUser`, `requireAdminArea`) | routes, pages |
+| `lib/auth-gate.ts`, `proxy.ts` | Auth mode and who may open which path, checked on every request | proxy |
+| `lib/session.ts`, `lib/launch-replay.ts`, `lib/protocol/launch.ts` | Session cookie, single-use launch tokens, the token format | `app/launch`, `lib/auth.ts` |
+| `lib/admin-mode.ts` | Admin-area paths; the local-only admin header | components |
 | `lib/currencies.ts` | Currency list for paid courses | course schema, form |
+| `lib/course-preview.ts` | `readAllLessons`: every saved lesson of a course, for the preview pages | preview pages |
 | `lib/tiptap-utils.ts` | Tiptap helpers, `handleImageUpload` | rich text, image blocks |

@@ -29,6 +29,14 @@ import {
 } from "@/components/lesson-editor/blocks/explore-blocks"
 import { ImageHotspotBlock } from "@/components/lesson-editor/blocks/image-hotspot-block"
 import {
+  AddNextLayerBlock,
+  FormatSwitcherBlock,
+  ImageSwitcherBlock,
+  NestedLayersBlock,
+  VerticalRoadmapBlock,
+  WheelDiagramBlock,
+} from "@/components/lesson-editor/blocks/layer-blocks"
+import {
   CategorizationBlock,
   FillBlankBlock,
   McqBlock,
@@ -74,6 +82,18 @@ function BlockBody({
       return <SequencingBlock data={block.data} onChange={(data) => onChange({ ...block, data })} />
     case "fill_blank":
       return <FillBlankBlock blockId={block.id} data={block.data} onChange={(data) => onChange({ ...block, data })} />
+    case "wheel_diagram":
+      return <WheelDiagramBlock data={block.data} onChange={(data) => onChange({ ...block, data })} />
+    case "nested_layers":
+      return <NestedLayersBlock data={block.data} onChange={(data) => onChange({ ...block, data })} />
+    case "add_next_layer":
+      return <AddNextLayerBlock data={block.data} onChange={(data) => onChange({ ...block, data })} />
+    case "format_switcher":
+      return <FormatSwitcherBlock data={block.data} onChange={(data) => onChange({ ...block, data })} />
+    case "image_switcher":
+      return <ImageSwitcherBlock data={block.data} onChange={(data) => onChange({ ...block, data })} />
+    case "vertical_roadmap":
+      return <VerticalRoadmapBlock data={block.data} onChange={(data) => onChange({ ...block, data })} />
   }
 }
 

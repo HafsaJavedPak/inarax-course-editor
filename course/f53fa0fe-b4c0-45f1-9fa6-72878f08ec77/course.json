@@ -11,8 +11,10 @@
   "pricing": {
     "type": "free"
   },
+  "limits": null,
   "id": "f53fa0fe-b4c0-45f1-9fa6-72878f08ec77",
   "version": 1,
+  "owner_id": "user_local_creator",
   "revision": 5,
   "levels": [
     {
@@ -44,17 +46,19 @@
       "modules": []
     }
   ],
-  "created_at": "2026-09-24T11:22:33.294Z",
-  "updated_at": "2026-09-24T11:25:06.254Z",
-  "owner_id": "user_local_creator",
   "status": "draft",
   "review_history": [
     {
       "status": "draft",
       "at": "2026-09-24T11:22:33.294Z",
       "by": "user_local_creator",
-      "note": "Course created"
+      "note": "Course created",
+      "changes": []
     }
   ],
-  "change_requests": []
+  "change_requests": [],
+  "created_at": "2026-09-24T11:22:33.294Z",
+  "updated_at": "2026-10-02T07:51:15.818Z",
+  "published_at": null,
+  "content_updated_at": "2026-10-02T07:51:15.818Z"
 }

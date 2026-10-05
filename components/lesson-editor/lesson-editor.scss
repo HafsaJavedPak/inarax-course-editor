@@ -342,6 +342,9 @@
 .le-add-block-menu {
   width: 18rem;
   padding: 0.375rem;
+  // 16 block types: scroll rather than run off a short screen.
+  max-height: min(32rem, var(--radix-dropdown-menu-content-available-height, 80vh));
+  overflow-y: auto;
 }
 
 .le-add-block-label {
@@ -947,6 +950,11 @@
     background: var(--in-success);
   }
 
+  // Publishing isn't set up: a neutral grey dot, not a warning.
+  &[data-state="off"]::before {
+    background: var(--in-faint);
+  }
+
   &[data-state="dirty"]::before,
   &[data-state="saving"]::before {
     background: var(--in-warning-strong);
@@ -1256,4 +1264,9 @@ button.le-issue-count {
 // Word/section counts outside the course limits block submitting: show them in red.
 .le-size:not([data-ok="true"]) {
   color: var(--in-error-text);
+}
+
+// Hidden while the lesson is shown in Preview (kept mounted so edits survive).
+.le-layout[hidden] {
+  display: none;
 }

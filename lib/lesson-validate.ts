@@ -1,7 +1,15 @@
 // Content validation, following json-guide/engine-reference.md §8 plus the
 // authoring-prompt quality rules that can be checked mechanically.
 
-import { isAuthorableBlock, isUuid, type Lesson, type TypedBlock } from "@/lib/lesson"
+import {
+  BLOCK_LIMITS,
+  isAuthorableBlock,
+  isUuid,
+  ROADMAP_COLORS,
+  type LabeledItem,
+  type Lesson,
+  type TypedBlock,
+} from "@/lib/lesson"
 
 export type LessonIssue = {
   sectionId: string
@@ -45,7 +53,7 @@ export function validateBlock(block: TypedBlock): { level: LessonIssue["level"];
     case "image_hotspot": {
       const { image_url, hotspots } = block.data
       if (!isUrl(image_url)) error("Image URL must be a full URL (https://…)")
-      if (hotspots.length < 1) error("Add at least one hotspot")
+      // Hotspots are optional: without any, the block is a plain captioned image.
       hotspots.forEach((h, i) => {
         if (isBlank(h.title)) error(`Hotspot ${i + 1} needs a title`)
         if (isBlank(h.info)) error(`Hotspot ${i + 1} needs info text`)
@@ -125,8 +133,8 @@ export function validateBlock(block: TypedBlock): { level: LessonIssue["level"];
       if (blanks.length < 1) error("Add at least one blank")
       blanks.forEach((blank) => {
         if (!template.includes(`{{${blank.id}}}`)) error(`Blank "${blank.id}" isn't used in the sentence`)
-        if (blank.options.length < 1 || blank.options.some(isBlank)) {
-          error(`Blank "${blank.id}" needs non-empty options`)
+        if (blank.options.length < 2 || blank.options.some(isBlank)) {
+          error(`Blank "${blank.id}" needs at least two non-empty options`)
         }
         if (!(blank.correct_index >= 0 && blank.correct_index < blank.options.length)) {
           error(`Pick the correct option for blank "${blank.id}"`)
@@ -138,9 +146,80 @@ export function validateBlock(block: TypedBlock): { level: LessonIssue["level"];
       }
       break
     }
+
+    case "wheel_diagram":
+      checkLabeledItems(block.data.slices, BLOCK_LIMITS.wheel_diagram, "slice", error)
+      break
+
+    case "nested_layers":
+      checkLabeledItems(block.data.layers, BLOCK_LIMITS.nested_layers, "layer", error)
+      break
+
+    case "add_next_layer":
+      checkLabeledItems(block.data.layers, BLOCK_LIMITS.add_next_layer, "layer", error)
+      if ((block.data.button_label ?? "").trim().length > BLOCK_LIMITS.button_label.max) {
+        error(`Button text must be ${BLOCK_LIMITS.button_label.max} characters or fewer`)
+      }
+      break
+
+    case "format_switcher":
+      checkLabeledItems(block.data.options, BLOCK_LIMITS.format_switcher, "format", error)
+      break
+
+    case "image_switcher": {
+      const { options } = block.data
+      const { min, max } = BLOCK_LIMITS.image_switcher
+      if (options.length < min || options.length > max) error(`Use ${min}–${max} images`)
+      options.forEach((o, i) => {
+        if (isBlank(o.label)) error(`Image ${i + 1} needs a label`)
+        if (!isUrl(o.image_url)) error(`Image ${i + 1} needs a full image URL (https://…)`)
+        if (isBlank(o.alt)) error(`Image ${i + 1} needs alt text`)
+      })
+      if (hasDuplicates(options.map((o) => o.id))) error("Image ids must be unique")
+      break
+    }
+
+    case "vertical_roadmap": {
+      const { eras, events } = block.data
+      const eraLimits = BLOCK_LIMITS.roadmap_eras
+      const eventLimits = BLOCK_LIMITS.roadmap_events
+      if (eras.length < eraLimits.min || eras.length > eraLimits.max) error(`Use ${eraLimits.min}–${eraLimits.max} eras`)
+      if (events.length < eventLimits.min || events.length > eventLimits.max) {
+        error(`Use ${eventLimits.min}–${eventLimits.max} events`)
+      }
+      eras.forEach((era, i) => {
+        if (isBlank(era.name)) error(`Era ${i + 1} needs a name`)
+        if (!(ROADMAP_COLORS as readonly string[]).includes(era.color)) error(`Era ${i + 1} needs a colour`)
+      })
+      const eraIds = new Set(eras.map((e) => e.id))
+      events.forEach((event, i) => {
+        if (isBlank(event.date)) error(`Event ${i + 1} needs a date`)
+        if (isBlank(event.text)) error(`Event ${i + 1} needs text`)
+        if (!eraIds.has(event.era_id)) error(`Event ${i + 1} needs an era`)
+      })
+      if (hasDuplicates(eras.map((e) => e.id)) || hasDuplicates(events.map((e) => e.id))) {
+        error("Era and event ids must be unique")
+      }
+      break
+    }
   }
 
   return issues
+}
+
+/** Shared checks for blocks made of labelled items (wheel slices, layers, formats). */
+function checkLabeledItems(
+  items: LabeledItem[],
+  { min, max }: { min: number; max: number },
+  noun: string,
+  error: (message: string) => void,
+) {
+  if (items.length < min || items.length > max) error(`Use ${min}–${max} ${noun}s`)
+  items.forEach((item, i) => {
+    if (isBlank(item.label)) error(`${noun[0].toUpperCase()}${noun.slice(1)} ${i + 1} needs a label`)
+    if (isBlank(item.body)) error(`${noun[0].toUpperCase()}${noun.slice(1)} ${i + 1} needs text`)
+  })
+  if (hasDuplicates(items.map((item) => item.id))) error(`${noun[0].toUpperCase()}${noun.slice(1)} ids must be unique`)
 }
 
 export function validateLesson(lesson: Lesson): LessonIssue[] {

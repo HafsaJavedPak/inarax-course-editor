@@ -318,6 +318,7 @@ export function ListEditor<T>({
   addLabel,
   itemLabel,
   minItems = 0,
+  maxItems,
   getKey,
   reorderable = true,
 }: {
@@ -328,6 +329,8 @@ export function ListEditor<T>({
   addLabel: string
   itemLabel: string
   minItems?: number
+  /** The add button is disabled once the list has this many items. */
+  maxItems?: number
   getKey: (item: T, index: number) => string
   reorderable?: boolean
 }) {
@@ -357,7 +360,14 @@ export function ListEditor<T>({
           />
         </div>
       ))}
-      <Button variant="ghost" className="le-list-add" onClick={() => onChange([...items, createItem()])}>
+      <Button
+        variant="ghost"
+        className="le-list-add"
+        disabled={maxItems !== undefined && items.length >= maxItems}
+        tooltip={maxItems !== undefined && items.length >= maxItems ? `Up to ${maxItems} ${itemLabel}s` : undefined}
+        showTooltip={maxItems !== undefined && items.length >= maxItems}
+        onClick={() => onChange([...items, createItem()])}
+      >
         <span className="tiptap-button-text">+ {addLabel}</span>
       </Button>
     </div>

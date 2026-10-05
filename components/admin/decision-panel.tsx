@@ -90,7 +90,7 @@ export function DecisionPanel({ course }: { course: Course }) {
       }
       setNote("")
       setChanges([newChange()])
-      if (data.publishError) setError(`Decision saved, but not published to the platform: ${data.publishError}`)
+      if (data.publishError) setError(`Decision saved, but not published to the platform: ${[data.publishError, ...(data.publishIssues ?? [])].join(" · ")}`)
       router.refresh()
     } finally {
       setBusy(false)

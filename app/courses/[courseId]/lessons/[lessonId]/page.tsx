@@ -5,6 +5,7 @@ import { findLessonRef, getCourseLimits } from "@/lib/course"
 import { getCurrentUser } from "@/lib/auth"
 import { getAccessibleCourse, readCourseLesson } from "@/lib/course-store"
 import { createLesson } from "@/lib/lesson"
+import { publishingEnabled } from "@/lib/platform"
 
 export default async function Page({ params }: PageProps<"/courses/[courseId]/lessons/[lessonId]">) {
   const { courseId, lessonId } = await params
@@ -33,6 +34,7 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]/le
       wordsPerMinute={limits.words_per_minute}
       courseStatus={course.status}
       publishedAt={course.published_at}
+      publishingEnabled={publishingEnabled()}
     />
   )
 }

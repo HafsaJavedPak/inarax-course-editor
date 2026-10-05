@@ -11,7 +11,7 @@ export function DeleteCourseButton({ courseId, title }: { courseId: string; titl
   const [busy, setBusy] = useState(false)
 
   const remove = async () => {
-    const answer = window.prompt(`This permanently deletes “${title}” and all its lessons.\n\nType DELETE to confirm.`)
+    const answer = window.prompt(`This permanently deletes “${title}” and all its lessons, here and on the platform it was published to.\n\nType DELETE to confirm.`)
     if (answer !== "DELETE") return
     setBusy(true)
     const res = await fetch(`/api/courses/${courseId}`, { method: "DELETE", headers: modeHeaders(true) })

@@ -9,15 +9,24 @@ services:
     plan: starter
     buildCommand: npm ci && npm run build
     startCommand: npm run start
-    healthCheckPath: /courses
+    healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
         value: "22"
       # Courses (course/) and uploads (uploads/) are stored here.
       - key: DATA_DIR
         value: /var/data
-      # Platform Postgres (Supabase session pooler URI); set in the dashboard.
-      - key: DATABASE_URL
+      # Publishing through the Course Publishing Protocol (docs/platform-integration.md).
+      # PLATFORM_URL, the key pair and EDITOR_PUBLIC_URL are set in the dashboard.
+      - key: PLATFORM_ADAPTER
+        value: protocol
+      - key: PLATFORM_URL
+        sync: false
+      - key: PLATFORM_KEY_ID
+        sync: false
+      - key: PLATFORM_KEY_SECRET
+        sync: false
+      - key: EDITOR_PUBLIC_URL
         sync: false
     disk:
       name: inara-data
