@@ -80,7 +80,7 @@ describe("gate", () => {
   })
 
   it("keeps sign-in, the signed-out page and images public", () => {
-    for (const p of ["/launch", "/signed-out", "/health", "/uploads/x.png"]) expect(gate(p, null, launchMode)).toEqual({ kind: "next" })
+    for (const p of ["/launch", "/sign-out", "/signed-out", "/health", "/uploads/x.png"]) expect(gate(p, null, launchMode)).toEqual({ kind: "next" })
   })
 
   it("sends people without a session to sign in, and APIs get 401", () => {
@@ -123,13 +123,13 @@ describe("POST /launch", () => {
     const token = signLaunchToken(claims, KEY)
     const res = await post(token)
     expect(res.status).toBe(303)
-    expect(res.headers.get("location")).toBe("/dashboard")
+    expect(res.headers.get("location")).toBe("https://editor.test/dashboard")
     expect(res.headers.get("set-cookie")).toMatch(/HttpOnly/i)
     expect(res.headers.get("set-cookie")).toMatch(/Secure/i)
     expect(decodeSession(cookieOf(res), KEY.secret)).toMatchObject({ sub: "user-1", role: "creator", email: "a@b.c" })
 
     const replay = await post(token)
-    expect(replay.headers.get("location")).toBe("/signed-out?reason=used")
+    expect(replay.headers.get("location")).toBe("https://editor.test/signed-out?reason=used")
     expect(cookieOf(replay)).toBeUndefined()
   })
 
@@ -137,21 +137,22 @@ describe("POST /launch", () => {
     const body = new FormData()
     body.set("token", signLaunchToken(claims, KEY))
     // Behind Render's proxy the server sees its own port, not the public host.
+    process.env.EDITOR_PUBLIC_URL = "https://editor.onrender.com"
     const res = await launch(new Request("http://localhost:10000/launch", { method: "POST", body, headers: { "x-forwarded-proto": "https" } }))
-    expect(res.headers.get("location")).toBe("/dashboard")
+    expect(res.headers.get("location")).toBe("https://editor.onrender.com/dashboard")
     expect(res.headers.get("set-cookie")).toMatch(/Secure/i)
   })
 
   it("sends admins to the review list", async () => {
     const res = await post(signLaunchToken({ ...claims, role: "admin" }, KEY))
-    expect(res.headers.get("location")).toBe("/admin")
+    expect(res.headers.get("location")).toBe("https://editor.test/admin")
   })
 
   it("refuses bad and expired tokens without a session", async () => {
     const bad = await post(signLaunchToken(claims, { id: KEY.id, secret: "x".repeat(40) }))
-    expect(bad.headers.get("location")).toBe("/signed-out?reason=invalid")
+    expect(bad.headers.get("location")).toBe("https://editor.test/signed-out?reason=invalid")
     const old = await post(signLaunchToken(claims, KEY, Math.floor(Date.now() / 1000) - 120))
-    expect(old.headers.get("location")).toBe("/signed-out?reason=expired")
+    expect(old.headers.get("location")).toBe("https://editor.test/signed-out?reason=expired")
     expect(cookieOf(old)).toBeUndefined()
   })
 })
@@ -169,14 +170,20 @@ describe("redirects behind Render's proxy", () => {
     new NextRequest(`http://localhost:10000${path}`, { ...init, headers: { "x-forwarded-host": "editor.onrender.com", "x-forwarded-proto": "https" } })
 
   it("never points the browser at the server's internal address", async () => {
-    for (const [path, to] of [["/dashboard", "/signed-out"], ["/courses", "/signed-out"], ["/admin", "/signed-out"]]) {
+    for (const path of ["/dashboard", "/courses", "/admin"]) {
       const res = proxy(internal(path))
-      expect(res.headers.get("location")).toBe(to)
+      // Absolute (Next.js rejects relative redirects from proxy) and on the public host.
+      expect(res.headers.get("location")).toBe("https://editor.onrender.com/signed-out")
     }
     const creator = encodeSession({ sub: "u", email: null, name: null, role: "creator", exp: Math.floor(Date.now() / 1000) + 60 }, KEY.secret)
     const req = internal("/admin")
     req.cookies.set(SESSION_COOKIE, creator)
-    expect(proxy(req).headers.get("location")).toBe("/dashboard")
-    expect((await signOut(internal("/sign-out", { method: "POST" }))).headers.get("location")).toBe("/signed-out?reason=signed_out")
+    expect(proxy(req).headers.get("location")).toBe("https://editor.onrender.com/dashboard")
+    expect((await signOut(internal("/sign-out", { method: "POST" }))).headers.get("location")).toBe(
+      "https://editor.onrender.com/signed-out?reason=signed_out",
+    )
+    // EDITOR_PUBLIC_URL wins over any header.
+    process.env.EDITOR_PUBLIC_URL = "https://editor.example.org/"
+    expect(proxy(internal("/courses")).headers.get("location")).toBe("https://editor.example.org/signed-out")
   })
 })
