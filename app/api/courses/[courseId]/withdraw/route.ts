@@ -10,5 +10,5 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/courses/[c
   const course = await getAccessibleCourse(courseId, user)
   if (!course || course.owner_id !== user.id) return workflowResponse(null)
 
-  return publishedWorkflowResponse(await updateCourseWorkflow(courseId, (current) => withdraw(current, user.id)), user.id)
+  return publishedWorkflowResponse(await updateCourseWorkflow(courseId, (current) => withdraw(current, user.id)), user)
 }

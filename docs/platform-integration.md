@@ -73,10 +73,40 @@ Requests are signed with HMAC-SHA256 over the timestamp, method, path and body h
 pair is shared with the host. To rotate: add the new key on the host (hosts accept several), switch
 the editor's `PLATFORM_KEY_ID` / `PLATFORM_KEY_SECRET`, then remove the old key from the host.
 
-The key identifies **the editor installation**. The package's `actor` is the editor user who pressed
-Save, recorded by the host for audit. Signing in to the editor with the host's accounts (a
-host-issued launch token) is the next phase; until then `/admin` in the editor is still open, as
-before (see HANDOVER known issues).
+The key identifies **the editor installation**. The package's `actor` is the person who pressed Save
+or made the decision: their **host** user id, name and email, from the launch token they signed in
+with. Hosts check it on every publish (inara-next: creators and admins may publish, only admins may
+approve, reject or request changes).
+
+### Sign-in and roles
+
+With a platform connected (`PLATFORM_ADAPTER=protocol`), the editor has **no accounts of its own**.
+People sign in on the platform and open the editor from there (contract § Launch):
+
+1. The platform shows its Course editor link only to people it lets in (inara-next: members an admin
+   made **creators**, and **admins**).
+2. Clicking it makes the platform sign a 60-second, single-use launch token and POST it to the
+   editor's `/launch` (`app/launch/route.ts`).
+3. The editor checks it (`lib/protocol/launch.ts`, replay guard `lib/launch-replay.ts`) and starts an
+   8-hour signed session cookie (`lib/session.ts`, key derived from `PLATFORM_KEY_SECRET`).
+   Admins land on `/admin`, creators on `/dashboard`.
+4. `proxy.ts` (with `lib/auth-gate.ts`) turns away requests without a session (pages go to
+   `/signed-out`, APIs get 401) and keeps non-admins out of `/admin`. `lib/auth.ts`
+   (`getCurrentUser`, `requireAdminArea`) checks again inside every page and route.
+5. The role comes only from the session. The old `x-inara-mode: admin` header is ignored in this
+   mode, so nobody can make themselves an admin.
+
+| Role | Can |
+|---|---|
+| creator | Create courses (owned by their platform user id), edit and publish their own, submit for review, withdraw |
+| admin | Everything a creator can, on every course, plus accept, reject and request changes |
+
+A role changed on the platform applies from the person's next launch. Their current session (up to
+8 hours) keeps the old role, but the platform's actor check still refuses publishes they're no longer
+allowed to make. **Sign out** (header) ends the editor session only.
+
+Without a platform (`PLATFORM_ADAPTER=none`, local work), there is no sign-in: one local creator, and
+`/admin` stays open, as before.
 
 ---
 
@@ -105,6 +135,7 @@ inara-next side set:
 
 ```
 COURSE_EDITOR_KEYS=<PLATFORM_KEY_ID>:<PLATFORM_KEY_SECRET>   # several pairs, comma-separated, for rotation
+COURSE_EDITOR_URL=<this editor's public address>             # turns on the Course editor tabs and sign-in
 COURSE_EDITOR_ORGANIZATION_ID=<org id>                       # optional; default: the inaraX organization
 ```
 
@@ -123,8 +154,8 @@ old delete-and-recreate.
 
 ### Local testing
 
-1. In inara-next's `.env`, add `COURSE_EDITOR_KEYS=editor-local:<secret>` and run it
-   (`npm run dev`, port 3000).
+1. In inara-next's `.env`, add `COURSE_EDITOR_KEYS=editor-local:<secret>` and
+   `COURSE_EDITOR_URL=http://localhost:3001`, and run it (`npm run dev`, port 3000).
 2. In the editor's `.env.local`:
    ```
    PLATFORM_ADAPTER=protocol
@@ -132,15 +163,18 @@ old delete-and-recreate.
    PLATFORM_KEY_ID=editor-local
    PLATFORM_KEY_SECRET=<secret>
    ```
-3. `npm run dev -- -p 3001`, open a course and press Save. The Save bar links nothing yet, but the
-   publish response carries the course's inara-next admin URL.
+3. `npm run dev -- -p 3001`. Opening <http://localhost:3001> now shows "signed out".
+4. In inara-next, as an admin, click **Course editor** in the sidebar (a new tab opens, signed in as
+   admin). To try the creator side, make a user a **Creator** on Admin → Team Directory and open the
+   editor from their sidebar. With inara-next's dev auth bypass, `DEV_AUTH_USER=admin` or `student`
+   picks who you are.
 
 ### Checking a host
 
 `npm run verify-host` runs the protocol's conformance checks (auth, manifest, assets, create,
-idempotency, moves, title swaps, removal, validation errors, rollback, delete) against a running host
-with the same three `PLATFORM_*` variables. Use a development host: it creates and deletes a test
-course.
+idempotency, moves, title swaps, removal, validation errors, rollback, actor check, delete) against a
+running host with the same three `PLATFORM_*` variables plus `PLATFORM_ACTOR_ID`: the platform user id
+of an admin (inara-next: `users.uuid`). Use a development host: it creates and deletes a test course.
 
 ---
 
@@ -159,8 +193,11 @@ course.
 
 ## 5. Known gaps
 
-- **Editor sign-in** still isn't there (next phase: a launch token issued by the host, so authors use
-  their host account and the host decides who may publish).
+- **Courses created before sign-in** are owned by `user_local_creator`, so no creator sees them;
+  admins see every course. To hand one to a creator, set `owner_id` in its `course/<id>/course.json`
+  to their platform user id (inara-next: `users.uuid`).
+- **Single editor process**: the launch-token replay guard is in memory, which fits how the editor
+  runs (one process, data on local disk). Several instances would need a shared store.
 - **Preview** still uses the copied inara-next player in `vendor/inara-player/` (later phase: the
   host renders previews; the copy stays as an offline fallback). The protocol already has a
   `capabilities.preview` flag for it.

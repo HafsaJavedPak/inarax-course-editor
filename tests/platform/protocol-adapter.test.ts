@@ -22,7 +22,7 @@ function setup(options: Parameters<typeof createFakeHost>[0] & { key?: typeof TE
   return { host, platform }
 }
 
-const publishInput = (course = sampleCourse()) => ({ course, lessons: new Map([[LESSON_ID, sampleLesson()]]), actorId: "user_local_creator" })
+const publishInput = (course = sampleCourse()) => ({ course, lessons: new Map([[LESSON_ID, sampleLesson()]]), actor: { id: "user_local_creator" } })
 
 describe("protocol adapter: publish", () => {
   it("sends the whole course in one signed PUT, with images copied to the host", async () => {

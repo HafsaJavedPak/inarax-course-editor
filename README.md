@@ -63,8 +63,11 @@ defaults to this folder.
 `PLATFORM_URL`, `PLATFORM_KEY_ID`, `PLATFORM_KEY_SECRET` and `EDITOR_PUBLIC_URL` in the Render
 dashboard.
 
-> There is no login yet. Everyone acts as the same creator, and `/admin` is open to anyone. Don't
-> expose this app publicly until authentication is added.
+**Sign-in:** with a platform connected, people sign in through the platform: they open the editor
+from its Course editor link, and the platform decides who is a **creator** (writes and submits
+courses) and who is an **admin** (also reviews and decides). The editor has no accounts of its own.
+Without a platform (`PLATFORM_ADAPTER=none`) there's no sign-in: one local creator and an open
+`/admin`, for local work only. Details: [docs/platform-integration.md](docs/platform-integration.md#sign-in-and-roles).
 
 ## Documentation
 

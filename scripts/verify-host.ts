@@ -4,7 +4,11 @@
 // again. Run it against development or staging, never production.
 //
 //   PLATFORM_URL=http://localhost:3000/api/integrations/course-editor \
-//   PLATFORM_KEY_ID=… PLATFORM_KEY_SECRET=… npm run verify-host
+//   PLATFORM_KEY_ID=… PLATFORM_KEY_SECRET=… PLATFORM_ACTOR_ID=… npm run verify-host
+//
+// PLATFORM_ACTOR_ID is the host's id for an admin (the `sub` its launch tokens
+// carry): hosts check who publishes, and the run approves nothing but needs a
+// user allowed to create courses.
 
 import { signRequest, sha256Hex, type SigningKey } from "../lib/protocol/signing"
 import {
@@ -20,8 +24,9 @@ import {
 
 const baseUrl = process.env.PLATFORM_URL
 const key: SigningKey = { id: process.env.PLATFORM_KEY_ID ?? "", secret: process.env.PLATFORM_KEY_SECRET ?? "" }
-if (!baseUrl || !key.id || !key.secret) {
-  console.error("Set PLATFORM_URL, PLATFORM_KEY_ID and PLATFORM_KEY_SECRET.")
+const actorId = process.env.PLATFORM_ACTOR_ID ?? ""
+if (!baseUrl || !key.id || !key.secret || !actorId) {
+  console.error("Set PLATFORM_URL, PLATFORM_KEY_ID, PLATFORM_KEY_SECRET and PLATFORM_ACTOR_ID (a host user allowed to create courses).")
   process.exit(2)
 }
 const root = new URL(baseUrl.replace(/\/+$/, "") + "/")
@@ -126,7 +131,7 @@ function testPackage(manifest: Manifest, courseId: string, stamp: string): Cours
       { key: "intermediate", title: "Intermediate", modules: [] },
       { key: "advanced", title: "Advanced", modules: [] },
     ],
-    actor: { id: "verify-host" },
+    actor: { id: actorId },
     sent_at: new Date().toISOString(),
   }
 }
@@ -154,7 +159,8 @@ async function main() {
     expect(parsed.success, `invalid manifest: ${parsed.error?.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`)
     expect(parsed.data.protocol.split(".")[0] === PROTOCOL_VERSION.split(".")[0], `host speaks ${parsed.data.protocol}`)
     manifest = parsed.data
-    return `${parsed.data.host.name}, ${parsed.data.content.block_types.length} block types`
+    const launch = parsed.data.host.launch_url ? `, launch at ${parsed.data.host.launch_url}` : ", no launch_url"
+    return `${parsed.data.host.name}, ${parsed.data.content.block_types.length} block types${launch}`
   })
   if (!manifest) {
     console.log("\nCan't continue without a manifest.")
@@ -265,6 +271,9 @@ async function main() {
   })
   await check("a malformed package is refused with 400", async () => {
     expectProblem(await send("PUT", coursePath, { json: { protocol: PROTOCOL_VERSION } }), 400, "invalid_request")
+  })
+  await check("a publisher the host doesn't know is refused with 403", async () => {
+    expectProblem(await send("PUT", coursePath, { json: { ...pkg, actor: { id: crypto.randomUUID() } } }), 403, "forbidden")
   })
   await check("an unsupported protocol major is refused with 422 unsupported_protocol", async () => {
     expectProblem(await send("PUT", coursePath, { json: { ...pkg, protocol: "99.0" } }), 422, "unsupported_protocol")

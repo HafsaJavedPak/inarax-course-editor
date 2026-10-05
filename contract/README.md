@@ -1,4 +1,4 @@
-# Course Publishing Protocol, version 1.0
+# Course Publishing Protocol, version 1.1
 
 How the course editor publishes courses to a host platform. The editor owns this
 contract; a host implements it in whatever stack it uses (Next.js, FastAPI, …).
@@ -10,6 +10,7 @@ The editor contains no host-specific code, and a host needs no editor code.
 | `openapi.yaml` | The same endpoints as OpenAPI 3.1 |
 | `schemas/*.schema.json` | JSON Schema (2020-12) for every message, generated from `lib/protocol/wire.ts` |
 | `fixtures/signing.json` | Test vectors for request signing |
+| `fixtures/launch.json` | A launch token and its parts, for checking a host's token code |
 | `fixtures/course-package.json` | An example course package |
 
 The source of truth is `lib/protocol/wire.ts` (messages) and
@@ -17,6 +18,11 @@ The source of truth is `lib/protocol/wire.ts` (messages) and
 generated files and `npm run contract:check` fails when they are stale.
 `npm run verify-host` checks a running host against this document (see
 [Conformance](#conformance)).
+
+**Changes in 1.1:** launch tokens (sign-in through the host), `host.launch_url`
+in the manifest, and hosts checking the publishing `actor`. An editor connected
+to a host signs people in only through that host, so the host must issue launch
+tokens; the publishing endpoints are unchanged from 1.0.
 
 ## Overview
 
@@ -90,9 +96,51 @@ nothing.
 Check an implementation against `fixtures/signing.json`.
 
 **Who.** The key authenticates the editor installation. The package's `actor`
-says which editor user triggered the publish; the host records it for audit.
-(A later version adds host-issued user identity; until then the host trusts
-the key, not the actor.)
+is the person who triggered the publish: the `sub` (with name and email) of the
+launch token they signed in with, so it is the host's own user id. Hosts
+**should** check it on every publish, not just trust the editor: the actor must
+still be allowed to create courses, and only a host admin may move a course into
+`approved`, `rejected` or `changes_requested` (saving a course that is already
+in that state isn't a new decision). Refuse with `403 forbidden`.
+
+## Launch (sign-in)
+
+The editor has no accounts of its own. People sign in on the host and open the
+editor from there; the host decides **who may use it and with which role**
+(`admin` reviews and decides, `creator` writes and submits).
+
+```
+host (user already signed in)                 editor
+  │ checks the user may use the editor
+  │ mints a launch token (≤ 60 s, single use)
+  │ browser POSTs it ────────────────────────▶ POST /launch  (form field `token`)
+  │                                              verifies, remembers jti,
+  │                                              starts an 8-hour session cookie,
+  │                                              303 → /admin (admin) or /dashboard (creator)
+```
+
+```
+token   = "v1." + b64url(payload) + "." + b64url(HMAC-SHA256(secret, "course-editor-launch.v1." + b64url(payload)))
+payload = {"v":1, "kid", "iss", "aud":"course-editor", "sub", "email", "name",
+           "role":"admin"|"creator", "iat", "exp", "jti"}
+```
+
+- Same key pair as request signing; the `course-editor-launch.v1.` prefix keeps
+  a launch signature from ever passing as a request signature.
+- `sub` is the host's stable user id. It becomes the editor's user id: the
+  owner of the courses that person creates, and the `actor` of their publishes.
+- The editor refuses a token with another `kid`, a bad signature, `exp - iat`
+  over 300 s, `iat` more than 60 s in the future, an expired one, or a `jti` it
+  has seen. Hosts should use a 60-second lifetime.
+- Send it as a form POST (a self-submitting form), never in a URL, so it stays
+  out of history, logs and referrers. Don't cache or frame the page.
+- `GET /v1/manifest` may give `host.launch_url`: where a person opens the editor
+  signed in. The editor links there from its signed-out page.
+- Changing someone's role on the host takes effect on their next launch; their
+  current session (up to 8 hours) keeps its role, but the actor check above
+  still stops publishes they're no longer allowed to make.
+
+Check an implementation against `fixtures/launch.json`.
 
 ## GET /v1/manifest
 
@@ -101,7 +149,7 @@ What the host speaks and supports. The editor caches it for a few minutes.
 ```json
 {
   "protocol": "1.0",
-  "host": { "name": "inara-next", "version": "2026.10" },
+  "host": { "name": "inara-next", "version": "2026.10", "launch_url": "https://host/course-editor/launch" },
   "capabilities": {
     "assets": { "max_bytes": 10485760, "content_types": ["image/png", "image/jpeg", "image/gif", "image/webp"] },
     "delete": true,
@@ -248,7 +296,7 @@ lesson, section and block to fix.
 |---|---|---|
 | 400 | `invalid_request` | Malformed JSON, schema violation, id mismatch, hash mismatch |
 | 401 | `unauthenticated` | Missing, stale or wrong signature |
-| 403 | `forbidden` | Valid key, but not allowed to change this course (e.g. it isn't an editor-managed course) |
+| 403 | `forbidden` | Valid key, but not allowed: the actor may not publish (or decide), or the course isn't editor-managed |
 | 404 | `not_found` | Unknown course or asset |
 | 409 | `conflict` | Clashes with the host's rules (a title used elsewhere; a change that would destroy live data) |
 | 413 | `payload_too_large` | Over `max_package_bytes` or the asset limit |
@@ -262,7 +310,7 @@ lesson, section and block to fix.
 
 ```bash
 PLATFORM_URL=http://localhost:3000/api/integrations/course-editor \
-PLATFORM_KEY_ID=… PLATFORM_KEY_SECRET=… npm run verify-host
+PLATFORM_KEY_ID=… PLATFORM_KEY_SECRET=… PLATFORM_ACTOR_ID=<a host admin's user id> npm run verify-host
 ```
 
 It creates a uniquely named test course, publishes and changes it, checks every
@@ -278,8 +326,11 @@ or staging host, never production. A host's CI can run it too.
 5. `PUT /v1/courses/{id}`: parse, validate everything, then in one transaction
    upsert by editor id, move, remove, set statuses; return counts.
 6. `DELETE /v1/courses/{id}`.
-7. Answer every error as a problem with a `code`.
-8. Run `npm run verify-host` against it.
+7. Check the package's `actor` (creators publish, admins decide).
+8. Launch: let creators and admins open the editor with a launch token, and
+   give `host.launch_url` in the manifest.
+9. Answer every error as a problem with a `code`.
+10. Run `npm run verify-host` against it.
 
 The inara-next implementation lives in inara-next under
 `app/api/integrations/course-editor/v1/` and `lib/integrations/course-editor/`.

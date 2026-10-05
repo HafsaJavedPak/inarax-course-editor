@@ -9,7 +9,7 @@ import { LESSON_ID, MODULE_ID, sampleCourse, sampleLesson } from "../helpers/cou
 describe("buildPackage", () => {
   it("produces a valid package with every level, in order", () => {
     const course = sampleCourse()
-    const pkg = buildPackage({ course, lessons: new Map([[LESSON_ID, sampleLesson()]]), coverImageUrl: null, actorId: "me" })
+    const pkg = buildPackage({ course, lessons: new Map([[LESSON_ID, sampleLesson()]]), coverImageUrl: null, actor: { id: "me" } })
 
     expect(CoursePackageSchema.safeParse(pkg).success).toBe(true)
     expect(pkg.levels.map((l) => [l.key, l.title])).toEqual([
@@ -24,7 +24,7 @@ describe("buildPackage", () => {
   })
 
   it("sends null content for lessons it has nothing to publish for", () => {
-    const pkg = buildPackage({ course: sampleCourse(), lessons: new Map(), coverImageUrl: null, actorId: "me" })
+    const pkg = buildPackage({ course: sampleCourse(), lessons: new Map(), coverImageUrl: null, actor: { id: "me" } })
     expect(pkg.levels[0].modules[0].lessons[0].content).toBeNull()
   })
 
@@ -37,7 +37,7 @@ describe("buildPackage", () => {
       ],
       change_requests: [{ id: "c1", text: "Shorter intro", done: false, creator_note: "" }],
     })
-    const pkg = buildPackage({ course, lessons: new Map(), coverImageUrl: null, actorId: "me" })
+    const pkg = buildPackage({ course, lessons: new Map(), coverImageUrl: null, actor: { id: "me" } })
     expect(pkg.review).toEqual({ status: "changes_requested", note: "Tighten the intro", changes: [{ id: "c1", text: "Shorter intro", done: false }] })
   })
 })
@@ -50,7 +50,7 @@ describe("unsupportedBlockTypes", () => {
 })
 
 describe("locateErrors", () => {
-  const pkg = buildPackage({ course: sampleCourse(), lessons: new Map([[LESSON_ID, sampleLesson()]]), coverImageUrl: null, actorId: "me" })
+  const pkg = buildPackage({ course: sampleCourse(), lessons: new Map([[LESSON_ID, sampleLesson()]]), coverImageUrl: null, actor: { id: "me" } })
 
   it("names the lesson, section and block a content error is in", () => {
     const [line] = locateErrors(pkg, [

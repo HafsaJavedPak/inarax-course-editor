@@ -60,12 +60,15 @@ and `EDITOR_PUBLIC_URL` must be set in the Render dashboard. inara-next needs th
 | Admin review page | `/admin/courses/[courseId]` | admins | Read the course, accept / reject / request changes, delete |
 | Admin edit | `/admin/courses/[courseId]/edit`, `.../lessons/[lessonId]`, `.../settings` | admins | Edit any course, even while it is in review |
 
-> **Important for testers:** there is **no login**.
-> - Everyone is the same creator (`user_local_creator`).
-> - Anyone who opens `/admin` gets admin powers. Admin pages send an `x-inara-mode: admin` header, and
->   the server trusts it.
+> **Signing in:** with a platform connected, open the editor from the platform's **Course editor**
+> link (inara-next: in the sidebar, shown to creators and admins). The platform decides your role:
+> - **Creators** (an inara-next admin makes someone a Creator on Admin → Team Directory) see
+>   `/dashboard` and their own courses, and can submit them for review. `/admin` sends them back.
+> - **Admins** also get `/admin`: every course, and accept / reject / request changes.
 >
-> This is a known gap (see section 9), not a bug to report.
+> Opening the editor directly shows a "signed out" page. Without a platform
+> (`PLATFORM_ADAPTER=none`, local work) there is no sign-in: one local creator and an open `/admin`.
+> Details: [platform-integration.md § Sign-in and roles](platform-integration.md#sign-in-and-roles).
 
 ---
 
@@ -342,7 +345,9 @@ Set up local inara-next first: [platform-integration.md § 3, Local testing](pla
 | `contract/` | The protocol spec for hosts: `README.md`, `openapi.yaml`, generated JSON Schemas, test fixtures |
 | `tests/` | Vitest unit tests (signing, package building, the adapter against an in-memory host, env checks) |
 | `lib/course-export.ts` | Zip downloads |
-| `lib/auth.ts`, `lib/admin-mode.ts` | Placeholder "current user" and admin mode |
+| `lib/auth.ts`, `lib/auth-gate.ts`, `lib/session.ts`, `proxy.ts` | Current user from the sign-in session, who may open what, the session cookie |
+| `app/launch/`, `app/sign-out/`, `app/signed-out/`, `lib/protocol/launch.ts` | Sign-in through the platform's launch token, sign out, the signed-out page |
+| `lib/admin-mode.ts` | Admin-area links; the `x-inara-mode` header only matters locally, without a platform |
 | `json-guide/` | Lesson format reference and AI prompt for writing lessons in JSON |
 | `db/migrations/` | SQL for inara-next's status enums, which inara-next's schema already includes (reference only) |
 | `docs/platform-integration.md` | Publishing in detail, connecting to inara-next, and local testing |
@@ -392,7 +397,7 @@ npx eslint .       # errors only in the Tiptap template code and hooks/ (React C
 
 | # | Item | Impact |
 |---|---|---|
-| 1 | **No authentication.** One shared creator; `/admin` is open to anyone; admin mode is a header. The signing key only identifies the editor installation, not the user. | Must be fixed before real users. Next phase: sign-in through a launch token issued by the host platform (inara-next), so authors use their host account and the host decides who may publish. No Clerk in the editor. |
+| 1 | **Sessions keep their role until they expire.** A role changed on the platform applies from the person's next launch; an open session (up to 8 hours) keeps the old one. | The platform still checks the actor on every publish, so a removed creator can't publish. Sign out and back in to pick up a new role. Courses made before sign-in belong to `user_local_creator`: only admins see them until their `owner_id` is changed. |
 | 2 | **Lesson rules are duplicated** between the editor and inara-next. They match today (all 16 authored block types compared), and lessons with errors are never sent. | If inara-next adds a rule, update `lib/lesson-validate.ts` too. Until then inara-next refuses the content and the editor shows where. |
 | 3 | **Existing courses may have duplicate module titles** (e.g. "hello"). | The builder flags them; rename before publishing. |
 | 4 | **Images** are copied to the platform only when the host's manifest offers asset storage (inara-next: when its Firebase storage is configured) and accepts the type and size. | Otherwise they link to `EDITOR_PUBLIC_URL`, which must stay reachable. The publish warns. |

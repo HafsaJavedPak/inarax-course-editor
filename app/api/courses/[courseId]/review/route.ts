@@ -29,6 +29,6 @@ export async function POST(request: Request, ctx: RouteContext<"/api/courses/[co
   const { decision, note, changes } = parsed.data
   return publishedWorkflowResponse(
     await updateCourseWorkflow(courseId, (current) => review(current, decision, note, changes, user.id)),
-    user.id,
+    user,
   )
 }

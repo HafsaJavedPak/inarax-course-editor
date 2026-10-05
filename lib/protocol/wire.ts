@@ -11,7 +11,7 @@
 import { z } from "zod"
 
 /** major.minor. A host accepts any package whose major it supports. */
-export const PROTOCOL_VERSION = "1.0"
+export const PROTOCOL_VERSION = "1.1"
 export const PROTOCOL_MAJOR = 1
 
 /** Paths, relative to the host's base URL (PLATFORM_URL). */
@@ -165,7 +165,12 @@ export type Asset = z.infer<typeof AssetSchema>
 
 export const ManifestSchema = z.object({
   protocol: z.string().regex(/^\d+\.\d+$/),
-  host: z.object({ name: z.string(), version: z.string().optional() }),
+  host: z.object({
+    name: z.string(),
+    version: z.string().optional(),
+    /** Where a person signs in to the editor through the host (it mints a launch token). Since 1.1. */
+    launch_url: z.url().optional(),
+  }),
   capabilities: z.object({
     /** null: the host can't store files; the editor links images from its own public address. */
     assets: z

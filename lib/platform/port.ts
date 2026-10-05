@@ -14,8 +14,8 @@ export type PublishInput = {
   course: Course
   /** Saved content per lesson id. Lessons never saved (or not publishable) are missing. */
   lessons: Map<string, Lesson>
-  /** Who pressed Save or made the review decision (the editor's user id). */
-  actorId: string
+  /** Who pressed Save or made the review decision. With a platform, their platform user id. */
+  actor: { id: string; name?: string | null; email?: string | null }
 }
 
 export type PublishSummary = {
@@ -49,6 +49,8 @@ export interface PlatformPort {
    * when the platform never had it.
    */
   deleteCourse(courseId: string): Promise<DeleteSummary>
+  /** Where people sign in to the editor through the platform, if it says (for the signed-out page). */
+  launchUrl(): Promise<string | null>
 }
 
 /**

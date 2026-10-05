@@ -11,11 +11,11 @@ export type PackageInput = {
   lessons: Map<string, Lesson>
   /** The course's cover as a URL the host's learners can load (or null). */
   coverImageUrl: string | null
-  actorId: string
+  actor: { id: string; name?: string | null; email?: string | null }
   now?: Date
 }
 
-export function buildPackage({ course, lessons, coverImageUrl, actorId, now = new Date() }: PackageInput): CoursePackage {
+export function buildPackage({ course, lessons, coverImageUrl, actor, now = new Date() }: PackageInput): CoursePackage {
   // The reviewer's note that goes with the current status, if the latest event for it has one.
   const event = course.review_history.findLast((e) => e.status === course.status)
 
@@ -55,7 +55,11 @@ export function buildPackage({ course, lessons, coverImageUrl, actorId, now = ne
         })),
       }
     }),
-    actor: { id: actorId },
+    actor: {
+      id: actor.id,
+      ...(actor.name ? { name: actor.name } : {}),
+      ...(actor.email ? { email: actor.email } : {}),
+    },
     sent_at: now.toISOString(),
   }
 }

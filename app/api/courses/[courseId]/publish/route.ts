@@ -17,7 +17,7 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/courses/[c
     return Response.json({ error: "This course is in review and can't be published. Withdraw it first." }, { status: 409 })
   }
 
-  const result = await publishAndRecord(course, user.id)
+  const result = await publishAndRecord(course, user)
   if ("error" in result) return Response.json({ error: result.error, code: result.code, issues: result.issues }, { status: result.status })
   return Response.json(result)
 }

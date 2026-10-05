@@ -1,5 +1,5 @@
 {
-  "protocol": "1.0",
+  "protocol": "1.1",
   "course": {
     "id": "7f72e600-3425-490c-b530-0179826cb206",
     "revision": 12,
@@ -91,7 +91,9 @@
     }
   ],
   "actor": {
-    "id": "user_local_creator"
+    "id": "3f0c2b9e-8a41-4d7e-9c55-2b6f1e0a7d13",
+    "name": "Sara Khan",
+    "email": "sara@example.com"
   },
   "sent_at": "2026-10-05T09:00:00.000Z"
 }

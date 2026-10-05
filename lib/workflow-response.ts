@@ -1,3 +1,4 @@
+import type { CurrentUser } from "@/lib/auth"
 import type { Course } from "@/lib/course"
 import type { WorkflowResult } from "@/lib/course-status"
 import { readCourseLesson, recordPublish } from "@/lib/course-store"
@@ -17,7 +18,7 @@ type PublishOutcome =
   | { error: string; status: number; code: PlatformErrorKind | "error"; issues?: string[] }
 
 /** Publishes the course (with every saved lesson) to the platform and notes when it happened. */
-export async function publishAndRecord(course: Course, actorId: string): Promise<PublishOutcome> {
+export async function publishAndRecord(course: Course, actor: CurrentUser): Promise<PublishOutcome> {
   try {
     const platform = getPlatform()
     if (!platform) {
@@ -40,7 +41,7 @@ export async function publishAndRecord(course: Course, actorId: string): Promise
       }
     }
 
-    const published = await platform.publishCourse({ course, lessons, actorId })
+    const published = await platform.publishCourse({ course, lessons, actor: { id: actor.id, name: actor.name, email: actor.email } })
     const summary = { ...published, warnings: [...skipped, ...published.warnings] }
     const publishedAt = new Date().toISOString()
     await recordPublish(course.id, publishedAt)
@@ -71,9 +72,9 @@ export function workflowResponse(result: WorkflowResult | null) {
  * publishing fails; the response then carries `publishError`. With no
  * platform set up, only the local status changes.
  */
-export async function publishedWorkflowResponse(result: WorkflowResult | null, actorId: string) {
+export async function publishedWorkflowResponse(result: WorkflowResult | null, actor: CurrentUser) {
   if (!result || "error" in result || !publishingEnabled()) return workflowResponse(result)
-  const published = await publishAndRecord(result.course, actorId)
+  const published = await publishAndRecord(result.course, actor)
   if ("error" in published) {
     return Response.json({ course: result.course, publishError: published.error, publishIssues: published.issues })
   }

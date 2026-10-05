@@ -1,0 +1,25 @@
+{
+  "description": "A launch token and its parts. See contract/README.md § Launch. Valid at verify_at; expired 60 s later.",
+  "key": {
+    "id": "example-key",
+    "secret": "example-secret-do-not-use-in-production"
+  },
+  "signing_context": "course-editor-launch.v1.",
+  "verify_at": 1800000010,
+  "token": "v1.eyJ2IjoxLCJraWQiOiJleGFtcGxlLWtleSIsImF1ZCI6ImNvdXJzZS1lZGl0b3IiLCJpYXQiOjE4MDAwMDAwMDAsImV4cCI6MTgwMDAwMDA2MCwianRpIjoiN2QxZjBlNWEtMmM0Yi00ZThmLTlhM2QtNmI1YzRkM2UyZjFhIiwiaXNzIjoiZXhhbXBsZS1ob3N0Iiwic3ViIjoiM2YwYzJiOWUtOGE0MS00ZDdlLTljNTUtMmI2ZjFlMGE3ZDEzIiwiZW1haWwiOiJzYXJhQGV4YW1wbGUuY29tIiwibmFtZSI6IlNhcmEgS2hhbiIsInJvbGUiOiJjcmVhdG9yIn0.Kuv40Hmd6ynVL0gMEeW1lwSLEjJVQV8QNYMiYE0CVfE",
+  "payload_b64url": "eyJ2IjoxLCJraWQiOiJleGFtcGxlLWtleSIsImF1ZCI6ImNvdXJzZS1lZGl0b3IiLCJpYXQiOjE4MDAwMDAwMDAsImV4cCI6MTgwMDAwMDA2MCwianRpIjoiN2QxZjBlNWEtMmM0Yi00ZThmLTlhM2QtNmI1YzRkM2UyZjFhIiwiaXNzIjoiZXhhbXBsZS1ob3N0Iiwic3ViIjoiM2YwYzJiOWUtOGE0MS00ZDdlLTljNTUtMmI2ZjFlMGE3ZDEzIiwiZW1haWwiOiJzYXJhQGV4YW1wbGUuY29tIiwibmFtZSI6IlNhcmEgS2hhbiIsInJvbGUiOiJjcmVhdG9yIn0",
+  "signature_b64url": "Kuv40Hmd6ynVL0gMEeW1lwSLEjJVQV8QNYMiYE0CVfE",
+  "claims": {
+    "v": 1,
+    "kid": "example-key",
+    "aud": "course-editor",
+    "iat": 1800000000,
+    "exp": 1800000060,
+    "jti": "7d1f0e5a-2c4b-4e8f-9a3d-6b5c4d3e2f1a",
+    "iss": "example-host",
+    "sub": "3f0c2b9e-8a41-4d7e-9c55-2b6f1e0a7d13",
+    "email": "sara@example.com",
+    "name": "Sara Khan",
+    "role": "creator"
+  }
+}

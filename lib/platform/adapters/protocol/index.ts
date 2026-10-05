@@ -133,7 +133,7 @@ export function createProtocolPlatform(config: ProtocolPlatformConfig): Platform
   return {
     name: NAME,
 
-    publishCourse({ course, lessons, actorId }) {
+    publishCourse({ course, lessons, actor }) {
       return serialized(course.id, async () => {
         let pkg: CoursePackage | undefined
         try {
@@ -156,7 +156,7 @@ export function createProtocolPlatform(config: ProtocolPlatformConfig): Platform
           }
 
           const coverImageUrl = course.cover_image_url ? await assets.resolve(course.cover_image_url) : null
-          pkg = CoursePackageSchema.parse(buildPackage({ course, lessons: publishable, coverImageUrl, actorId }))
+          pkg = CoursePackageSchema.parse(buildPackage({ course, lessons: publishable, coverImageUrl, actor }))
 
           const bytes = new TextEncoder().encode(JSON.stringify(pkg)).byteLength
           if (bytes > manifest.max_package_bytes) {
@@ -177,6 +177,14 @@ export function createProtocolPlatform(config: ProtocolPlatformConfig): Platform
           throw toPlatformError(error, pkg)
         }
       })
+    },
+
+    async launchUrl() {
+      try {
+        return (await getManifest()).host.launch_url ?? null
+      } catch {
+        return null
+      }
     },
 
     deleteCourse(courseId) {

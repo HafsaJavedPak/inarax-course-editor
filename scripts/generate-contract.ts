@@ -15,6 +15,7 @@ import path from "path"
 
 import { z } from "zod"
 
+import { signLaunchToken } from "../lib/protocol/launch"
 import { signRequest, stringToSign } from "../lib/protocol/signing"
 import {
   AssetSchema,
@@ -135,15 +136,46 @@ function examplePackage(): CoursePackage {
       { key: "intermediate", title: "Intermediate", modules: [] },
       { key: "advanced", title: "Advanced", modules: [] },
     ],
-    actor: { id: "user_local_creator" },
+    // The host's id for the person, from their launch token's `sub`.
+    actor: { id: "3f0c2b9e-8a41-4d7e-9c55-2b6f1e0a7d13", name: "Sara Khan", email: "sara@example.com" },
     sent_at: "2026-10-05T09:00:00.000Z",
   }
   return CoursePackageSchema.parse(pkg)
 }
 
+function launchVector() {
+  const now = 1_800_000_000
+  const token = signLaunchToken(
+    {
+      iss: "example-host",
+      sub: "3f0c2b9e-8a41-4d7e-9c55-2b6f1e0a7d13",
+      email: "sara@example.com",
+      name: "Sara Khan",
+      role: "creator",
+      iat: now,
+      exp: now + 60,
+      jti: "7d1f0e5a-2c4b-4e8f-9a3d-6b5c4d3e2f1a",
+    },
+    SIGNING_KEY,
+    now,
+  )
+  const [, payload, signature] = token.split(".")
+  return {
+    description: "A launch token and its parts. See contract/README.md § Launch. Valid at verify_at; expired 60 s later.",
+    key: SIGNING_KEY,
+    signing_context: "course-editor-launch.v1.",
+    verify_at: now + 10,
+    token,
+    payload_b64url: payload,
+    signature_b64url: signature,
+    claims: JSON.parse(Buffer.from(payload, "base64url").toString("utf8")),
+  }
+}
+
 const files: [string, unknown][] = [
   ...Object.entries(SCHEMAS).map(([name, schema]) => [`schemas/${name}.schema.json`, schemaFile(name, schema)] as [string, unknown]),
   ["fixtures/signing.json", signingVectors()],
+  ["fixtures/launch.json", launchVector()],
   ["fixtures/course-package.json", examplePackage()],
 ]
 

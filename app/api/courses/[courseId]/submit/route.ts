@@ -12,5 +12,5 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/courses/[c
 
   // Validate against the lesson files as they are now.
   const report = await getCourseReport(course)
-  return publishedWorkflowResponse(await updateCourseWorkflow(courseId, (current) => submit(current, report, user.id)), user.id)
+  return publishedWorkflowResponse(await updateCourseWorkflow(courseId, (current) => submit(current, report, user.id)), user)
 }

@@ -161,8 +161,12 @@ flowchart LR
 ```
 
 - The admin pages reuse the creator components with `isAdmin` set.
-- `lib/admin-mode.ts` then adds the `x-inara-mode: admin` header to their requests and switches
-  their links to `/admin/...`.
+- `lib/admin-mode.ts` then switches their links to `/admin/...` (and, locally without a platform,
+  adds the `x-inara-mode: admin` header that grants admin rules there).
+- With a platform connected, who is an admin comes only from the sign-in session: `proxy.ts` +
+  `lib/auth-gate.ts` keep non-admins out of `/admin`, and `lib/auth.ts` checks again in every page
+  and route. Sign-in is a platform launch token posted to `app/launch/route.ts`
+  ([platform-integration.md § Sign-in and roles](platform-integration.md#sign-in-and-roles)).
 
 ---
 
@@ -394,7 +398,10 @@ sequenceDiagram
 | `lib/course-export.ts` | Zip building (fflate) | export routes |
 | `lib/storage.ts` | `DATA_DIR`, `COURSE_DIR`, `UPLOAD_DIR` paths | store, export, uploads |
 | `lib/uploads.ts` | `imageSrc`: serve own uploads from the current host | thumbnails, image blocks |
-| `lib/auth.ts`, `lib/admin-mode.ts` | Current user (placeholder) and admin mode header / paths | routes, pages, components |
+| `lib/auth.ts` | Current user from the sign-in session (`getCurrentUser`, `requireAdminArea`) | routes, pages |
+| `lib/auth-gate.ts`, `proxy.ts` | Auth mode and who may open which path, checked on every request | proxy |
+| `lib/session.ts`, `lib/launch-replay.ts`, `lib/protocol/launch.ts` | Session cookie, single-use launch tokens, the token format | `app/launch`, `lib/auth.ts` |
+| `lib/admin-mode.ts` | Admin-area paths; the local-only admin header | components |
 | `lib/currencies.ts` | Currency list for paid courses | course schema, form |
 | `lib/course-preview.ts` | `readAllLessons`: every saved lesson of a course, for the preview pages | preview pages |
 | `lib/tiptap-utils.ts` | Tiptap helpers, `handleImageUpload` | rich text, image blocks |
