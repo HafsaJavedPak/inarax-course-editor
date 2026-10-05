@@ -12,7 +12,7 @@ export default function proxy(request: NextRequest) {
     config.mode === "launch" && config.key ? decodeSession(request.cookies.get(SESSION_COOKIE)?.value, config.key.secret) : null
 
   const decision = gate(request.nextUrl.pathname, session, config)
-  if (decision.kind === "redirect") return redirectTo(decision.to)
+  if (decision.kind === "redirect") return redirectTo(request, decision.to)
   if (decision.kind === "json") return NextResponse.json({ error: decision.error }, { status: decision.status })
   return NextResponse.next()
 }
