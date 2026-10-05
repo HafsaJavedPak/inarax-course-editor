@@ -3,7 +3,11 @@ import path from "path"
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
+import { NextRequest } from "next/server"
+
 import { POST as launch } from "@/app/launch/route"
+import { POST as signOut } from "@/app/sign-out/route"
+import proxy from "@/proxy"
 import { authConfig, gate } from "@/lib/auth-gate"
 import { __resetSeenTokenIds, claimTokenId } from "@/lib/launch-replay"
 import { signLaunchToken, verifyLaunchToken } from "@/lib/protocol/launch"
@@ -119,26 +123,60 @@ describe("POST /launch", () => {
     const token = signLaunchToken(claims, KEY)
     const res = await post(token)
     expect(res.status).toBe(303)
-    expect(res.headers.get("location")).toBe("https://editor.test/dashboard")
+    expect(res.headers.get("location")).toBe("/dashboard")
     expect(res.headers.get("set-cookie")).toMatch(/HttpOnly/i)
     expect(res.headers.get("set-cookie")).toMatch(/Secure/i)
     expect(decodeSession(cookieOf(res), KEY.secret)).toMatchObject({ sub: "user-1", role: "creator", email: "a@b.c" })
 
     const replay = await post(token)
-    expect(replay.headers.get("location")).toBe("https://editor.test/signed-out?reason=used")
+    expect(replay.headers.get("location")).toBe("/signed-out?reason=used")
     expect(cookieOf(replay)).toBeUndefined()
+  })
+
+  it("redirects relative to the browser's host, not the server's own address (Render)", async () => {
+    const body = new FormData()
+    body.set("token", signLaunchToken(claims, KEY))
+    // Behind Render's proxy the server sees its own port, not the public host.
+    const res = await launch(new Request("http://localhost:10000/launch", { method: "POST", body, headers: { "x-forwarded-proto": "https" } }))
+    expect(res.headers.get("location")).toBe("/dashboard")
+    expect(res.headers.get("set-cookie")).toMatch(/Secure/i)
   })
 
   it("sends admins to the review list", async () => {
     const res = await post(signLaunchToken({ ...claims, role: "admin" }, KEY))
-    expect(res.headers.get("location")).toBe("https://editor.test/admin")
+    expect(res.headers.get("location")).toBe("/admin")
   })
 
   it("refuses bad and expired tokens without a session", async () => {
     const bad = await post(signLaunchToken(claims, { id: KEY.id, secret: "x".repeat(40) }))
-    expect(bad.headers.get("location")).toBe("https://editor.test/signed-out?reason=invalid")
+    expect(bad.headers.get("location")).toBe("/signed-out?reason=invalid")
     const old = await post(signLaunchToken(claims, KEY, Math.floor(Date.now() / 1000) - 120))
-    expect(old.headers.get("location")).toBe("https://editor.test/signed-out?reason=expired")
+    expect(old.headers.get("location")).toBe("/signed-out?reason=expired")
     expect(cookieOf(old)).toBeUndefined()
+  })
+})
+
+describe("redirects behind Render's proxy", () => {
+  const saved = { ...process.env }
+  beforeEach(() => {
+    Object.assign(process.env, { PLATFORM_ADAPTER: "protocol", PLATFORM_KEY_ID: KEY.id, PLATFORM_KEY_SECRET: KEY.secret })
+  })
+  afterEach(() => {
+    process.env = { ...saved }
+  })
+  // On Render the app sees its own address (localhost:10000), never the public host.
+  const internal = (path: string, init?: { method?: string }) =>
+    new NextRequest(`http://localhost:10000${path}`, { ...init, headers: { "x-forwarded-host": "editor.onrender.com", "x-forwarded-proto": "https" } })
+
+  it("never points the browser at the server's internal address", async () => {
+    for (const [path, to] of [["/dashboard", "/signed-out"], ["/courses", "/signed-out"], ["/admin", "/signed-out"]]) {
+      const res = proxy(internal(path))
+      expect(res.headers.get("location")).toBe(to)
+    }
+    const creator = encodeSession({ sub: "u", email: null, name: null, role: "creator", exp: Math.floor(Date.now() / 1000) + 60 }, KEY.secret)
+    const req = internal("/admin")
+    req.cookies.set(SESSION_COOKIE, creator)
+    expect(proxy(req).headers.get("location")).toBe("/dashboard")
+    expect((await signOut(internal("/sign-out", { method: "POST" }))).headers.get("location")).toBe("/signed-out?reason=signed_out")
   })
 })

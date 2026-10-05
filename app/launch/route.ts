@@ -1,12 +1,11 @@
-import { NextResponse } from "next/server"
-
 import { authConfig } from "@/lib/auth-gate"
 import { claimTokenId } from "@/lib/launch-replay"
+import { redirectTo } from "@/lib/redirect"
 import { verifyLaunchToken } from "@/lib/protocol/launch"
 import { encodeSession, requestIsHttps, SESSION_COOKIE, SESSION_TTL_SECONDS, sessionCookieOptions } from "@/lib/session"
 
 /** 303: the browser follows with a GET, so a refresh never re-posts the token. */
-const seeOther = (request: Request, path: string) => NextResponse.redirect(new URL(path, request.url), 303)
+const seeOther = (_request: Request, path: string) => redirectTo(path, 303)
 
 /**
  * POST /launch (form field `token`)
