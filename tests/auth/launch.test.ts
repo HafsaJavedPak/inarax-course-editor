@@ -76,7 +76,7 @@ describe("gate", () => {
   })
 
   it("keeps sign-in, the signed-out page and images public", () => {
-    for (const p of ["/launch", "/signed-out", "/uploads/x.png"]) expect(gate(p, null, launchMode)).toEqual({ kind: "next" })
+    for (const p of ["/launch", "/signed-out", "/health", "/uploads/x.png"]) expect(gate(p, null, launchMode)).toEqual({ kind: "next" })
   })
 
   it("sends people without a session to sign in, and APIs get 401", () => {

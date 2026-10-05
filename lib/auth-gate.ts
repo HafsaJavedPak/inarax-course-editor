@@ -22,8 +22,8 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig {
   return { mode: "launch", key: id && secret ? { id, secret } : null }
 }
 
-/** Paths anyone may load: signing in, the signed-out page, and images (learners load them). */
-const PUBLIC_PREFIXES = ["/launch", "/signed-out", "/uploads/", "/images/", "/_next/", "/favicon"]
+/** Paths anyone may load: signing in, the signed-out page, the health check, and images (learners load them). */
+const PUBLIC_PREFIXES = ["/launch", "/signed-out", "/health", "/uploads/", "/images/", "/_next/", "/favicon"]
 
 export const isPublicPath = (pathname: string) => PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p))
 export const isAdminPath = (pathname: string) => pathname === "/admin" || pathname.startsWith("/admin/")

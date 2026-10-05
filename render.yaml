@@ -9,7 +9,7 @@ services:
     plan: starter
     buildCommand: npm ci && npm run build
     startCommand: npm run start
-    healthCheckPath: /courses
+    healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
         value: "22"
