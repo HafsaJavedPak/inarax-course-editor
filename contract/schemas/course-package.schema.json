@@ -1,0 +1,347 @@
+{
+  "$id": "https://inara.dev/course-publishing-protocol/1.0/course-package.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "protocol": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "course": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "summary": {
+          "type": "string"
+        },
+        "learning_objectives": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "audience": {
+          "type": "string"
+        },
+        "cover_image_url": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "length_hours": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "lesson_size": {
+          "type": "string",
+          "enum": [
+            "short",
+            "medium",
+            "long"
+          ]
+        },
+        "pricing": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "free"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "paid"
+                },
+                "amount": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "currency": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 3
+                }
+              },
+              "required": [
+                "type",
+                "amount",
+                "currency"
+              ]
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "title",
+        "summary",
+        "learning_objectives",
+        "audience",
+        "cover_image_url",
+        "length_hours",
+        "lesson_size",
+        "pricing"
+      ]
+    },
+    "review": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "in_review",
+            "changes_requested",
+            "approved",
+            "rejected"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "text": {
+                "type": "string"
+              },
+              "done": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "done"
+            ]
+          }
+        }
+      },
+      "required": [
+        "status",
+        "note",
+        "changes"
+      ]
+    },
+    "levels": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z0-9_-]{1,50}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "lessons": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                      },
+                      "content": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "version": {
+                                "type": "number",
+                                "const": 1
+                              },
+                              "format": {
+                                "type": "string",
+                                "const": "blocks"
+                              },
+                              "sections": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "required_to_advance": {
+                                      "type": "boolean"
+                                    },
+                                    "blocks": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "type": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "personalized": {
+                                            "type": "boolean"
+                                          },
+                                          "data": {}
+                                        },
+                                        "required": [
+                                          "id",
+                                          "type",
+                                          "personalized"
+                                        ],
+                                        "additionalProperties": {}
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "required_to_advance",
+                                    "blocks"
+                                  ],
+                                  "additionalProperties": {}
+                                }
+                              }
+                            },
+                            "required": [
+                              "version",
+                              "format",
+                              "sections"
+                            ],
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title",
+                      "content"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "summary",
+                "lessons"
+              ]
+            }
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "modules"
+        ]
+      }
+    },
+    "actor": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+    }
+  },
+  "required": [
+    "protocol",
+    "course",
+    "review",
+    "levels",
+    "actor",
+    "sent_at"
+  ]
+}

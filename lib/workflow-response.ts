@@ -14,7 +14,7 @@ import {
 
 type PublishOutcome =
   | { publishedAt: string; summary: PublishSummary }
-  | { error: string; status: number; code: PlatformErrorKind | "error" }
+  | { error: string; status: number; code: PlatformErrorKind | "error"; issues?: string[] }
 
 /** Publishes the course (with every saved lesson) to the platform and notes when it happened. */
 export async function publishAndRecord(course: Course, actorId: string): Promise<PublishOutcome> {
@@ -51,7 +51,7 @@ export async function publishAndRecord(course: Course, actorId: string): Promise
       if (error.kind === "unavailable" || error.kind === "auth") {
         console.error(`Failed to publish course ${course.id}:`, error.message, error.detail)
       }
-      return { error: error.message, status: PLATFORM_ERROR_STATUS[error.kind], code: error.kind }
+      return { error: error.message, status: PLATFORM_ERROR_STATUS[error.kind], code: error.kind, issues: error.issues }
     }
     console.error(`Failed to publish course ${course.id}:`, error)
     return { error: `Couldn't publish: ${(error as Error).message}`, status: 500, code: "error" }
@@ -74,7 +74,9 @@ export function workflowResponse(result: WorkflowResult | null) {
 export async function publishedWorkflowResponse(result: WorkflowResult | null, actorId: string) {
   if (!result || "error" in result || !publishingEnabled()) return workflowResponse(result)
   const published = await publishAndRecord(result.course, actorId)
-  if ("error" in published) return Response.json({ course: result.course, publishError: published.error })
+  if ("error" in published) {
+    return Response.json({ course: result.course, publishError: published.error, publishIssues: published.issues })
+  }
   return Response.json({
     course: { ...result.course, published_at: published.publishedAt },
     warnings: published.summary.warnings,

@@ -10,6 +10,7 @@ import {
   RevisionConflictError,
   saveCourseContent,
 } from "@/lib/course-store"
+import { getPlatform, PLATFORM_ERROR_STATUS, PlatformError } from "@/lib/platform"
 
 type Ctx = RouteContext<"/api/courses/[courseId]">
 
@@ -57,6 +58,19 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   if (!course) return notFound()
   if (user.role !== "admin" && course.status === "in_review") {
     return Response.json({ error: "Withdraw the course from review before deleting it." }, { status: 409 })
+  }
+
+  // Off the platform first: if that fails the course stays here too, so it can't
+  // be left live on the platform with no way to manage it from the editor.
+  try {
+    await getPlatform()?.deleteCourse(courseId)
+  } catch (error) {
+    if (!(error instanceof PlatformError)) throw error
+    console.error(`Failed to delete course ${courseId} on the platform:`, error.message, error.detail)
+    return Response.json(
+      { error: `Couldn't delete the course on the platform, so it wasn't deleted here either: ${error.message}` },
+      { status: PLATFORM_ERROR_STATUS[error.kind] },
+    )
   }
   await deleteCourse(courseId)
   return new Response(null, { status: 204 })

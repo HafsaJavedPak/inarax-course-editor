@@ -1,0 +1,72 @@
+{
+  "$id": "https://inara.dev/course-publishing-protocol/1.0/lesson-content.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "format": {
+      "type": "string",
+      "const": "blocks"
+    },
+    "sections": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string"
+          },
+          "required_to_advance": {
+            "type": "boolean"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "type": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "personalized": {
+                  "type": "boolean"
+                },
+                "data": {}
+              },
+              "required": [
+                "id",
+                "type",
+                "personalized"
+              ],
+              "additionalProperties": {}
+            }
+          }
+        },
+        "required": [
+          "id",
+          "required_to_advance",
+          "blocks"
+        ],
+        "additionalProperties": {}
+      }
+    }
+  },
+  "required": [
+    "version",
+    "format",
+    "sections"
+  ],
+  "additionalProperties": {}
+}

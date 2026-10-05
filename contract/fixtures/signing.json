@@ -1,0 +1,33 @@
+{
+  "description": "Test vectors for X-Editor-Signature. See contract/README.md § Authentication.",
+  "key": {
+    "id": "example-key",
+    "secret": "example-secret-do-not-use-in-production"
+  },
+  "cases": [
+    {
+      "method": "GET",
+      "path_with_query": "/api/integrations/course-editor/v1/manifest",
+      "body": "",
+      "timestamp": 1800000000,
+      "string_to_sign": "v1\n1800000000\nGET\n/api/integrations/course-editor/v1/manifest\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "signature": "v1=2a6e44e50a1a7a640b65a5a41df2976a325572ac7a7304928df1298910783f34"
+    },
+    {
+      "method": "PUT",
+      "path_with_query": "/api/integrations/course-editor/v1/courses/7f72e600-3425-490c-b530-0179826cb206",
+      "body": "{\"protocol\":\"1.0\"}",
+      "timestamp": 1800000123,
+      "string_to_sign": "v1\n1800000123\nPUT\n/api/integrations/course-editor/v1/courses/7f72e600-3425-490c-b530-0179826cb206\nab2170be902452c8f0d2800b9d6d4047368377c2a7576abb741284a9ed211035",
+      "signature": "v1=9581c8fae26811e0180d19662193c5e3038752a7fa20dfa543d63e07f6b5feec"
+    },
+    {
+      "method": "DELETE",
+      "path_with_query": "/v1/courses/7f72e600-3425-490c-b530-0179826cb206?reason=test",
+      "body": "",
+      "timestamp": 1800000456,
+      "string_to_sign": "v1\n1800000456\nDELETE\n/v1/courses/7f72e600-3425-490c-b530-0179826cb206?reason=test\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "signature": "v1=66f9893715b89a37338f52c37138c596eee7110d4208d17381c58c3ad686800a"
+    }
+  ]
+}

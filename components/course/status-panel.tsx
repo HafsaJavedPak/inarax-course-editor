@@ -70,7 +70,7 @@ export function StatusPanel({
       }
       apply(data)
       // The status change stands; only the copy in the platform database is behind.
-      if (data.publishError) setError(`Status updated, but not published to the platform: ${data.publishError}`)
+      if (data.publishError) setError(`Status updated, but not published to the platform: ${[data.publishError, ...(data.publishIssues ?? [])].join(" · ")}`)
     } finally {
       setBusy(false)
     }

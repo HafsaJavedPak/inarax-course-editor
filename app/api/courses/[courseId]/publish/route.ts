@@ -18,6 +18,6 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/courses/[c
   }
 
   const result = await publishAndRecord(course, user.id)
-  if ("error" in result) return Response.json({ error: result.error, code: result.code }, { status: result.status })
+  if ("error" in result) return Response.json({ error: result.error, code: result.code, issues: result.issues }, { status: result.status })
   return Response.json(result)
 }

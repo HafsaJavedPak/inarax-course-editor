@@ -1,7 +1,5 @@
 "use client"
 
-import { useRouter } from "next/navigation"
-
 import type { Publisher } from "@/components/lesson-editor/use-publish"
 
 export type SaveStatus = "saved" | "dirty" | "saving" | { error: string }
@@ -34,7 +32,6 @@ export function SaveBar({
   publishBlocked?: string
   onSave: () => void
 }) {
-  const router = useRouter()
   const state = typeof status === "string" ? status : "error"
   const text =
     typeof status !== "string"
@@ -64,7 +61,9 @@ export function SaveBar({
     publish === "off"
       ? "Saved locally · publishing off"
       : typeof publish !== "string"
-        ? publish.error
+        ? publish.issues?.length
+          ? `${publish.error} (${publish.issues.length} problem${publish.issues.length === 1 ? "" : "s"})`
+          : publish.error
         : publish === "publishing"
           ? "Publishing…"
           : publishBlocked
@@ -81,8 +80,9 @@ export function SaveBar({
   const publishTitle =
     publish === "off"
       ? "No platform is set up for this editor (PLATFORM_ADAPTER), so Save keeps changes on this computer only."
-      : [publishText, ...publisher.warnings].join("\n")
-  const needsSignIn = typeof publish !== "string" && publish.signIn
+      : typeof publish !== "string"
+        ? [publish.error, ...(publish.issues ?? [])].join("\n")
+        : [publishText, ...publisher.warnings].join("\n")
 
   const busy = status === "saving" || publish === "publishing"
 
@@ -99,16 +99,6 @@ export function SaveBar({
       >
         {publishText}
       </span>
-      {needsSignIn && (
-        // Back to this page after signing in, then Save again.
-        <button
-          type="button"
-          className="in-btn in-btn-secondary in-btn-sm"
-          onClick={() => router.push(`/sign-in?redirect_url=${encodeURIComponent(window.location.href)}`)}
-        >
-          Sign in
-        </button>
-      )}
       <button
         type="button"
         className="in-btn in-btn-primary in-btn-sm"

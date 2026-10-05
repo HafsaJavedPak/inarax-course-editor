@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono, Montserrat } from "next/font/google";
 
-import { clerkEnabled } from "@/lib/clerk";
 import "./globals.css";
 import "@/styles/_variables.scss";
 import "@/styles/_keyframe-animations.scss";
@@ -35,10 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        {/* Sign-in is optional (lib/clerk.ts): only with Clerk keys configured. */}
-        {clerkEnabled ? <ClerkProvider>{children}</ClerkProvider> : children}
-      </body>
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

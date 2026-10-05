@@ -1,0 +1,64 @@
+{
+  "$id": "https://inara.dev/course-publishing-protocol/1.0/problem.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "status": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "code": {
+      "type": "string",
+      "enum": [
+        "invalid_request",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "conflict",
+        "payload_too_large",
+        "unsupported_protocol",
+        "validation_failed",
+        "unavailable"
+      ]
+    },
+    "detail": {
+      "type": "string"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "number"
+              ]
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "message"
+        ]
+      }
+    }
+  },
+  "required": [
+    "title",
+    "status",
+    "code"
+  ]
+}

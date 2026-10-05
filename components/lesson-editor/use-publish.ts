@@ -6,9 +6,9 @@ import { modeHeaders } from "@/lib/admin-mode"
 
 /**
  * "off": no platform is set up, so Save only saves locally (not an error).
- * `signIn`: publishing needs the user to sign in with their platform account.
+ * `issues`: problems the platform found, located in the course (fix and Save again).
  */
-export type PublishStatus = "idle" | "publishing" | "off" | { error: string; signIn?: boolean }
+export type PublishStatus = "idle" | "publishing" | "off" | { error: string; issues?: string[] }
 
 /**
  * Publishing the course to the platform. Autosave only writes the
@@ -50,7 +50,7 @@ export function usePublish(
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         if (data.code === "not_configured") setStatus("off")
-        else setStatus({ error: data.error ?? `Publish failed (${res.status})`, signIn: data.code === "sign_in_required" })
+        else setStatus({ error: data.error ?? `Publish failed (${res.status})`, issues: Array.isArray(data.issues) ? data.issues : undefined })
         return false
       }
       setPublishedAt(new Date(data.publishedAt))

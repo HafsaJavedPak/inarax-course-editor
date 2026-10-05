@@ -1,24 +1,30 @@
-// A small JSON-over-HTTP client for platform adapters: base URL, auth
-// headers, timeouts, request ids, retries for safe requests, and response
-// validation. Platform-neutral; an adapter wraps it with its own endpoints.
+// A small JSON-over-HTTP client for platform adapters: base URL, request
+// signing, timeouts, request ids, retries for idempotent requests, problem
+// details and response validation. Platform-neutral.
 
 import type { z } from "zod"
 
-export type AuthHeaders = () => Promise<Record<string, string>>
+import { ProblemSchema, type Problem } from "@/lib/protocol/wire"
+
+/** Extra headers for a request, computed from exactly what is sent (e.g. a signature). */
+export type RequestSigner = (request: { method: string; pathWithQuery: string; body: Uint8Array }) => Record<string, string>
 
 export type HttpClientOptions = {
   baseUrl: string
-  auth: AuthHeaders
+  sign?: RequestSigner
   /** Per attempt. */
   timeoutMs?: number
-  /** Extra attempts for GET requests on network errors and 502/503/504. */
+  /** Extra attempts for idempotent requests (GET, PUT, DELETE) on network errors and 502/503/504. */
   retries?: number
+  fetch?: typeof fetch
 }
 
+/** A JSON body, or raw bytes with their content type. */
+export type RequestBody = { json: unknown } | { bytes: Uint8Array; contentType: string }
+
 export type RequestOptions<T> = {
-  /** JSON body, or FormData for uploads. */
-  body?: unknown
-  /** Validates the response; a mismatch is reported, not passed on. */
+  body?: RequestBody
+  /** Validates a 2xx response; a mismatch is reported, not passed on. */
   schema?: z.ZodType<T>
 }
 
@@ -29,15 +35,17 @@ export class HttpError extends Error {
     readonly path: string,
     /** 0 when there was no response (network error, timeout). */
     readonly status: number,
-    /** The response's error message, when it sent one. */
-    readonly serverMessage: string | null,
+    /** The response as problem details, when it sent them. */
+    readonly problem: Problem | null,
     readonly body: unknown,
+    readonly cause?: unknown,
   ) {
-    super(`${method} ${path} → ${status || "no response"}${serverMessage ? `: ${serverMessage}` : ""}`)
+    const message = problem ? `${problem.title}${problem.detail ? `: ${problem.detail}` : ""}` : status ? `HTTP ${status}` : String((cause as Error)?.message ?? "no response")
+    super(`${method} ${path} → ${status || "no response"}: ${message}`)
   }
 }
 
-/** The response didn't have the shape the adapter expects: the platform's API changed. */
+/** A 2xx response didn't have the expected shape: the host doesn't follow the protocol. */
 export class ContractError extends Error {
   constructor(
     readonly method: string,
@@ -49,7 +57,9 @@ export class ContractError extends Error {
 }
 
 const RETRY_STATUSES = new Set([0, 502, 503, 504])
+const IDEMPOTENT = new Set(["GET", "HEAD", "PUT", "DELETE"])
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const EMPTY = new Uint8Array()
 
 async function readBody(res: Response): Promise<unknown> {
   const text = await res.text()
@@ -61,47 +71,47 @@ async function readBody(res: Response): Promise<unknown> {
   }
 }
 
-function errorMessage(body: unknown): string | null {
-  if (typeof body === "string") return body.slice(0, 300)
-  if (body && typeof body === "object" && "error" in body && typeof body.error === "string") return body.error
-  return null
-}
-
-export function createHttpClient({ baseUrl, auth, timeoutMs = 30_000, retries = 2 }: HttpClientOptions) {
-  const root = baseUrl.replace(/\/+$/, "")
+export function createHttpClient({ baseUrl, sign, timeoutMs = 30_000, retries = 2, fetch: doFetch = fetch }: HttpClientOptions) {
+  const root = new URL(baseUrl.replace(/\/+$/, "") + "/")
 
   async function request<T = unknown>(method: string, path: string, options: RequestOptions<T> = {}): Promise<T> {
     const { body, schema } = options
-    const isForm = body instanceof FormData
-    const headers: Record<string, string> = {
-      Accept: "application/json",
-      "x-request-id": crypto.randomUUID(),
-      ...(await auth()),
-    }
-    if (body !== undefined && !isForm) headers["Content-Type"] = "application/json"
+    // The URL and the bytes are fixed once, so the signature covers exactly what is sent.
+    const url = new URL(path.replace(/^\/+/, ""), root)
+    const payload =
+      body === undefined ? EMPTY : "json" in body ? new TextEncoder().encode(JSON.stringify(body.json)) : body.bytes
+    const contentType = body === undefined ? null : "json" in body ? "application/json" : body.contentType
 
-    const attempts = method === "GET" ? retries + 1 : 1
+    const attempts = IDEMPOTENT.has(method) ? retries + 1 : 1
     let lastError: HttpError | null = null
 
     for (let attempt = 0; attempt < attempts; attempt++) {
       if (attempt > 0) await sleep(300 * 2 ** (attempt - 1))
+      // Signed per attempt: the timestamp has to be fresh.
+      const headers: Record<string, string> = {
+        Accept: "application/json, application/problem+json",
+        "x-request-id": crypto.randomUUID(),
+        ...(contentType ? { "Content-Type": contentType } : {}),
+        ...(sign?.({ method, pathWithQuery: url.pathname + url.search, body: payload }) ?? {}),
+      }
       let res: Response
       try {
-        res = await fetch(`${root}${path}`, {
+        res = await doFetch(url, {
           method,
           headers,
-          body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+          body: body === undefined ? undefined : (payload as BodyInit),
           signal: AbortSignal.timeout(timeoutMs),
           cache: "no-store",
         })
       } catch (error) {
-        lastError = new HttpError(method, path, 0, (error as Error).message, null)
+        lastError = new HttpError(method, path, 0, null, null, error)
         continue
       }
 
       const data = await readBody(res)
       if (!res.ok) {
-        lastError = new HttpError(method, path, res.status, errorMessage(data), data)
+        const problem = ProblemSchema.safeParse(data)
+        lastError = new HttpError(method, path, res.status, problem.success ? problem.data : null, data)
         if (RETRY_STATUSES.has(res.status)) continue
         throw lastError
       }
@@ -115,9 +125,7 @@ export function createHttpClient({ baseUrl, auth, timeoutMs = 30_000, retries = 
 
   return {
     get: <T>(path: string, schema?: z.ZodType<T>) => request<T>("GET", path, { schema }),
-    post: <T>(path: string, body?: unknown, schema?: z.ZodType<T>) => request<T>("POST", path, { body, schema }),
-    put: <T>(path: string, body?: unknown, schema?: z.ZodType<T>) => request<T>("PUT", path, { body, schema }),
-    patch: <T>(path: string, body?: unknown, schema?: z.ZodType<T>) => request<T>("PATCH", path, { body, schema }),
+    put: <T>(path: string, body: RequestBody, schema?: z.ZodType<T>) => request<T>("PUT", path, { body, schema }),
     delete: <T>(path: string, schema?: z.ZodType<T>) => request<T>("DELETE", path, { schema }),
   }
 }

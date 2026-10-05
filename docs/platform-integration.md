@@ -1,19 +1,24 @@
-# Platform integration (publishing to inara-next)
+# Platform integration (publishing)
 
-Last updated: 2026-10-01. Replaces the earlier `database-publishing.md`: the editor no longer writes
-to any database.
+Last updated: 2026-10-05. Replaces the inara-next admin-API adapter (kept in git history on the
+`wip/clerk-publish` branch).
 
-The editor publishes courses to **inara-next through inara-next's admin REST API**. It has no
-database connection and knows nothing about inara-next's tables.
+The editor publishes courses through the **Course Publishing Protocol**, which the editor owns and
+any host platform implements: [contract/README.md](../contract/README.md) is the spec. The editor
+contains **no host-specific code**: no host URLs, ids, enums, rules or login. inara-next is one
+host; a FastAPI service could be another, with no change to the editor.
 
 - **Autosave** writes only the editor's local JSON files.
-- **Save** (or Ctrl/⌘+S) saves locally, then publishes the whole course.
+- **Save** (or Ctrl/⌘+S) saves locally, then publishes the whole course in **one signed request**.
+  The host applies it in **one transaction**: a publish happens completely or not at all.
 - **Review actions** (submit, withdraw, accept / reject / request changes) publish the new status.
-- If publishing fails, the local save still stands, and the Save bar or status panel shows why.
+- **Deleting** a course deletes it on the host first; if that fails, the course stays in the editor.
+- If publishing fails, the local save still stands, and the Save bar or status panel shows why,
+  down to the lesson, section and block when the host says where the problem is.
 
 ---
 
-## 1. Design: one plug, swappable adapters
+## 1. Design
 
 ```mermaid
 flowchart LR
@@ -21,36 +26,57 @@ flowchart LR
         R["Save button / review routes<br/>app/api/courses/[id]/..."]
         W["lib/workflow-response.ts<br/>publishAndRecord()"]
         F["lib/platform/index.ts<br/>getPlatform() (reads env)"]
-        P["PlatformPort<br/>lib/platform/port.ts<br/>publishCourse(course, lessons)"]
-        subgraph Adapter["lib/platform/adapters/inara-next/"]
-            S["sync.ts<br/>compare + decide calls"]
-            A["api.ts<br/>inara-next URLs + response schemas"]
-            AU["auth.ts"]
-            L["links.ts<br/>editor uuid ↔ inara-next id"]
+        P["PlatformPort<br/>lib/platform/port.ts<br/>publishCourse · deleteCourse"]
+        subgraph Adapter["lib/platform/adapters/protocol/"]
+            I["index.ts<br/>manifest · serialize · errors"]
+            PK["package.ts<br/>course → package"]
+            AS["assets.ts<br/>content-addressed images"]
+            LO["locate.ts<br/>error paths → words"]
         end
-        H["lib/platform/http-client.ts<br/>timeouts · retries · request ids · errors"]
-        LS[("course/&lt;id&gt;/inara-next.links.json")]
+        PR["lib/protocol/<br/>wire.ts (messages) · signing.ts (HMAC)"]
+        H["lib/platform/http-client.ts<br/>signing · timeouts · retries · problems"]
     end
-    N["inara-next<br/>/api/admin/..."]
+    HOST["Any host<br/>/v1/manifest · /v1/assets · /v1/courses"]
 
     R --> W --> F --> P
-    P -. implemented by .-> S
-    S --> A --> H --> N
-    AU --> H
-    S <--> LS
+    P -. implemented by .-> I
+    I --> PK & AS & LO
+    I --> H --> HOST
+    PK & H --> PR
 ```
 
-- **The editor depends only on `PlatformPort`.** Routes, components and the rest of `lib/` call
-  `getPlatform().publishCourse(...)` and never mention inara-next.
-- **An adapter implements the port for one platform.** Only `adapters/inara-next/api.ts` knows
-  inara-next's URLs, integer ids and payload shapes. If inara-next's API changes, that file changes.
-  If inara-next is replaced, or gets a new API version, add a new adapter and select it with
-  `PLATFORM_ADAPTER`.
-- **Responses are validated** with zod, checking only the fields the adapter reads. Extra fields are
-  fine; a renamed or removed field fails loudly ("inara-next's API answered … in an unexpected
-  shape; the adapter needs updating") instead of publishing wrong data.
-- **Errors are translated** into the editor's own kinds (`invalid`, `conflict`, `auth`,
-  `unavailable`, `not_configured`), so callers never handle HTTP codes from another system.
+- **The editor depends only on `PlatformPort`.** Nothing outside `lib/platform/` knows publishing
+  exists beyond `publishCourse` and `deleteCourse`.
+- **The protocol is the contract, not a host's API.** `lib/protocol/wire.ts` defines every
+  message; `contract/schemas/*.schema.json` are generated from it (`npm run contract:generate`,
+  checked by `npm run contract:check`) for hosts in other languages.
+- **One request per publish.** The package carries the whole course (structure, content, review
+  status) keyed by the editor's UUIDs. The host keeps the mapping to its own ids, so the editor keeps
+  **no link files** and can't create duplicates by losing one.
+- **Images are content-addressed** (id = SHA-256 of the bytes). The editor asks the host whether it
+  has an image and uploads it only if not. Hosts without file storage say so in their manifest and
+  the editor links images from `EDITOR_PUBLIC_URL`.
+- **The host negotiates.** `GET /v1/manifest` says which protocol major it speaks, which block types
+  it can show (lessons using others keep their last published version, with a warning), and its
+  limits. It is cached for five minutes.
+- **One publish per course at a time**, in order, so an older version can never land after a newer
+  one.
+- **Errors come back as problems** (RFC 9457) with a `code` and paths into the package; the adapter
+  turns them into the editor's own kinds (`invalid`, `conflict`, `auth`, `unavailable`,
+  `not_configured`) and readable issues ("Lesson “Intro” in module “Basics”, section 2, block 1
+  (mcq): …").
+
+### Authentication
+
+Requests are signed with HMAC-SHA256 over the timestamp, method, path and body hash
+(`X-Editor-Key-Id`, `X-Editor-Timestamp`, `X-Editor-Signature`; details in the contract). The key
+pair is shared with the host. To rotate: add the new key on the host (hosts accept several), switch
+the editor's `PLATFORM_KEY_ID` / `PLATFORM_KEY_SECRET`, then remove the old key from the host.
+
+The key identifies **the editor installation**. The package's `actor` is the editor user who pressed
+Save, recorded by the host for audit. Signing in to the editor with the host's accounts (a
+host-issued launch token) is the next phase; until then `/admin` in the editor is still open, as
+before (see HANDOVER known issues).
 
 ---
 
@@ -58,213 +84,89 @@ flowchart LR
 
 Put these in `.env.local` (see `.env.example`):
 
-| Variable | Values | Meaning |
-|---|---|---|
-| `PLATFORM_ADAPTER` | `inara-next` · `none` (default) | `none` turns publishing off: Save only saves locally, and review actions only change the local status. |
-| `INARA_API_URL` | e.g. `http://127.0.0.1:3000` | inara-next's base URL |
-| `INARA_AUTH` | `clerk` (default when Clerk keys are set) · `bearer` · `none` | `clerk` forwards the signed-in user's inara-next login. `bearer` sends `INARA_API_TOKEN`. `none` only works against inara-next with its dev auth bypass. |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | inara-next's own values | Turns on sign-in with inara-next accounts (`/sign-in`), needed for `clerk`. Without them the editor has no sign-in. The publishable key must be present at build time. |
-| `INARA_API_TOKEN` | token | A Clerk session token for an inara-next admin user (`Authorization: Bearer …`) |
-| `INARA_ORGANIZATION_ID` | number, optional | Organization that new courses are linked to. Default: the admin's first organization (`GET /api/admin/organizations`). |
-| `INARA_UPLOAD_ASSETS` | `true` (default) · `false` | Copy images uploaded to the editor into inara-next's storage (Firebase) and point the course at the copies. |
-| `EDITOR_PUBLIC_URL` | e.g. `https://editor.example.com` | The editor's public address. Images inara-next can't store (no storage set up, an AVIF image, or copying turned off) are linked from here instead of the host they were uploaded on, which is often `localhost`. |
+| Variable | Meaning |
+|---|---|
+| `PLATFORM_ADAPTER` | `protocol` to publish, `none` (default) to only save locally |
+| `PLATFORM_URL` | The host's protocol base URL. inara-next: `<inara-next URL>/api/integrations/course-editor`. Must be https except for localhost |
+| `PLATFORM_KEY_ID` | Id of the signing key |
+| `PLATFORM_KEY_SECRET` | The signing secret, at least 32 characters (`openssl rand -base64 36`) |
+| `EDITOR_PUBLIC_URL` | This editor's public address, for images the host can't store |
 
-**Auth:** inara-next's admin routes need a Clerk session for a user who is an organization admin.
-With inara-next's Clerk keys, the editor offers sign-in with inara-next accounts. On Save, its server
-gets the user's current Clerk session token and sends it to inara-next as `Authorization: Bearer …`,
-so inara-next sees that person, with their own rights.
-
-- **Not signed in:** the local save still happens; the Save bar says "Sign in with your inara-next
-  account to publish" with a **Sign in** button.
-- **Signing in is only needed to publish:** the editor itself isn't locked.
-- **`PLATFORM_ADAPTER` unset:** the Save bar shows "Saved locally · publishing off", which is not an
-  error.
+Wrong or missing settings make Save answer "publishing isn't set up" with the exact variable at
+fault, never a crash.
 
 ---
 
-## 3. What a publish does
+## 3. Connecting to inara-next
 
-`adapters/inara-next/sync.ts` compares the editor's course with inara-next's copy
-(`GET /api/admin/courses/{id}`) and makes only the calls needed, in this order:
+inara-next implements the protocol in `app/api/integrations/course-editor/v1/` and
+`lib/integrations/course-editor/` (its `docs/course-editor-integration.md` has the details). On the
+inara-next side set:
 
-```mermaid
-flowchart TD
-    A[Check titles locally<br/>module titles unique per course,<br/>lesson titles unique per module] --> B{Course linked<br/>and still on inara-next?}
-    B -- no --> C[POST /interactive/courses<br/>with organization_id]
-    B -- yes --> D
-    C --> D[PATCH /courses/id<br/>title · description · status<br/>cover image via /cover-image]
-    D --> E[Levels: link by id or name,<br/>create missing ones]
-    E --> F[Delete modules / lessons<br/>the editor no longer has, or that moved]
-    F --> G[Create or rename modules,<br/>then lessons; save changed content<br/>PUT /lessons/id/content]
-    G --> H[Reorder modules per level<br/>and lessons per module if needed]
-    H --> I[Set each lesson's review status]
-    I --> J([Save links file · record published_at])
+```
+COURSE_EDITOR_KEYS=<PLATFORM_KEY_ID>:<PLATFORM_KEY_SECRET>   # several pairs, comma-separated, for rotation
+COURSE_EDITOR_ORGANIZATION_ID=<org id>                       # optional; default: the inaraX organization
 ```
 
-**Before anything is sent:**
-- Every saved lesson is checked with the editor's lesson validation. A lesson with errors **isn't
-  sent**, so inara-next keeps its last published version. The rest of the course still publishes,
-  and the Save bar shows "Published · N warnings", naming each skipped lesson and its first problem.
-- Duplicate module or lesson titles stop the publish with a message naming them.
-- A lesson or module that **moved** has to be deleted and recreated, because inara-next can't move
-  content. If it is live (the course is `PUBLISHED`, or the lesson is `APPROVED`), the publish is
-  refused before anything is deleted, so learners' progress isn't lost.
+How inara-next maps a package (for reference; the editor doesn't depend on it):
 
-**Endpoints used:**
-
-| Step | inara-next endpoint |
+| Editor | inara-next |
 |---|---|
-| Find organization | `GET /api/admin/organizations` |
-| Read the course tree | `GET /api/admin/courses/{id}` |
-| Create course | `POST /api/admin/interactive/courses` |
-| Update title / description / status | `PATCH /api/admin/courses/{id}` |
-| Cover image | `POST` / `DELETE /api/admin/courses/{id}/cover-image` |
-| Levels | `POST /api/admin/interactive/levels`, `PATCH .../levels/{id}` |
-| Modules | `POST`, `PATCH`, `DELETE /api/admin/interactive/modules[/{id}]`, `PATCH .../modules/reorder` |
-| Lessons | `POST`, `PATCH`, `DELETE /api/admin/interactive/lessons[/{id}]`, `PATCH .../lessons/reorder` |
-| Lesson content | `GET` / `PUT /api/admin/lessons/{id}/content` (key concepts are read and sent back unchanged) |
-| Lesson status | `PATCH .../lessons/{id}` `{published}`, `PATCH /api/admin/review/lesson/{uuid}` `{status:"pending_review"}`, `POST /api/admin/review/lesson/{uuid}/reject` |
-| Images | `POST /api/admin/interactive/upload` |
+| course / module / lesson UUID | `courses.uuid` / `modules.uuid` / `lessons.uuid` (same value) |
+| level 1–3 | `levels.level_number` 1–3 |
+| lesson content | the English canonical `generated_lessons.structured_content` |
+| `draft` / `in_review` / `changes_requested` / `approved` / `rejected` | course `DRAFT` / `UNDER_REVIEW` / `CHANGES_REQUESTED` / `APPROVED` / `REJECTED`; lessons `DRAFT` / `PENDING_REVIEW` / `REJECTED` (with comments) / `APPROVED` / `REJECTED` |
+| — | `PUBLISHED` and `RETIRED` are set in inara-next only and never overwritten |
 
-**Links file:** `course/<courseId>/inara-next.links.json` records which inara-next id belongs to each
-editor uuid (course, levels, modules, lessons, and copied images).
-- It's saved after **every create**. A publish that fails part-way therefore resumes on the next Save
-  without making duplicates (tested).
-- It belongs to one editor installation and one inara-next environment. It's ignored by git and
-  left out of course downloads.
-- Delete it to force a fresh copy.
+Moving a lesson or module now **moves** it on inara-next (learner progress stays), instead of the
+old delete-and-recreate.
 
-**Status mapping:**
+### Local testing
 
-| Editor status | `courses.status` | Each lesson's `generated_lessons.status` |
-|---|---|---|
-| draft | `DRAFT` | `DRAFT` |
-| in_review | `UNDER_REVIEW` | `PENDING_REVIEW` |
-| changes_requested | `CHANGES_REQUESTED` | `REJECTED`, with the requested changes as comments |
-| approved | `APPROVED` | `APPROVED` (quiz generation is not started) |
-| rejected | `REJECTED` | `REJECTED`, with the reviewer's note |
+1. In inara-next's `.env`, add `COURSE_EDITOR_KEYS=editor-local:<secret>` and run it
+   (`npm run dev`, port 3000).
+2. In the editor's `.env.local`:
+   ```
+   PLATFORM_ADAPTER=protocol
+   PLATFORM_URL=http://localhost:3000/api/integrations/course-editor
+   PLATFORM_KEY_ID=editor-local
+   PLATFORM_KEY_SECRET=<secret>
+   ```
+3. `npm run dev -- -p 3001`, open a course and press Save. The Save bar links nothing yet, but the
+   publish response carries the course's inara-next admin URL.
 
-- The editor never sets `PUBLISHED` or `RETIRED`, and leaves a course that already has either status
-  alone.
-- The course statuses `UNDER_REVIEW` / `CHANGES_REQUESTED` / `APPROVED` / `REJECTED` exist in
-  inara-next's `prisma/schema.prisma` (commit `3991c573`). Every database inara-next runs against
-  needs them too: `prisma db push` locally, Alembic for the shared databases.
-- inara-next has no endpoint that sets a lesson to `UNDER_REVIEW` or `CHANGES_REQUESTED`, hence
-  `PENDING_REVIEW` and `REJECTED`.
+### Checking a host
+
+`npm run verify-host` runs the protocol's conformance checks (auth, manifest, assets, create,
+idempotency, moves, title swaps, removal, validation errors, rollback, delete) against a running host
+with the same three `PLATFORM_*` variables. Use a development host: it creates and deletes a test
+course.
 
 ---
 
-## 4. Testing locally
+## 4. Tests
 
-### With your own local inara-next (real Clerk login)
+`npm test` runs the unit tests:
 
-1. **Run inara-next** as usual (`npm run dev`, port 3000), signed in to an account that is an admin
-   of an organization.
-2. **inara-next's database needs the editor's review statuses** (`UNDER_REVIEW`,
-   `CHANGES_REQUESTED`, `APPROVED`, `REJECTED` in `course_status`, and `CHANGES_REQUESTED` in
-   `generated_lesson_status`). They're in inara-next's Prisma schema; add them to its database with
-   `db/migrations/001_*.sql` and `002_course_status_review_values.sql` (or `prisma db push` on a
-   throwaway database).
-3. **Editor `.env.local`:**
-
-   ```
-   PLATFORM_ADAPTER=inara-next
-   INARA_API_URL=http://localhost:3000
-   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<from inara-next .env>
-   CLERK_SECRET_KEY=<from inara-next .env>
-   EDITOR_PUBLIC_URL=http://localhost:3001
-   ```
-
-4. **Run the editor on another port:** `npm run dev -- -p 3001`, open <http://localhost:3001>, press
-   **Save** in a course, then **Sign in** with the same inara-next account, and Save again. The course
-   appears in inara-next's admin.
-
-Tested so far (2026-10-02): sign-in page, the "sign in to publish" prompt and the 401 answer. The
-signed-in publish itself needs a real account, so it hasn't been run end to end with Clerk yet. The
-same sync was tested end to end with the dev auth bypass (below).
-
-### With inara-next's dev auth bypass (no Clerk)
-
-This runs inara-next on your machine with its dev auth bypass and a throwaway database, then points
-the editor at it. It was done on 2026-10-01 against inara-next commit `3991c573`.
-
-> **Note:** the latest inara-next commit (`0fc5c642`, "added local dev bypass auth…") actually
-> **removes** the dev auth bypass, the local database scripts and `docs/local-dev.md`. Use
-> `3991c573`, or restore those files.
-
-**1. inara-next, in a separate checkout** (so your working branch is untouched):
-
-```bash
-cd ~/Projects/inara-next
-git worktree add --detach ../inara-next-test 3991c573
-cd ../inara-next-test
-npm ci                                   # its own node_modules (Turbopack rejects a symlinked one)
-cp ../inara-next/.env .env               # then set the two DB URLs below in .env
-
-# A throwaway Postgres (port 5434, so it doesn't clash with an existing local DB)
-docker run -d --name inara-editor-test-db -e POSTGRES_USER=inara -e POSTGRES_PASSWORD=inara \
-  -e POSTGRES_DB=inara_local -p 127.0.0.1:5434:5432 pgvector/pgvector:pg16
-
-export DATABASE_URL="postgresql://inara:inara@localhost:5434/inara_local"
-export DIRECT_URL="$DATABASE_URL"        # export them: Prisma would otherwise read another .env
-npm run db:local:setup                   # creates the schema (with the new statuses)
-npm run db:local:seed                    # org "inaraX", admin@inara.local, sample courses
-npm run dev:local -- -p 3000             # http://127.0.0.1:3000, signed in as the local admin
-```
-
-Check it: `curl http://127.0.0.1:3000/api/admin/organizations` → `[{"id":1,"name":"inaraX"}]`.
-
-**2. The editor**, in `.env.local`:
-
-```
-PLATFORM_ADAPTER=inara-next
-INARA_API_URL=http://127.0.0.1:3000
-INARA_AUTH=none
-```
-
-Then run `npm run dev -- -p 3001` and open <http://localhost:3001>. Press **Save** in a course, and
-open <http://127.0.0.1:3000/admin> to see it in inara-next.
-
-**3. Clean up:** `docker rm -f inara-editor-test-db` and `git worktree remove ../inara-next-test`.
-
-**Results of the 2026-10-01 test run:**
-
-| Scenario | Result |
-|---|---|
-| First publish of a course (course, 3 levels, module, 2 lessons) | 7 created |
-| Publish again, nothing changed | 0 calls that change anything |
-| Rename a module and the course | updated in place |
-| Reverse lesson order | one reorder call |
-| Move a lesson to a module in another level | deleted and recreated there |
-| Each review status | course and lesson statuses as in the table above |
-| Delete a module | removed with its lessons |
-| Publish fails part-way, fix, Save again | continues; no duplicate course, levels or modules |
-| Duplicate module titles across levels | refused by the editor before any call, naming the titles |
-| Content inara-next considers invalid | refused, naming the field (e.g. `sections.0.blocks.1.data.hotspots`) |
-| Images without Firebase configured on inara-next | publish succeeds with one warning; with `EDITOR_PUBLIC_URL` set, images point at `https://<editor>/uploads/…` instead of `localhost` |
-| A lesson with validation errors (hotspot block with no pins, bucket with no label) | that lesson is skipped with a warning naming it; the rest of the course publishes |
-| Move a lesson that is live (`APPROVED`) to another module | refused with a message; nothing deleted on inara-next |
-| Builder shows duplicate module titles across levels as errors; new modules and lessons get free names | e.g. "Module 6", "Lesson 4" |
+- `tests/protocol/signing.test.ts`: signing, tampering, clock skew, rotation, and the published test
+  vectors.
+- `tests/platform/package.test.ts`: building packages, unsupported blocks, locating errors.
+- `tests/platform/protocol-adapter.test.ts`: the adapter against an in-memory host
+  (`tests/helpers/fake-host.ts`) that verifies signatures like a real one.
+- `tests/platform/env.test.ts`: configuration checks.
 
 ---
 
 ## 5. Known gaps
 
-| # | Gap | How it's handled now |
-|---|---|---|
-| 1 | The editor's lesson checks could differ from inara-next's schema (`lib/lesson-content/schema.ts`). | The editor's rules were compared with inara-next's for all 16 authored block types; the one difference (fill-in-the-blank needs 2+ options) is fixed. Lessons with errors are never sent; they're named in a warning. If inara-next adds a rule, its error names the lesson field, and `lib/lesson-validate.ts` should be updated. |
-| 2 | Module titles must be unique across the whole course on inara-next. | The builder flags duplicates as errors (they block submitting), new modules and lessons get free default names, and publishing names any duplicates. Existing courses with duplicates ("hello") need a rename. |
-| 3 | inara-next has no move endpoint. | A moved item that isn't live is deleted and recreated. A live one (course `PUBLISHED` or lesson `APPROVED`) is refused, with steps to follow. The real fix is a move option in inara-next, e.g. `module_id` on `PATCH /interactive/lessons/{id}`. |
-| 4 | **Auth:** only `none` (local) and a fixed `bearer` token. | Forwarding each user's Clerk session needs Clerk sign-in in the editor. |
-| 5 | Images need Firebase on inara-next. | Without it (or for AVIF, which inara-next doesn't accept), images link to `EDITOR_PUBLIC_URL`, with one warning. The editor must then stay reachable at that address. |
-| 6 | **Not transactional:** many calls per publish. | A failure leaves a partial copy; the next Save completes it. |
-| 7 | Deleting a course in the editor doesn't delete it on inara-next. | Delete it in inara-next's admin. |
-| 8 | `key_concepts` and `lesson_type` aren't authored in the editor. | Existing key concepts on inara-next are kept. |
-
-## 6. Adding another platform
-
-1. Create `lib/platform/adapters/<name>/` with a function that returns a `PlatformPort`.
-2. Use `createHttpClient` for HTTP, `createFileLinkStore(courseId, "<name>")` if it needs to remember
-   ids, and throw `PlatformError` for failures.
-3. Add a `case "<name>"` in `lib/platform/index.ts` reading its env vars.
-4. Set `PLATFORM_ADAPTER=<name>`. Nothing else in the editor changes.
+- **Editor sign-in** still isn't there (next phase: a launch token issued by the host, so authors use
+  their host account and the host decides who may publish).
+- **Preview** still uses the copied inara-next player in `vendor/inara-player/` (later phase: the
+  host renders previews; the copy stays as an offline fallback). The protocol already has a
+  `capabilities.preview` flag for it.
+- **Revision ordering** is enforced by the editor (one publish per course at a time). The package
+  carries `revision`; inara-next doesn't store it yet, so two separate editor installations
+  publishing the same course could still overwrite each other.
+- **Content added in inara-next to an editor course** (modules or lessons created in inara-next's
+  admin) is removed on the next publish: the editor is the source of truth for its courses. The
+  publish result warns when a removed lesson had learner completions.

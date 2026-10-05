@@ -1,0 +1,116 @@
+openapi: 3.1.0
+info:
+  title: Course Publishing Protocol
+  version: "1.0"
+  description: |
+    How the course editor publishes courses to a host platform.
+    See README.md in this folder for the full semantics; message schemas are in schemas/.
+servers:
+  - url: "{baseUrl}"
+    variables:
+      baseUrl:
+        default: https://platform.example.com/api/integrations/course-editor
+        description: The host's protocol base URL (the editor's PLATFORM_URL).
+security:
+  - editorSignature: []
+paths:
+  /v1/manifest:
+    get:
+      operationId: getManifest
+      summary: What the host speaks and supports
+      responses:
+        "200":
+          description: The manifest
+          content:
+            application/json:
+              schema: { $ref: "./schemas/manifest.schema.json" }
+        default: { $ref: "#/components/responses/Problem" }
+  /v1/assets/{assetId}:
+    parameters:
+      - $ref: "#/components/parameters/AssetId"
+    get:
+      operationId: getAsset
+      summary: Whether the host has this file, and its URL
+      responses:
+        "200":
+          description: The host has it
+          content:
+            application/json:
+              schema: { $ref: "./schemas/asset.schema.json" }
+        default: { $ref: "#/components/responses/Problem" }
+    put:
+      operationId: putAsset
+      summary: Store a file; its bytes must hash to assetId
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema: { type: string, contentMediaType: application/octet-stream }
+      responses:
+        "200":
+          description: Already stored
+          content:
+            application/json:
+              schema: { $ref: "./schemas/asset.schema.json" }
+        "201":
+          description: Stored
+          content:
+            application/json:
+              schema: { $ref: "./schemas/asset.schema.json" }
+        default: { $ref: "#/components/responses/Problem" }
+  /v1/courses/{courseId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+    put:
+      operationId: publishCourse
+      summary: Make the host's copy of the course match this package (one transaction)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./schemas/course-package.schema.json" }
+      responses:
+        "200":
+          description: Applied
+          content:
+            application/json:
+              schema: { $ref: "./schemas/publish-result.schema.json" }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteCourse
+      summary: Remove the course
+      responses:
+        "200":
+          description: Removed (or archived)
+          content:
+            application/json:
+              schema: { $ref: "./schemas/delete-result.schema.json" }
+        default: { $ref: "#/components/responses/Problem" }
+components:
+  parameters:
+    CourseId:
+      name: courseId
+      in: path
+      required: true
+      description: The editor's course UUID (course.id in the package)
+      schema: { type: string, format: uuid }
+    AssetId:
+      name: assetId
+      in: path
+      required: true
+      description: Lower-case hex SHA-256 of the file's bytes
+      schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+  responses:
+    Problem:
+      description: An RFC 9457 problem
+      content:
+        application/problem+json:
+          schema: { $ref: "./schemas/problem.schema.json" }
+  securitySchemes:
+    editorSignature:
+      type: apiKey
+      in: header
+      name: X-Editor-Signature
+      description: |
+        HMAC-SHA256 request signature, together with X-Editor-Key-Id and X-Editor-Timestamp.
+        See README.md § Authentication and fixtures/signing.json.
