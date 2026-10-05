@@ -53,7 +53,7 @@ export function validateBlock(block: TypedBlock): { level: LessonIssue["level"];
     case "image_hotspot": {
       const { image_url, hotspots } = block.data
       if (!isUrl(image_url)) error("Image URL must be a full URL (https://…)")
-      if (hotspots.length < 1) error("Add at least one hotspot")
+      // Hotspots are optional: without any, the block is a plain captioned image.
       hotspots.forEach((h, i) => {
         if (isBlank(h.title)) error(`Hotspot ${i + 1} needs a title`)
         if (isBlank(h.info)) error(`Hotspot ${i + 1} needs info text`)

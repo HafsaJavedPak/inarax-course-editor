@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import { CourseBuilder } from "@/components/course/course-builder"
 import { getCurrentUser } from "@/lib/auth"
 import { getAccessibleCourse, getCourseReport } from "@/lib/course-store"
+import { publishingEnabled } from "@/lib/platform"
 
 export default async function Page({ params }: PageProps<"/courses/[courseId]">) {
   const { courseId } = await params
@@ -12,6 +13,7 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]">)
     <CourseBuilder
       initialCourse={course}
       initialReport={await getCourseReport(course)}
+      publishingEnabled={publishingEnabled()}
     />
   )
 }

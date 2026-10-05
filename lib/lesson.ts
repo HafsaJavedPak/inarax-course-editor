@@ -8,7 +8,14 @@
 export type RichTextData = { markdown: string }
 export type ImageData = { image_url: string; alt: string; caption?: string }
 export type Hotspot = { id: string; x: number; y: number; title: string; info: string }
-export type ImageHotspotData = { image_url: string; alt?: string; hotspots: Hotspot[] }
+export type ImageHotspotData = {
+  image_url: string
+  alt?: string
+  /** Shown under the image. */
+  caption?: string
+  /** Optional: with none, the block is a plain captioned image (no points). */
+  hotspots: Hotspot[]
+}
 export type FlipCard = { id: string; front: string; back: string }
 export type FlipCardsData = { cards: FlipCard[] }
 export type AccordionSection = { id: string; title: string; body: string }
@@ -143,7 +150,7 @@ export const BLOCK_CATALOG: Record<
 > = {
   rich_text: { label: "Rich text", category: "content", description: "Prose, lists, code, tables" },
   image: { label: "Image", category: "content", description: "A hosted image with caption" },
-  image_hotspot: { label: "Image hotspots", category: "explore", description: "Click pins on an image" },
+  image_hotspot: { label: "Image hotspots", category: "explore", description: "Image with optional pins to click" },
   flip_cards: { label: "Flip cards", category: "explore", description: "Term / definition cards" },
   accordion_tabs: { label: "Accordion / tabs", category: "explore", description: "Expandable sections" },
   stepped_timeline: { label: "Stepped timeline", category: "explore", description: "Ordered phases" },
@@ -205,7 +212,7 @@ export function createBlockData<T extends AuthorableBlockType>(type: T): BlockDa
   const data: { [K in AuthorableBlockType]: () => BlockDataMap[K] } = {
     rich_text: () => ({ markdown: "" }),
     image: () => ({ image_url: "", alt: "", caption: "" }),
-    image_hotspot: () => ({ image_url: "", alt: "", hotspots: [] }),
+    image_hotspot: () => ({ image_url: "", alt: "", caption: "", hotspots: [] }),
     flip_cards: () => ({ cards: [{ id: "c1", front: "", back: "" }] }),
     accordion_tabs: () => ({
       display: "accordion",

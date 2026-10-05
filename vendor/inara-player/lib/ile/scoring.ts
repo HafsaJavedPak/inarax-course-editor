@@ -78,6 +78,8 @@ export function blockMaxPoints(block: LessonBlock): number {
     case "accordion_tabs":
       return isUnscoredTabs(block) ? 0 : EXPLORE_POINTS;
     case "image_hotspot":
+      // No hotspots: just an image, nothing to complete.
+      return block.data.hotspots.length === 0 ? 0 : EXPLORE_POINTS;
     case "flip_cards":
     case "stepped_timeline":
     case "wheel_diagram":

@@ -62,15 +62,23 @@ Put these in `.env.local` (see `.env.example`):
 |---|---|---|
 | `PLATFORM_ADAPTER` | `inara-next` · `none` (default) | `none` turns publishing off: Save only saves locally, and review actions only change the local status. |
 | `INARA_API_URL` | e.g. `http://127.0.0.1:3000` | inara-next's base URL |
-| `INARA_AUTH` | `none` · `bearer` (default) | `none` only works against inara-next running locally with its dev auth bypass. `bearer` sends `INARA_API_TOKEN`. |
+| `INARA_AUTH` | `clerk` (default when Clerk keys are set) · `bearer` · `none` | `clerk` forwards the signed-in user's inara-next login. `bearer` sends `INARA_API_TOKEN`. `none` only works against inara-next with its dev auth bypass. |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | inara-next's own values | Turns on sign-in with inara-next accounts (`/sign-in`), needed for `clerk`. Without them the editor has no sign-in. The publishable key must be present at build time. |
 | `INARA_API_TOKEN` | token | A Clerk session token for an inara-next admin user (`Authorization: Bearer …`) |
 | `INARA_ORGANIZATION_ID` | number, optional | Organization that new courses are linked to. Default: the admin's first organization (`GET /api/admin/organizations`). |
 | `INARA_UPLOAD_ASSETS` | `true` (default) · `false` | Copy images uploaded to the editor into inara-next's storage (Firebase) and point the course at the copies. |
 | `EDITOR_PUBLIC_URL` | e.g. `https://editor.example.com` | The editor's public address. Images inara-next can't store (no storage set up, an AVIF image, or copying turned off) are linked from here instead of the host they were uploaded on, which is often `localhost`. |
 
 **Auth:** inara-next's admin routes need a Clerk session for a user who is an organization admin.
-The plan is for the editor to add Clerk sign-in, using the same Clerk app as inara-next, and forward
-each user's own session. Until then, use `none` locally and `bearer` for staging.
+With inara-next's Clerk keys, the editor offers sign-in with inara-next accounts. On Save, its server
+gets the user's current Clerk session token and sends it to inara-next as `Authorization: Bearer …`,
+so inara-next sees that person, with their own rights.
+
+- **Not signed in:** the local save still happens; the Save bar says "Sign in with your inara-next
+  account to publish" with a **Sign in** button.
+- **Signing in is only needed to publish:** the editor itself isn't locked.
+- **`PLATFORM_ADAPTER` unset:** the Save bar shows "Saved locally · publishing off", which is not an
+  error.
 
 ---
 
@@ -147,6 +155,35 @@ editor uuid (course, levels, modules, lessons, and copied images).
 ---
 
 ## 4. Testing locally
+
+### With your own local inara-next (real Clerk login)
+
+1. **Run inara-next** as usual (`npm run dev`, port 3000), signed in to an account that is an admin
+   of an organization.
+2. **inara-next's database needs the editor's review statuses** (`UNDER_REVIEW`,
+   `CHANGES_REQUESTED`, `APPROVED`, `REJECTED` in `course_status`, and `CHANGES_REQUESTED` in
+   `generated_lesson_status`). They're in inara-next's Prisma schema; add them to its database with
+   `db/migrations/001_*.sql` and `002_course_status_review_values.sql` (or `prisma db push` on a
+   throwaway database).
+3. **Editor `.env.local`:**
+
+   ```
+   PLATFORM_ADAPTER=inara-next
+   INARA_API_URL=http://localhost:3000
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<from inara-next .env>
+   CLERK_SECRET_KEY=<from inara-next .env>
+   EDITOR_PUBLIC_URL=http://localhost:3001
+   ```
+
+4. **Run the editor on another port:** `npm run dev -- -p 3001`, open <http://localhost:3001>, press
+   **Save** in a course, then **Sign in** with the same inara-next account, and Save again. The course
+   appears in inara-next's admin.
+
+Tested so far (2026-10-02): sign-in page, the "sign in to publish" prompt and the 401 answer. The
+signed-in publish itself needs a real account, so it hasn't been run end to end with Clerk yet. The
+same sync was tested end to end with the dev auth bypass (below).
+
+### With inara-next's dev auth bypass (no Clerk)
 
 This runs inara-next on your machine with its dev auth bypass and a throwaway database, then points
 the editor at it. It was done on 2026-10-01 against inara-next commit `3991c573`.

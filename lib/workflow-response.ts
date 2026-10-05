@@ -3,9 +3,18 @@ import type { WorkflowResult } from "@/lib/course-status"
 import { readCourseLesson, recordPublish } from "@/lib/course-store"
 import type { Lesson } from "@/lib/lesson"
 import { validateLesson } from "@/lib/lesson-validate"
-import { getPlatform, PlatformError, PLATFORM_ERROR_STATUS, type PublishSummary } from "@/lib/platform"
+import {
+  getPlatform,
+  PlatformError,
+  PLATFORM_ERROR_STATUS,
+  publishingEnabled,
+  type PlatformErrorKind,
+  type PublishSummary,
+} from "@/lib/platform"
 
-type PublishOutcome = { publishedAt: string; summary: PublishSummary } | { error: string; status: number }
+type PublishOutcome =
+  | { publishedAt: string; summary: PublishSummary }
+  | { error: string; status: number; code: PlatformErrorKind | "error" }
 
 /** Publishes the course (with every saved lesson) to the platform and notes when it happened. */
 export async function publishAndRecord(course: Course, actorId: string): Promise<PublishOutcome> {
@@ -42,10 +51,10 @@ export async function publishAndRecord(course: Course, actorId: string): Promise
       if (error.kind === "unavailable" || error.kind === "auth") {
         console.error(`Failed to publish course ${course.id}:`, error.message, error.detail)
       }
-      return { error: error.message, status: PLATFORM_ERROR_STATUS[error.kind] }
+      return { error: error.message, status: PLATFORM_ERROR_STATUS[error.kind], code: error.kind }
     }
     console.error(`Failed to publish course ${course.id}:`, error)
-    return { error: `Couldn't publish: ${(error as Error).message}`, status: 500 }
+    return { error: `Couldn't publish: ${(error as Error).message}`, status: 500, code: "error" }
   }
 }
 
@@ -63,7 +72,7 @@ export function workflowResponse(result: WorkflowResult | null) {
  * platform set up, only the local status changes.
  */
 export async function publishedWorkflowResponse(result: WorkflowResult | null, actorId: string) {
-  if (!result || "error" in result || !getPlatform()) return workflowResponse(result)
+  if (!result || "error" in result || !publishingEnabled()) return workflowResponse(result)
   const published = await publishAndRecord(result.course, actorId)
   if ("error" in published) return Response.json({ course: result.course, publishError: published.error })
   return Response.json({

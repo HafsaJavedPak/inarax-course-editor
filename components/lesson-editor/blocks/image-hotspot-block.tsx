@@ -121,7 +121,7 @@ export function ImageHotspotBlock({
             {imageState === "loaded" &&
               (readOnly
                 ? `${data.hotspots.length} hotspot${data.hotspots.length === 1 ? "" : "s"}`
-                : "Click anywhere on the image to add a hotspot. Drag a pin to move it.")}
+                : "Click anywhere on the image to add a hotspot (optional). Drag a pin to move it.")}
           </p>
           <div
             ref={canvasRef}
@@ -176,6 +176,13 @@ export function ImageHotspotBlock({
           placeholder="What the image shows"
         />
       </div>
+      <TextField
+        label="Caption"
+        optional
+        value={data.caption ?? ""}
+        onChange={(caption) => onChange({ ...data, caption })}
+        placeholder="Shown under the image"
+      />
 
       {data.hotspots.length > 0 && (
         <ol className="hs-list" ref={listRef}>

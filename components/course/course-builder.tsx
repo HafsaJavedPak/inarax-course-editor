@@ -45,11 +45,14 @@ export function CourseBuilder({
   initialCourse,
   initialReport,
   isAdmin = false,
+  publishingEnabled = true,
 }: {
   initialCourse: Course
   initialReport: CourseReport
   /** Admins can edit courses in review; their edits don't change the status. */
   isAdmin?: boolean
+  /** False when no platform is set up: Save only saves locally. */
+  publishingEnabled?: boolean
 }) {
   const [course, rawDispatch] = useReducer(courseReducer, initialCourse)
   const [serverReport, setServerReport] = useState(initialReport)
@@ -64,7 +67,7 @@ export function CourseBuilder({
     change_requests: initialCourse.change_requests,
     content_updated_at: initialCourse.content_updated_at,
   })
-  const publisher = usePublish(initialCourse.id, isAdmin, initialCourse.published_at)
+  const publisher = usePublish(initialCourse.id, isAdmin, initialCourse.published_at, publishingEnabled)
   const { markChanged, publish } = publisher
   const readOnly = isLocked(workflow.status) && !isAdmin
   const paths = coursePaths(isAdmin)

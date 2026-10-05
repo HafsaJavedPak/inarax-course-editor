@@ -72,6 +72,8 @@ export default function ImageHotspotBlock({
   const isRtl = lessonContentDirection(useLessonLanguage()) === "rtl";
   const { markBlockComplete, isBlockComplete } = useLessonProgress();
   const spots = block.data.hotspots;
+  /** Without hotspots the block is a plain image: no instructions, no points. */
+  const hasSpots = spots.length > 0;
   const find = block.data.mode === "find";
   const complete = isBlockComplete(block.id);
   /** Explore: pins opened. Find: spots found. */
@@ -131,11 +133,11 @@ export default function ImageHotspotBlock({
   return (
     <BlockCard
       kind="image_hotspot"
-      points={t("ptsTotal", { points: EXPLORE_POINTS })}
-      hint={find ? t("hotspotFindHint") : t("hotspotHint")}
-      complete={complete}
+      points={hasSpots ? t("ptsTotal", { points: EXPLORE_POINTS }) : undefined}
+      hint={hasSpots ? (find ? t("hotspotFindHint") : t("hotspotHint")) : undefined}
+      complete={hasSpots && complete}
     >
-      {find ? (
+      {find && hasSpots ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-800">
             {t("hotspotFound", { found: foundCount, total: spots.length })}
@@ -245,6 +247,10 @@ export default function ImageHotspotBlock({
             </div>
           ) : null}
         </div>
+
+        {block.data.caption ? (
+          <p className="mt-3 text-center text-sm text-slate-500">{block.data.caption}</p>
+        ) : null}
 
         {/* Phones (and find mode): the same card reads under the image, where it has room to wrap. */}
         {active ? (

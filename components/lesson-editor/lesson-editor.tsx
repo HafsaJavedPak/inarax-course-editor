@@ -56,6 +56,8 @@ export interface LessonEditorProps {
   isAdmin?: boolean
   /** When the course was last published to the platform database. */
   publishedAt: string | null
+  /** False when no platform is set up: Save only saves locally. */
+  publishingEnabled: boolean
 }
 
 const inRange = (value: number, [min, max]: Range) => value >= min && value <= max
@@ -74,6 +76,7 @@ export function LessonEditor({
   courseStatus: initialCourseStatus,
   isAdmin = false,
   publishedAt,
+  publishingEnabled,
 }: LessonEditorProps) {
   const [lesson, rawDispatch] = useReducer(lessonReducer, initialLesson)
   const [selectedId, setSelectedId] = useState(initialLesson.sections[0]?.id ?? null)
@@ -84,7 +87,7 @@ export function LessonEditor({
   // Saving a lesson of an accepted course moves the course back to draft.
   const [courseStatus, setCourseStatus] = useState(initialCourseStatus)
   const readOnly = isLocked(courseStatus) && !isAdmin
-  const publisher = usePublish(courseId, isAdmin, publishedAt)
+  const publisher = usePublish(courseId, isAdmin, publishedAt, publishingEnabled)
   const { markChanged, publish } = publisher
   const [showJson, setShowJson] = useState(false)
   // "preview" shows the lesson (including unsaved edits) as learners see it.
@@ -205,12 +208,13 @@ export function LessonEditor({
   const saveAndPublish = useCallback(async () => {
     await savePromiseRef.current // let an in-flight autosave land, then save the latest
     if (!(await save())) return
+    if (!publishingEnabled) return // saved locally; there's nowhere to publish
     if (problemCount > 0) {
       showFirstProblem()
       return
     }
     await publish()
-  }, [save, publish, problemCount, showFirstProblem])
+  }, [save, publish, problemCount, showFirstProblem, publishingEnabled])
 
   useHotkeys("mod+s", () => void saveAndPublish(), {
     preventDefault: true,

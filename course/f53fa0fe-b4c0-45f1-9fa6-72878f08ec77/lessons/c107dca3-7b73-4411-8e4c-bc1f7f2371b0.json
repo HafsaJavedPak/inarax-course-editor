@@ -5,14 +5,111 @@
     {
       "id": "67e2e330-a73b-4cd5-85aa-c204c1b493d1",
       "title": "Introduction",
-      "required_to_advance": false,
+      "required_to_advance": true,
       "blocks": [
         {
           "id": "fd025610-94d5-413b-9020-41be27ee09b6",
           "type": "rich_text",
           "personalized": false,
           "data": {
-            "markdown": "hiiii"
+            "markdown": "ss"
+          }
+        }
+      ]
+    },
+    {
+      "id": "f38f63fb-14cb-45a8-9594-dfa26f89a0fc",
+      "title": "",
+      "required_to_advance": false,
+      "blocks": [
+        {
+          "id": "2b4da90d-e0fd-446a-8541-82191ca32ef5",
+          "type": "rich_text",
+          "personalized": false,
+          "data": {
+            "markdown": "You pasted those three lines into the terminal instead of saving them to a file. In the shell, `POSTGRES_DB=inara` only sets a shell variable. It isn't exported and Compose never reads it, so you get the same warnings.\n\n**Create the file** from your project directory (`~/Projects/inara`):\n\n```bash\ncat > .env << 'EOF'\nPOSTGRES_DB=inara\nPOSTGRES_USER=inara\nPOSTGRES_PASSWORD=choose-a-strong-password\nEOF\n```\n\nOr open it in an editor (`nano .env`) and paste the three lines there.\n\n**Check that Compose sees it:**\n\n```bash\nls -la .env\ndocker compose config | grep POSTGRES\n```\n\nThe values should now show `inara` and your password instead of blanks. If they don't, the file is in the wrong directory or has the wrong name.\n\n**Then reset and start.** The failed runs already created the Postgres volume, so wipe it once so Postgres initializes with the new credentials:\n\n```bash\ndocker compose down -v\ndocker compose up -d\n```\n\nIf the warnings disappear but Postgres still exits, run `docker compose logs postgres` and paste the output, since that will show the actual error."
+          }
+        },
+        {
+          "id": "a79b638d-d0e3-4f23-b7b4-45547f9ee971",
+          "type": "sequencing",
+          "personalized": false,
+          "data": {
+            "items": [
+              {
+                "id": "a",
+                "label": "s"
+              },
+              {
+                "id": "b",
+                "label": "s"
+              }
+            ],
+            "correct_order": [
+              "a",
+              "b"
+            ],
+            "points": 15
+          }
+        }
+      ]
+    },
+    {
+      "id": "aebc01fa-4ea3-43fc-9ed3-370df190fe69",
+      "title": "ss",
+      "required_to_advance": false,
+      "blocks": [
+        {
+          "id": "d67ab84e-2268-4b91-bd4c-67269cf72a63",
+          "type": "rich_text",
+          "personalized": false,
+          "data": {
+            "markdown": "# The local dev database (docs/[local-dev.md](http://local-dev.md)) is built FROM schema.prisma, so pulling from it has\n\n# nothing to sync and only reorders relation fields. Skip the pull there; everything else still runs.\n\nif node scripts/local-db-guard.mjs; then\\\necho \"⏭ DATABASE_URL is the local dev database; skipping prisma db pull (see docs/[local-dev.md](http://local-dev.md)).\"\\\nelse\\\necho \"🔄 Running prisma db pull to ensure schema sync...\"\\\nnpx prisma db pull\\\necho \"🔄 Running prisma db pull to ensure schema sync...\"\\\nnpx prisma db pull\n\n# Check for changes in schema.prisma using git status --porcelain\n\nif ! git diff --quiet prisma/schema.prisma; then\\\necho \"❌ Schema was out of sync! I have updated prisma/schema.prisma.\"\\\necho \"⚠️ Please stage the changes (git add prisma/schema.prisma) and commit again.\"\\\nexit 1\\\nfi\n\necho \"✅ Schema is in sync.\"\n\n# Check for changes in schema.prisma using git status --porcelain\n\nif ! git diff --quiet prisma/schema.prisma; then\\\necho \"❌ Schema was out of sync! I have updated prisma/schema.prisma.\"\\\necho \"⚠️ Please stage the changes (git add prisma/schema.prisma) and commit again.\"\\\nexit 1\\\nfi\n\necho \"✅ Schema is in sync.\"\n\n# Run TypeScript type checking\n\necho \"Running Type Check...\"\\\nnpx tsc --noEmit"
+          }
+        }
+      ]
+    },
+    {
+      "id": "c8da0649-2104-4f2d-8448-de9818b62d59",
+      "title": "bakaka",
+      "required_to_advance": false,
+      "blocks": [
+        {
+          "id": "2ad6ed5b-6fbd-43cf-ab73-e171d6521402",
+          "type": "rich_text",
+          "personalized": false,
+          "data": {
+            "markdown": "haping the Future of Riyadh Through AI and Urban Innovation 🇸🇦\\\n\\\nIt was inspiring to see the outcomes of the Riyadh Urban Intelligence Lab, an initiative led by Microsoft through the Microsoft National Innovation Program, in collaboration with strategic partners [**Ministry of Investment**](https://www.linkedin.com/company/ministry-of-investment-saudi/), [**Royal Commission for Riyadh City | الهيئة الملكية لمدينة الرياض**](https://www.linkedin.com/company/rcrcsa/) and Mohammed Bin Salman Nonprofit City ([**Misk City | مدينة مسك**](https://www.linkedin.com/company/miskcity-ksa/)), and delivered by [**atomcamp Arabia**](https://www.linkedin.com/company/atomcamparabia/).\\\n\\\n[**#MicrosoftKSA**](https://www.linkedin.com/search/results/all/?keywords=%23microsoftksa&origin=HASH_TAG_FROM_FEED) [**#SaudiVision2030**](https://www.linkedin.com/search/results/all/?keywords=%23saudivision2030&origin=HASH_TAG_FROM_FEED)haping the Future of Riyadh Through AI and Urban Innovation 🇸🇦\\\n\\\nIt was inspiring to see the outcomes of the Riyadh Urban Intelligence Lab, an initiative led by Microsoft through the Microsoft National Innovation Program, in collaboration with strategic partners [**Ministry of Investment**](https://www.linkedin.com/company/ministry-of-investment-saudi/), [**Royal Commission for Riyadh City | الهيئة الملكية لمدينة الرياض**](https://www.linkedin.com/company/rcrcsa/) and Mohammed Bin Salman Nonprofit City ([**Misk City | مدينة مسك**](https://www.linkedin.com/company/miskcity-ksa/)), and delivered by [**atomcamp Arabia**](https://www.linkedin.com/company/atomcamparabia/).\\\n\\\nThe Lab brought together diverse teams from [**Ministry of Municipalities and Housing**](https://www.linkedin.com/company/ministry-of-municipalities-and-housing/), [**King Saud University**](https://www.linkedin.com/school/king-saud-university/), [**Diriyah Gate Development Authority**](https://www.linkedin.com/company/dgda-sa/), [**Sports Boulevard Foundation**](https://www.linkedin.com/company/sportsblvdsa/) and [**New Murabba**](https://www.linkedin.com/company/newmurabba/) to explore how AI and emerging technologies can help address real urban challenges and contribute to Riyadh’s future development.\\\n\\\nFollowing an intensive learning and innovation journey, participating teams designed and presented impressive MVPs addressing key urban opportunities. The final showcase at the Visitors Center in Misk City demonstrated not only technical creativity, but also the power of collaboration between government, academia and industry.\\\n\\\nCongratulations to all the participating teams recognised across five categories:\\\n🏆 Innovation\\\n🏆 Creative Solutions\\\n🏆 Technical Excellence\\\n🏆 Implementation Readiness\\\n🏆 Scalability\\\n\\\nInitiatives like this demonstrate how empowering local talent with AI capabilities can accelerate innovation and help build smarter, more sustainable and more liveable cities for the future.\\\n\\\n[**#MicrosoftKSA**](https://www.linkedin.com/search/results/all/?keywords=%23microsoftksa&origin=HASH_TAG_FROM_FEED) [**#SaudiVision2030**](https://www.linkedin.com/search/results/all/?keywords=%23saudivision2030&origin=HASH_TAG_FROM_FEED)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "42313ec9-0120-43e5-b240-9a75e4e8dd45",
+      "title": "",
+      "required_to_advance": false,
+      "blocks": [
+        {
+          "id": "f9c7ad15-7f16-41a6-89e9-aaeba2ce32b3",
+          "type": "rich_text",
+          "personalized": false,
+          "data": {
+            "markdown": "haping the Future of Riyadh Through AI and Urban Innovation 🇸🇦\\\n\\\nIt was inspiring to see the outcomes of the Riyadh Urban Intelligence Lab, an initiative led by Microsoft through the Microsoft National Innovation Program, in collaboration with strategic partners [**Ministry of Investment**](https://www.linkedin.com/company/ministry-of-investment-saudi/), [**Royal Commission for Riyadh City | الهيئة الملكية لمدينة الرياض**](https://www.linkedin.com/company/rcrcsa/) and Mohammed Bin Salman Nonprofit City ([**Misk City | مدينة مسك**](https://www.linkedin.com/company/miskcity-ksa/)), and delivered by [**atomcamp Arabia**](https://www.linkedin.com/company/atomcamparabia/).\\\n\\\nThe Lab brought together diverse teams from [**Ministry of Municipalities and Housing**](https://www.linkedin.com/company/ministry-of-municipalities-and-housing/), [**King Saud University**](https://www.linkedin.com/school/king-saud-university/), [**Diriyah Gate Development Authority**](https://www.linkedin.com/company/dgda-sa/), [**Sports Boulevard Foundation**](https://www.linkedin.com/company/sportsblvdsa/) and [**New Murabba**](https://www.linkedin.com/company/newmurabba/) to explore how AI and emerging technologies can help address real urban challenges and contribute to Riyadh’s future development.\\\n\\\nFollowing an intensive learning and innovation journey, participating teams designed and presented impressive MVPs addressing key urban opportunities. The final showcase at the Visitors Center in Misk City demonstrated not only technical creativity, but also the power of collaboration between government, academia and industry.\\\n\\\nCongratulations to all the participating teams recognised across five categories:\\\n🏆 Innovation\\\n🏆 Creative Solutions\\\n🏆 Technical Excellence\\\n🏆 Implementation Readiness\\\n🏆 Scalability\\\n\\\nInitiatives like this demonstrate how empowering local talent with AI capabilities can accelerate innovation and help build smarter, more sustainable and more liveable cities for the future.\\\n\\\n[**#MicrosoftKSA**](https://www.linkedin.com/search/results/all/?keywords=%23microsoftksa&origin=HASH_TAG_FROM_FEED) [**#SaudiVision2030**](https://www.linkedin.com/search/results/all/?keywords=%23saudivision2030&origin=HASH_TAG_FROM_FEED)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "eeef4af3-1aa1-46d7-b28d-d58f66b06c1a",
+      "title": "baka",
+      "required_to_advance": false,
+      "blocks": [
+        {
+          "id": "9de26c11-d451-4438-a6ab-d3967c240b29",
+          "type": "rich_text",
+          "personalized": false,
+          "data": {
+            "markdown": "haping the Future of Riyadh Through AI and Urban Innovation 🇸🇦\\\n\\\nIt was inspiring to see the outcomes of the Riyadh Urban Intelligence Lab, an initiative led by Microsoft through the Microsoft National Innovation Program, in collaboration with strategic partners [**Ministry of Investment**](https://www.linkedin.com/company/ministry-of-investment-saudi/), [**Royal Commission for Riyadh City | الهيئة الملكية لمدينة الرياض**](https://www.linkedin.com/company/rcrcsa/) and Mohammed Bin Salman Nonprofit City ([**Misk City | مدينة مسك**](https://www.linkedin.com/company/miskcity-ksa/)), and delivered by [**atomcamp Arabia**](https://www.linkedin.com/company/atomcamparabia/).\\\n\\\nThe Lab brought together diverse teams from [**Ministry of Municipalities and Housing**](https://www.linkedin.com/company/ministry-of-municipalities-and-housing/), [**King Saud University**](https://www.linkedin.com/school/king-saud-university/), [**Diriyah Gate Development Authority**](https://www.linkedin.com/company/dgda-sa/), [**Sports Boulevard Foundation**](https://www.linkedin.com/company/sportsblvdsa/) and [**New Murabba**](https://www.linkedin.com/company/newmurabba/) to explore how AI and emerging technologies can help address real urban challenges and contribute to Riyadh’s future development.\\\n\\\nFollowing an intensive learning and innovation journey, participating teams designed and presented impressive MVPs addressing key urban opportunities. The final showcase at the Visitors Center in Misk City demonstrated not only technical creativity, but also the power of collaboration between government, academia and industry.\\\n\\\nCongratulations to all the participating teams recognised across five categories:\\\n🏆 Innovation\\\n🏆 Creative Solutions\\\n🏆 Technical Excellence\\\n🏆 Implementation Readiness\\\n🏆 Scalability\\\n\\\nInitiatives like this demonstrate how empowering local talent with AI capabilities can accelerate innovation and help build smarter, more sustainable and more liveable cities for the future.\\\n\\\n[**#MicrosoftKSA**](https://www.linkedin.com/search/results/all/?keywords=%23microsoftksa&origin=HASH_TAG_FROM_FEED) [**#SaudiVision2030**](https://www.linkedin.com/search/results/all/?keywords=%23saudivision2030&origin=HASH_TAG_FROM_FEED)haping the Future of Riyadh Through AI and Urban Innovation 🇸🇦\\\n\\\nIt was inspiring to see the outcomes of the Riyadh Urban Intelligence Lab, an initiative led by Microsoft through the Microsoft National Innovation Program, in collaboration with strategic partners [**Ministry of Investment**](https://www.linkedin.com/company/ministry-of-investment-saudi/), [**Royal Commission for Riyadh City | الهيئة الملكية لمدينة الرياض**](https://www.linkedin.com/company/rcrcsa/) and Mohammed Bin Salman Nonprofit City ([**Misk City | مدينة مسك**](https://www.linkedin.com/company/miskcity-ksa/)), and delivered by [**atomcamp Arabia**](https://www.linkedin.com/company/atomcamparabia/).\\\n\\\nThe Lab brought together diverse teams from [**Ministry of Municipalities and Housing**](https://www.linkedin.com/company/ministry-of-municipalities-and-housing/), [**King Saud University**](https://www.linkedin.com/school/king-saud-university/), [**Diriyah Gate Development Authority**](https://www.linkedin.com/company/dgda-sa/), [**Sports Boulevard Foundation**](https://www.linkedin.com/company/sportsblvdsa/) and [**New Murabba**](https://www.linkedin.com/company/newmurabba/) to explore how AI and emerging technologies can help address real urban challenges and contribute to Riyadh’s future development.\\\n\\\nFollowing an intensive learning and innovation journey, participating teams designed and presented impressive MVPs addressing key urban opportunities. The final showcase at the Visitors Center in Misk City demonstrated not only technical creativity, but also the power of collaboration between government, academia and industry.\\\n\\\nCongratulations to all the participating teams recognised across five categories:\\\n🏆 Innovation\\\n🏆 Creative Solutions\\\n🏆 Technical Excellence\\\n🏆 Implementation Readiness\\\n🏆 Scalability\\\n\\\nInitiatives like this demonstrate how empowering local talent with AI capabilities can accelerate innovation and help build smarter, more sustainable and more liveable cities for the future.\\\n\\\n[**#MicrosoftKSA**](https://www.linkedin.com/search/results/all/?keywords=%23microsoftksa&origin=HASH_TAG_FROM_FEED) [**#SaudiVision2030**](https://www.linkedin.com/search/results/all/?keywords=%23saudivision2030&origin=HASH_TAG_FROM_FEED)"
           }
         }
       ]

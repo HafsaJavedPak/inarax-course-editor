@@ -1,5 +1,7 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+
 import type { Publisher } from "@/components/lesson-editor/use-publish"
 
 export type SaveStatus = "saved" | "dirty" | "saving" | { error: string }
@@ -32,6 +34,7 @@ export function SaveBar({
   publishBlocked?: string
   onSave: () => void
 }) {
+  const router = useRouter()
   const state = typeof status === "string" ? status : "error"
   const text =
     typeof status !== "string"
@@ -48,29 +51,38 @@ export function SaveBar({
 
   const publish = publisher.status
   const publishState =
-    typeof publish !== "string" || (publishBlocked && publish !== "publishing")
-      ? "error"
-      : publish === "publishing"
-        ? "saving"
-        : publisher.pending || !publisher.publishedAt
-          ? "dirty"
-          : "saved"
+    publish === "off"
+      ? "off"
+      : typeof publish !== "string" || (publishBlocked && publish !== "publishing")
+        ? "error"
+        : publish === "publishing"
+          ? "saving"
+          : publisher.pending || !publisher.publishedAt
+            ? "dirty"
+            : "saved"
   const publishText =
-    typeof publish !== "string"
-      ? publish.error
-      : publish === "publishing"
-        ? "Publishing…"
-        : publishBlocked
-          ? publishBlocked
-          : publisher.pending
-          ? "Changes not published"
-          : publisher.publishedAt
-            ? `Published ${formatWhen(publisher.publishedAt)}${
-                publisher.warnings.length
-                  ? ` · ${publisher.warnings.length} warning${publisher.warnings.length === 1 ? "" : "s"}`
-                  : ""
-              }`
-            : "Not published yet"
+    publish === "off"
+      ? "Saved locally · publishing off"
+      : typeof publish !== "string"
+        ? publish.error
+        : publish === "publishing"
+          ? "Publishing…"
+          : publishBlocked
+            ? publishBlocked
+            : publisher.pending
+              ? "Changes not published"
+              : publisher.publishedAt
+                ? `Published ${formatWhen(publisher.publishedAt)}${
+                    publisher.warnings.length
+                      ? ` · ${publisher.warnings.length} warning${publisher.warnings.length === 1 ? "" : "s"}`
+                      : ""
+                  }`
+                : "Not published yet"
+  const publishTitle =
+    publish === "off"
+      ? "No platform is set up for this editor (PLATFORM_ADAPTER), so Save keeps changes on this computer only."
+      : [publishText, ...publisher.warnings].join("\n")
+  const needsSignIn = typeof publish !== "string" && publish.signIn
 
   const busy = status === "saving" || publish === "publishing"
 
@@ -83,10 +95,20 @@ export function SaveBar({
         className="le-save-state"
         data-state={publishState}
         role="status"
-        title={[publishText, ...publisher.warnings].join("\n")}
+        title={publishTitle}
       >
         {publishText}
       </span>
+      {needsSignIn && (
+        // Back to this page after signing in, then Save again.
+        <button
+          type="button"
+          className="in-btn in-btn-secondary in-btn-sm"
+          onClick={() => router.push(`/sign-in?redirect_url=${encodeURIComponent(window.location.href)}`)}
+        >
+          Sign in
+        </button>
+      )}
       <button
         type="button"
         className="in-btn in-btn-primary in-btn-sm"

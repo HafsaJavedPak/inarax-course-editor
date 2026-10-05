@@ -2,8 +2,8 @@
   "from": "inara-next",
   "ref": "working tree",
   "commit": "85883f1f9ce954b2490c676e00c668bb6aee2dec",
-  "uncommittedChanges": false,
-  "copiedAt": "2026-10-02T05:28:04.013Z",
+  "uncommittedChanges": true,
+  "copiedAt": "2026-10-02T05:59:28.144Z",
   "entryFiles": [
     "components/ile/InteractiveLessonRunner.tsx",
     "components/ile/LessonProgressProvider.tsx",

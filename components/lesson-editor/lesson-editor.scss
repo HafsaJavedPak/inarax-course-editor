@@ -950,6 +950,11 @@
     background: var(--in-success);
   }
 
+  // Publishing isn't set up: a neutral grey dot, not a warning.
+  &[data-state="off"]::before {
+    background: var(--in-faint);
+  }
+
   &[data-state="dirty"]::before,
   &[data-state="saving"]::before {
     background: var(--in-warning-strong);

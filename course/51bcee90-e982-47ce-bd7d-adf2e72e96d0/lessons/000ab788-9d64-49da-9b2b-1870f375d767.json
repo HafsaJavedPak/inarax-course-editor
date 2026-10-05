@@ -22,6 +22,7 @@
           "data": {
             "image_url": "http://localhost:3001/uploads/e671fcf1-8335-4bd2-8092-aafeedf1d047.png",
             "alt": "ddddd",
+            "caption": "",
             "hotspots": [
               {
                 "id": "h1",
@@ -40,6 +41,7 @@
           "data": {
             "image_url": "http://localhost:3001/uploads/d8f9f527-1847-47cd-8f7c-c94fd532169c.png",
             "alt": "",
+            "caption": "",
             "hotspots": [
               {
                 "id": "h1",

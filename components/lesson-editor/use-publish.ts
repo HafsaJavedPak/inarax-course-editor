@@ -4,14 +4,24 @@ import { useCallback, useRef, useState } from "react"
 
 import { modeHeaders } from "@/lib/admin-mode"
 
-export type PublishStatus = "idle" | "publishing" | { error: string }
+/**
+ * "off": no platform is set up, so Save only saves locally (not an error).
+ * `signIn`: publishing needs the user to sign in with their platform account.
+ */
+export type PublishStatus = "idle" | "publishing" | "off" | { error: string; signIn?: boolean }
 
 /**
- * Publishing the course to the platform database. Autosave only writes the
+ * Publishing the course to the platform. Autosave only writes the
  * local files; the Save button saves locally and then calls `publish`.
  */
-export function usePublish(courseId: string, isAdmin: boolean, initialPublishedAt: string | null) {
-  const [status, setStatus] = useState<PublishStatus>("idle")
+export function usePublish(
+  courseId: string,
+  isAdmin: boolean,
+  initialPublishedAt: string | null,
+  /** False when no platform is set up (the page knows from the server). */
+  enabled = true,
+) {
+  const [status, setStatus] = useState<PublishStatus>(enabled ? "idle" : "off")
   const [publishedAt, setPublishedAt] = useState<Date | null>(
     initialPublishedAt ? new Date(initialPublishedAt) : null,
   )
@@ -29,6 +39,7 @@ export function usePublish(courseId: string, isAdmin: boolean, initialPublishedA
 
   /** Publishes what's saved on disk; false if it failed (the status says why). */
   const publish = useCallback(async (): Promise<boolean> => {
+    if (!enabled) return true // nothing to publish to: saving locally was all
     const changesAtStart = changesRef.current
     setStatus("publishing")
     try {
@@ -38,7 +49,8 @@ export function usePublish(courseId: string, isAdmin: boolean, initialPublishedA
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setStatus({ error: data.error ?? `Publish failed (${res.status})` })
+        if (data.code === "not_configured") setStatus("off")
+        else setStatus({ error: data.error ?? `Publish failed (${res.status})`, signIn: data.code === "sign_in_required" })
         return false
       }
       setPublishedAt(new Date(data.publishedAt))
@@ -50,9 +62,9 @@ export function usePublish(courseId: string, isAdmin: boolean, initialPublishedA
       setStatus({ error: "Publish failed: network error" })
       return false
     }
-  }, [courseId, isAdmin])
+  }, [courseId, isAdmin, enabled])
 
-  return { status, publishedAt, pending, warnings, markChanged, publish }
+  return { status, publishedAt, pending, warnings, enabled, markChanged, publish }
 }
 
 export type Publisher = ReturnType<typeof usePublish>

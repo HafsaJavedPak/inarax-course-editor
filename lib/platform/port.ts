@@ -44,7 +44,8 @@ export interface PlatformPort {
 export type PlatformErrorKind =
   | "invalid" // the course breaks a platform rule the author can fix (e.g. duplicate title)
   | "conflict" // the platform already has something that clashes
-  | "auth" // not signed in, or not allowed
+  | "auth" // signed in, but the platform refused access
+  | "sign_in_required" // the user has to sign in before publishing
   | "unavailable" // the platform couldn't be reached or failed
   | "not_configured" // no platform set up for this editor
 
@@ -64,6 +65,7 @@ export const PLATFORM_ERROR_STATUS: Record<PlatformErrorKind, number> = {
   invalid: 422,
   conflict: 409,
   auth: 502,
+  sign_in_required: 401,
   unavailable: 502,
   not_configured: 503,
 }

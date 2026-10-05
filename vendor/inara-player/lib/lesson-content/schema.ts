@@ -79,6 +79,8 @@ const ImageHotspotBlock = BaseBlock.extend({
   data: z.object({
     image_url: z.string().url(),
     alt: z.string().optional(),
+    /** Shown under the image. */
+    caption: z.string().optional(),
     mode: z.enum(["explore", "find"]).optional(),
     hotspots: z
       .array(
@@ -90,7 +92,8 @@ const ImageHotspotBlock = BaseBlock.extend({
           info: z.string().min(1),
         }),
       )
-      .min(1),
+      // Optional: with no hotspots the block is a plain (captioned) image, worth no points.
+      .default([]),
   }),
 });
 
