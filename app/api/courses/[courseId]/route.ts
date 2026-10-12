@@ -1,6 +1,8 @@
 import { z } from "zod"
 
-import { courseForRoute, editsAsReviewer } from "@/lib/authz/context"
+import { courseForRoute, editsAsReviewer, resourceOf } from "@/lib/authz/context"
+import { can } from "@/lib/authz/policy"
+import { canonicalJson, courseContent } from "@/lib/revisions/hash"
 import { CourseSchema } from "@/lib/course"
 import {
   ApprovedLockedError,
@@ -38,6 +40,10 @@ export async function PUT(request: Request, ctx: Ctx) {
       { status: 400 }
     )
   }
+  // Editors change the outline (levels, modules, lessons), not the course's settings.
+  if (!can(loaded.ctx, "course.settings", resourceOf(loaded.record)) && settingsOf(parsed.data) !== settingsOf(loaded.record.course)) {
+    return Response.json({ error: "Only the course's owners can change its settings." }, { status: 403 })
+  }
   try {
     const asReviewer = await editsAsReviewer(loaded.ctx, loaded.record)
     const course = await saveCourseContent(loaded.ctx, parsed.data, { id: loaded.ctx.userId, asReviewer })
@@ -48,6 +54,11 @@ export async function PUT(request: Request, ctx: Ctx) {
     }
     throw e
   }
+}
+
+/** A course's settings (everything except the outline), comparable as one string. */
+function settingsOf(course: Parameters<typeof courseContent>[0]): string {
+  return canonicalJson(Object.fromEntries(Object.entries(courseContent(course)).filter(([key]) => key !== "levels")))
 }
 
 /** Delete a course and its lessons: reviewers any time, authors unless it's in review. */

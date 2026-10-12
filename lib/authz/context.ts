@@ -7,9 +7,9 @@ import { cache } from "react"
 import { ADMIN_MODE_HEADER } from "@/lib/admin-mode"
 import { authConfig, WORKSPACE_COOKIE } from "@/lib/auth-gate"
 import { getCurrentUser, type CurrentUser } from "@/lib/auth"
-import { loadIdentity, syncIdentity, type Workspace } from "@/lib/authz/identity"
+import { loadIdentity, syncIdentity, type CourseGrant, type Workspace } from "@/lib/authz/identity"
 import { can, canInTenant, reviewsAnything, type CourseAction, type CourseResource, type Subject } from "@/lib/authz/policy"
-import { findCourse, listCourses, type CourseRecord } from "@/lib/course-store"
+import { findCourse, listCourses, listCoursesByIds, type CourseRecord } from "@/lib/course-store"
 import type { Scope } from "@/lib/db/tenant-db"
 
 /**
@@ -17,10 +17,13 @@ import type { Scope } from "@/lib/db/tenant-db"
  * the user, their workspaces and roles, and the Scope that course-store
  * queries run in. Pass it to lib/course-store functions and lib/authz/policy.
  */
-export type RequestContext = Subject &
+export type RequestContext = Omit<Subject, "grants"> &
   Scope & {
     user: CurrentUser
     workspaces: Workspace[]
+    /** Courses shared with the user, as they count right now. */
+    grants: CourseGrant[]
+    courseIds: string[]
   }
 
 async function loadContext(): Promise<RequestContext> {
@@ -42,6 +45,8 @@ async function loadContext(): Promise<RequestContext> {
     workspaces: identity.workspaces,
     memberships: identity.workspaces.map((w) => ({ tenantId: w.tenantId, role: w.role })),
     tenantIds: identity.workspaces.map((w) => w.tenantId),
+    grants: identity.grants,
+    courseIds: identity.grants.map((g) => g.courseId),
   }
 }
 
@@ -49,7 +54,34 @@ async function loadContext(): Promise<RequestContext> {
 export const getRequestContext = cache(loadContext)
 
 export function resourceOf(record: CourseRecord): CourseResource {
-  return { tenantId: record.tenantId, tenantKind: record.tenantKind, ownerId: record.course.owner_id }
+  return { courseId: record.course.id, tenantId: record.tenantId, tenantKind: record.tenantKind, ownerId: record.course.owner_id }
+}
+
+/** Everything the screens need to know about what this person may do with this course. */
+export type CoursePermissions = {
+  edit: boolean
+  settings: boolean
+  submit: boolean
+  publish: boolean
+  share: boolean
+  history: boolean
+  restore: boolean
+  /** Their role through sharing, if that's how they reach the course. */
+  role: CourseGrant["role"] | null
+}
+
+export function permissionsFor(ctx: RequestContext, record: CourseRecord): CoursePermissions {
+  const resource = resourceOf(record)
+  return {
+    edit: can(ctx, "course.edit", resource),
+    settings: can(ctx, "course.settings", resource),
+    submit: can(ctx, "course.submit", resource),
+    publish: can(ctx, "course.publish", resource),
+    share: can(ctx, "course.share", resource),
+    history: can(ctx, "course.history", resource),
+    restore: can(ctx, "course.restore", resource),
+    role: ctx.grants.find((g) => g.courseId === record.course.id)?.role ?? null,
+  }
 }
 
 export function personalWorkspace(ctx: RequestContext): Workspace {
@@ -86,6 +118,12 @@ export async function workspaceCourses(ctx: RequestContext, tenantId?: string): 
   return records.filter((r) => ctx.tenantIds.includes(r.tenantId) && can(ctx, "course.read", resourceOf(r)))
 }
 
+/** Courses shared with the user from workspaces they aren't in ("Shared with me"). */
+export async function sharedCourses(ctx: RequestContext): Promise<CourseRecord[]> {
+  const ids = ctx.grants.filter((g) => !ctx.tenantIds.includes(g.tenantId)).map((g) => g.courseId)
+  return listCoursesByIds(ctx, ids)
+}
+
 /** For API routes: the course and context, or the error response to send (404 when unreadable, 403 when not allowed). */
 export async function courseForRoute(
   courseId: string,
@@ -111,12 +149,15 @@ export async function courseForPage(courseId: string, action: CourseAction): Pro
 }
 
 /**
- * For the author's pages (/courses/…): the course, or the 404 page. Someone
- * who only reviews it is sent to the same page in the review area.
+ * For the creator area's pages (/courses/…): the course, or the 404 page.
+ * Someone who only reviews it (not its author, and not shared with them) is
+ * sent to the same page in the review area.
  */
 export async function authorCourseForPage(courseId: string, reviewHref: string) {
   const loaded = await courseForPage(courseId, "course.read")
-  if (!can(loaded.ctx, "course.submit", resourceOf(loaded.record))) redirect(reviewHref)
+  const resource = resourceOf(loaded.record)
+  const worksOnIt = can(loaded.ctx, "course.submit", resource) || loaded.ctx.courseIds.includes(courseId)
+  if (!worksOnIt && can(loaded.ctx, "course.review", resource)) redirect(reviewHref)
   return loaded
 }
 

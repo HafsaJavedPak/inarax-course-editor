@@ -11,6 +11,8 @@ import { can, canInTenant } from "@/lib/authz/policy"
 import { COURSE_STATUSES, type CourseStatus } from "@/lib/course"
 import { STATUS_LABELS } from "@/lib/course-status"
 import { latestNote, summarizeCourse, timeAgo } from "@/lib/course-summary"
+import { tenantSharing } from "@/lib/authz/grants"
+import { WorkspaceSharing } from "@/components/dashboard/workspace-sharing"
 
 function isStatus(value: unknown): value is CourseStatus {
   return typeof value === "string" && (COURSE_STATUSES as readonly string[]).includes(value)
@@ -37,6 +39,8 @@ export default async function Page({ params, searchParams }: PageProps<"/w/[work
     (r) => authored.has(r.course.id) && (r.course.status === "changes_requested" || r.course.status === "rejected"),
   )
   const visible = filter ? rows.filter((r) => r.course.status === filter) : rows
+  const isOrgAdmin = workspace.kind === "org" && workspace.role === "admin"
+  const sharing = isOrgAdmin ? await tenantSharing(workspace.tenantId) : null
 
   return (
     <div className="in-page">
@@ -67,6 +71,8 @@ export default async function Page({ params, searchParams }: PageProps<"/w/[work
             )}
           </div>
         </div>
+
+        {sharing && <WorkspaceSharing tenantId={workspace.tenantId} initial={sharing} />}
 
         {attention.length > 0 && (
           <section className="db-attention" aria-labelledby="attention-title">

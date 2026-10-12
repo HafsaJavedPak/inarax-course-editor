@@ -182,6 +182,12 @@ sequenceDiagram
 **Use theirs**, or **Keep mine** (overwrite on purpose). Opening a lesson never saves it.
 Details: [collaboration/phase-0.md](collaboration/phase-0.md).
 
+**Sharing:** the course builder's **Share** button adds people from the workspace as co-owner,
+editor, commenter or viewer, or invites anyone by email with a link to copy (they open it signed
+in with that email). Organizations allow no outside guests unless an org admin turns it on (on the
+workspace page). Courses shared from other workspaces are under **Shared with me**. Details:
+[collaboration/phase-1.md](collaboration/phase-1.md).
+
 **History and review binding:** every content change is kept as a version (one person's
 continuous editing is one version). **History** (course builder, and the review page) compares any
 two versions and restores an old one as a new version; nothing is ever deleted. Submitting seals the

@@ -1,6 +1,6 @@
 import { CourseBuilder } from "@/components/course/course-builder"
 import { coursePaths } from "@/lib/admin-mode"
-import { authorCourseForPage } from "@/lib/authz/context"
+import { authorCourseForPage, permissionsFor } from "@/lib/authz/context"
 import { getCourseReport } from "@/lib/course-store"
 import { publishingEnabled } from "@/lib/platform"
 
@@ -12,6 +12,7 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]">)
       initialCourse={record.course}
       initialReport={await getCourseReport(ctx, record.course)}
       publishingEnabled={publishingEnabled()}
+      permissions={permissionsFor(ctx, record)}
     />
   )
 }

@@ -70,6 +70,8 @@ export interface LessonEditorProps {
   publishedAt: string | null
   /** False when no platform is set up: Save only saves locally. */
   publishingEnabled: boolean
+  /** False for people the course is shared with who may only read it. */
+  canEdit?: boolean
 }
 
 const inRange = (value: number, [min, max]: Range) => value >= min && value <= max
@@ -90,6 +92,7 @@ export function LessonEditor({
   isAdmin = false,
   publishedAt,
   publishingEnabled,
+  canEdit = true,
 }: LessonEditorProps) {
   const [lesson, rawDispatch] = useReducer(lessonReducer, initialLesson)
   const [selectedId, setSelectedId] = useState(initialLesson.sections[0]?.id ?? null)
@@ -99,7 +102,7 @@ export function LessonEditor({
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   // Saving a lesson of an accepted course moves the course back to draft.
   const [courseStatus, setCourseStatus] = useState(initialCourseStatus)
-  const readOnly = isLocked(courseStatus) && !isAdmin
+  const readOnly = (isLocked(courseStatus) && !isAdmin) || !canEdit
   const publisher = usePublish(courseId, isAdmin, publishedAt, publishingEnabled)
   const { markChanged, publish } = publisher
   const [showJson, setShowJson] = useState(false)
@@ -382,7 +385,12 @@ export function LessonEditor({
           )}
         </header>
 
-        {readOnly && (
+        {!canEdit && (
+          <p className="le-banner" data-tone="admin" role="status">
+            This course is shared with you to read. You can&apos;t change its lessons.
+          </p>
+        )}
+        {readOnly && canEdit && (
           <p className="le-banner" data-tone="review" role="status">
             This course is in review, so its lessons are read-only. To make changes, withdraw it from the{" "}
             <a href={coursePaths(isAdmin).course(courseId)}>course page</a>.

@@ -3,9 +3,10 @@ import "server-only"
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm"
 import { headers } from "next/headers"
 
-import { auditLog, memberships, tenants, users } from "@/lib/db/schema"
+import { auditLog, courseGrants, memberships, tenants, users, type GrantRole } from "@/lib/db/schema"
 import { withoutTenantScope, type Tx } from "@/lib/db/tenant-db"
 import { TRACE_HEADER } from "@/lib/trace"
+import { effectiveRole } from "@/lib/authz/sharing"
 
 // Who belongs to which workspace. The host platform is the source of truth for
 // organizations: each sign-in (app/launch) mirrors the user's org memberships
@@ -90,8 +91,14 @@ export async function syncIdentity(input: IdentityInput): Promise<void> {
 
 export type Workspace = { tenantId: string; kind: "personal" | "org"; name: string; role: "owner" | "admin" | "creator" }
 
-/** The user's record and workspaces (personal first, then orgs by name); null if they never signed in. */
-export async function loadIdentity(userId: string): Promise<{ staff: boolean; workspaces: Workspace[] } | null> {
+/** Access to one course through sharing, as it counts right now (dormant grants are left out). */
+export type CourseGrant = { courseId: string; tenantId: string; role: GrantRole; kind: "member" | "guest" }
+
+/**
+ * The user's record, workspaces (personal first, then orgs by name) and the
+ * course grants in effect; null if they never signed in.
+ */
+export async function loadIdentity(userId: string): Promise<{ staff: boolean; workspaces: Workspace[]; grants: CourseGrant[] } | null> {
   return withoutTenantScope(async (tx) => {
     const [user] = await tx.select({ staff: users.staff }).from(users).where(eq(users.id, userId))
     if (!user) return null
@@ -103,7 +110,25 @@ export async function loadIdentity(userId: string): Promise<{ staff: boolean; wo
     const workspaces = rows.sort((a, b) =>
       a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "personal" ? -1 : 1,
     )
-    return { staff: user.staff, workspaces }
+    const memberOf = new Set(workspaces.map((w) => w.tenantId))
+    const stored = await tx
+      .select({
+        courseId: courseGrants.courseId,
+        tenantId: courseGrants.tenantId,
+        role: courseGrants.role,
+        kind: courseGrants.kind,
+        tenantKind: tenants.kind,
+        settings: tenants.settings,
+      })
+      .from(courseGrants)
+      .innerJoin(tenants, eq(tenants.id, courseGrants.tenantId))
+      .where(eq(courseGrants.userId, userId))
+    const grants: CourseGrant[] = []
+    for (const g of stored) {
+      const role = effectiveRole(g, memberOf.has(g.tenantId), { kind: g.tenantKind, settings: g.settings })
+      if (role) grants.push({ courseId: g.courseId, tenantId: g.tenantId, role, kind: g.kind })
+    }
+    return { staff: user.staff, workspaces, grants }
   })
 }
 

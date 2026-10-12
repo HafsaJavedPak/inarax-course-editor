@@ -32,9 +32,20 @@ import {
 
 import type { Course } from "../course"
 import type { Lesson } from "../lesson"
+import { GRANT_ROLES, type GrantRole } from "../authz/roles"
 
 export const TENANT_KINDS = ["personal", "org"] as const
 export type TenantKind = (typeof TENANT_KINDS)[number]
+
+/** Course-level roles given by sharing (lib/authz/sharing.ts). The course's owner and its reviewers aren't grants. */
+export { GRANT_ROLES, type GrantRole }
+
+export type TenantSettings = {
+  /** Whether people outside the workspace may be invited to its courses. */
+  allow_guests?: boolean
+  /** The highest role an outside guest may have. */
+  guest_max_role?: GrantRole
+}
 
 /** owner: a personal workspace's owner. admin / creator: org roles, from the host. */
 export const MEMBERSHIP_ROLES = ["owner", "admin", "creator"] as const
@@ -65,6 +76,8 @@ export const tenants = pgTable(
     personalOwnerId: text("personal_owner_id")
       .unique()
       .references(() => users.id),
+    /** Who may be invited to its courses from outside (lib/authz/sharing.ts; defaults by kind when unset). */
+    settings: jsonb("settings").$type<TenantSettings>(),
     createdAt: createdAt(),
   },
   (t) => [check("tenants_personal_owner_check", sql`(${t.kind} = 'personal') = (${t.personalOwnerId} IS NOT NULL)`)],
@@ -140,6 +153,81 @@ export const lessons = pgTable(
       foreignColumns: [courses.tenantId, courses.id],
     }).onDelete("cascade"),
   ],
+)
+
+/**
+ * A person's access to one course, given by its owner (or a co-owner, or an
+ * org admin). `member` grants are for people in the course's workspace;
+ * `guest` grants for people outside it, who only reach this one course. Read
+ * on every request with the user's memberships (lib/authz/identity.ts), and
+ * effective only while the rules still allow it: a member grant needs the
+ * membership, a guest grant needs the workspace to allow guests.
+ */
+export const courseGrants = pgTable(
+  "course_grants",
+  {
+    tenantId: uuid("tenant_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: GRANT_ROLES }).notNull(),
+    kind: text("kind", { enum: ["member", "guest"] }).notNull(),
+    grantedBy: text("granted_by").notNull(),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.courseId, t.userId] }),
+    index("course_grants_user_idx").on(t.userId),
+    foreignKey({ name: "course_grants_course_fk", columns: [t.tenantId, t.courseId], foreignColumns: [courses.tenantId, courses.id] }).onDelete("cascade"),
+  ],
+)
+
+/**
+ * An invitation to a course, by link (and later by email). Only the token's
+ * SHA-256 is stored; the link is shown once. Accepted by the signed-in user
+ * whose email (as the host vouched for it) is the invited one.
+ */
+export const courseInvitations = pgTable(
+  "course_invitations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+    /** Trimmed, lower-cased. */
+    email: text("email").notNull(),
+    role: text("role", { enum: GRANT_ROLES }).notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    invitedBy: text("invited_by").notNull(),
+    createdAt: createdAt(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    acceptedBy: text("accepted_by"),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("course_invitations_one_pending_idx")
+      .on(t.courseId, t.email)
+      .where(sql`${t.acceptedAt} IS NULL AND ${t.revokedAt} IS NULL`),
+    foreignKey({ name: "course_invitations_course_fk", columns: [t.tenantId, t.courseId], foreignColumns: [courses.tenantId, courses.id] }).onDelete("cascade"),
+  ],
+)
+
+/** Every time an invitation was handed out, and how (lib/invitations/delivery.ts): a copied link today, email later. */
+export const courseInvitationDeliveries = pgTable(
+  "course_invitation_deliveries",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    invitationId: uuid("invitation_id")
+      .notNull()
+      .references(() => courseInvitations.id, { onDelete: "cascade" }),
+    channel: text("channel", { enum: ["link", "email"] }).notNull(),
+    status: text("status", { enum: ["sent", "failed"] }).notNull(),
+    error: text("error"),
+    at: createdAt(),
+  },
+  (t) => [index("course_invitation_deliveries_invitation_idx").on(t.invitationId)],
 )
 
 /** How a revision's content came about (docs/collaboration: module 21). */

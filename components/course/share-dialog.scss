@@ -1,0 +1,156 @@
+// Share dialog, and the invitation card.
+
+.sh-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(15 23 42 / 0.35);
+}
+
+.sh-dialog {
+  width: min(40rem, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem 1.5rem;
+  border-radius: var(--in-radius-xl);
+  background: var(--in-surface);
+  box-shadow: var(--in-shadow-lg);
+}
+
+.sh-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.125rem;
+  }
+}
+
+.sh-people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--in-border);
+  }
+
+  select {
+    font: inherit;
+    font-size: 0.8125rem;
+  }
+}
+
+.sh-person {
+  flex: 1;
+  min-width: 12rem;
+  font-size: 0.875rem;
+}
+
+.sh-role {
+  font-size: 0.8125rem;
+  color: var(--in-text-2);
+}
+
+.sh-tag {
+  display: inline-block;
+  margin-left: 0.375rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  line-height: 1.25rem;
+  background: var(--in-primary-50);
+  color: var(--in-primary-hover);
+
+  &[data-tone="off"] {
+    background: var(--in-surface-muted);
+    color: var(--in-muted);
+  }
+}
+
+.sh-add {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  h3 {
+    margin: 0;
+    font-size: 0.9375rem;
+  }
+}
+
+.sh-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+
+  select,
+  .sh-input {
+    height: 2rem;
+    padding: 0 0.5rem;
+    border: 1px solid var(--in-border-strong);
+    border-radius: var(--in-radius-md);
+    background: var(--in-surface);
+    font: inherit;
+    font-size: 0.875rem;
+  }
+
+  .sh-input {
+    flex: 1;
+    min-width: 12rem;
+  }
+}
+
+.sh-hint {
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+.sh-link {
+  padding: 0.75rem 1rem;
+  border-radius: var(--in-radius-lg);
+  background: var(--in-success-bg);
+
+  p {
+    margin: 0 0 0.5rem;
+    font-size: 0.8125rem;
+  }
+}
+
+.sh-leave {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sh-accept {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  max-width: 32rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--in-border);
+  border-radius: var(--in-radius-xl);
+  background: var(--in-surface);
+
+  p {
+    margin: 0;
+  }
+}

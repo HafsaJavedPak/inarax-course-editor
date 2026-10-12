@@ -1,6 +1,6 @@
 import "server-only"
 
-import { and, desc, eq, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, sql } from "drizzle-orm"
 
 import { CourseSchema, getCourseLimits, type Course } from "@/lib/course"
 import { afterEdit, isLocked, type ReviewDecision, type WorkflowResult } from "@/lib/course-status"
@@ -139,6 +139,21 @@ async function selectCourse(tx: Tx, scope: Scope, courseId: string, lock = false
 export async function findCourse(scope: Scope, courseId: string): Promise<CourseRecord | null> {
   if (!isUuid(courseId)) return null
   return withTenantScope(scope, (tx) => selectCourse(tx, scope, courseId))
+}
+
+/** The given courses, if the scope may see them, most recently updated first. */
+export async function listCoursesByIds(scope: Scope, ids: readonly string[]): Promise<CourseRecord[]> {
+  const valid = ids.filter(isUuid)
+  if (valid.length === 0) return []
+  return withTenantScope(scope, async (tx) => {
+    const rows = await tx
+      .select(recordColumns)
+      .from(courses)
+      .innerJoin(tenants, eq(tenants.id, courses.tenantId))
+      .where(and(inArray(courses.id, valid), tenantFilter(courses, scope)))
+      .orderBy(desc(courses.updatedAt))
+    return rows.map(toRecord)
+  })
 }
 
 /** The scope's courses, optionally one tenant's only, most recently updated first. */

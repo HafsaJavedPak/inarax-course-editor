@@ -36,8 +36,24 @@ import { coursePaths, modeHeaders } from "@/lib/admin-mode"
 import { validateCourse, type CourseReport, type LessonStats } from "@/lib/course-validate"
 import { imageSrc } from "@/lib/uploads"
 
+import { ShareDialog } from "@/components/course/share-dialog"
+import type { CoursePermissions } from "@/lib/authz/context"
+import { ROLE_LABELS } from "@/lib/authz/sharing"
+
 import "@/components/lesson-editor/lesson-editor.scss"
 import "@/components/course/course-builder.scss"
+
+/** For callers that don't pass permissions (the review area): everything, as before sharing existed. */
+const ALL_PERMISSIONS: CoursePermissions = {
+  edit: true,
+  settings: true,
+  submit: true,
+  publish: true,
+  share: false,
+  history: true,
+  restore: true,
+  role: null,
+}
 
 const AUTOSAVE_DELAY_MS = 800
 
@@ -46,6 +62,7 @@ export function CourseBuilder({
   initialReport,
   isAdmin = false,
   publishingEnabled = true,
+  permissions,
 }: {
   initialCourse: Course
   initialReport: CourseReport
@@ -53,7 +70,11 @@ export function CourseBuilder({
   isAdmin?: boolean
   /** False when no platform is set up: Save only saves locally. */
   publishingEnabled?: boolean
+  /** What this person may do (lib/authz/context.ts permissionsFor); everything when omitted. */
+  permissions?: CoursePermissions
 }) {
+  const may = permissions ?? ALL_PERMISSIONS
+  const [sharing, setSharing] = useState(false)
   const [course, rawDispatch] = useReducer(courseReducer, initialCourse)
   const [serverReport, setServerReport] = useState(initialReport)
   const [status, setStatus] = useState<SaveStatus>("saved")
@@ -67,9 +88,9 @@ export function CourseBuilder({
     change_requests: initialCourse.change_requests,
     content_updated_at: initialCourse.content_updated_at,
   })
-  const publisher = usePublish(initialCourse.id, isAdmin, initialCourse.published_at, publishingEnabled)
+  const publisher = usePublish(initialCourse.id, isAdmin, initialCourse.published_at, publishingEnabled && may.publish)
   const { markChanged, publish } = publisher
-  const readOnly = isLocked(workflow.status) && !isAdmin
+  const readOnly = (isLocked(workflow.status) && !isAdmin) || !may.edit
   const paths = coursePaths(isAdmin)
 
   const revision = useRef(initialCourse.revision)
@@ -247,16 +268,28 @@ export function CourseBuilder({
         >
           Preview
         </button>
-        <button
-          type="button"
-          className="in-btn in-btn-secondary in-btn-sm"
-          title="Every version of this course: compare and restore (saves first)"
-          onClick={async () => {
-            if (await flush()) router.push(paths.history(course.id))
-          }}
-        >
-          History
-        </button>
+        {may.history && (
+          <button
+            type="button"
+            className="in-btn in-btn-secondary in-btn-sm"
+            title="Every version of this course: compare and restore (saves first)"
+            onClick={async () => {
+              if (await flush()) router.push(paths.history(course.id))
+            }}
+          >
+            History
+          </button>
+        )}
+        {!isAdmin && (
+          <button
+            type="button"
+            className="in-btn in-btn-secondary in-btn-sm"
+            title={may.share ? "Share this course with people" : "Who has access to this course"}
+            onClick={() => setSharing(true)}
+          >
+            {may.share ? "Share" : "People"}
+          </button>
+        )}
         <button
           type="button"
           className="in-btn in-btn-secondary in-btn-sm"
@@ -298,7 +331,15 @@ export function CourseBuilder({
           onWorkflowChange={setWorkflow}
           beforeSubmit={flush}
           isAdmin={isAdmin}
+          canSubmit={may.submit}
         />
+        {sharing && <ShareDialog courseId={course.id} onClose={() => setSharing(false)} />}
+        {may.role && !isAdmin && (
+          <p className="le-banner" data-tone="admin" role="status">
+            Shared with you as {ROLE_LABELS[may.role].toLowerCase()}.
+            {!may.edit && " You can read this course but not change it."}
+          </p>
+        )}
 
         <LevelTabs budgets={report.levels} selected={selectedLevel} onSelect={setSelectedLevel} />
 

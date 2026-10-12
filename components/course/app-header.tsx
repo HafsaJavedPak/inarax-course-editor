@@ -12,7 +12,7 @@ const ROLE_LABELS = { owner: "Owner", admin: "Admin", creator: "Creator" } as co
  * Top bar for the course pages, modelled on inara-next's admin brand block.
  * `workspace` is the tenant being shown, for the workspace switcher.
  */
-export async function AppHeader({ current, workspace }: { current?: "dashboard" | "admin"; workspace?: string }) {
+export async function AppHeader({ current, workspace }: { current?: "dashboard" | "admin" | "shared"; workspace?: string }) {
   const isAdmin = current === "admin"
   const ctx = await getRequestContext()
   const reviewer = reviewsAnything(ctx)
@@ -54,6 +54,11 @@ export async function AppHeader({ current, workspace }: { current?: "dashboard" 
         ) : (
           <Link href="/dashboard" aria-current={current === "dashboard" ? "page" : undefined}>
             My courses
+          </Link>
+        )}
+        {!isAdmin && ctx.grants.some((g) => !ctx.tenantIds.includes(g.tenantId)) && (
+          <Link href="/shared" aria-current={current === "shared" ? "page" : undefined}>
+            Shared with me
           </Link>
         )}
         {reviewer && (isAdmin ? <Link href="/dashboard">My courses</Link> : <Link href="/admin">Course reviews</Link>)}

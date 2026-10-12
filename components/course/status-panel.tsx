@@ -36,6 +36,7 @@ export function StatusPanel({
   onWorkflowChange,
   beforeSubmit,
   isAdmin = false,
+  canSubmit: maySubmit = true,
 }: {
   course: Course
   workflow: Workflow
@@ -46,6 +47,8 @@ export function StatusPanel({
   beforeSubmit: () => Promise<boolean>
   /** Admins see a link to the review page instead of the creator's actions. */
   isAdmin?: boolean
+  /** False for people the course is shared with who can't submit it (editors, commenters, viewers). */
+  canSubmit?: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -56,13 +59,13 @@ export function StatusPanel({
   // Feedback always comes from the reviewers' last decision, so withdrawing never hides it.
   const decision = lastDecision(history)
   const lastSubmitted = history.findLast((e) => eventAction(e) === "submitted")
-  const showSubmit = !isAdmin && (status === "draft" || status === "rejected" || status === "changes_requested")
+  const showSubmit = !isAdmin && maySubmit && (status === "draft" || status === "rejected" || status === "changes_requested")
   const askNote = showSubmit && needsResubmitNote(workflow)
   const resubmits = resubmissionsAfterRejection(history)
   const noteOk = !askNote || note.trim().length >= RESUBMIT_NOTE_MIN
   const canSubmit = blockers.length === 0 && noteOk
   const doneCount = changes.filter((c) => c.done).length
-  const changesEditable = !isAdmin && status !== "in_review" && decision?.status === "changes_requested"
+  const changesEditable = !isAdmin && maySubmit && status !== "in_review" && decision?.status === "changes_requested"
 
   const apply = (data: { course: Course }) =>
     onWorkflowChange({
@@ -155,7 +158,7 @@ export function StatusPanel({
               {status === "in_review" ? "Review this course" : "Open review page"}
             </Link>
           )}
-          {!isAdmin && status === "in_review" && (
+          {!isAdmin && maySubmit && status === "in_review" && (
             <button
               type="button"
               className="in-btn in-btn-secondary"

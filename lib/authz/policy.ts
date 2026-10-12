@@ -1,23 +1,28 @@
 // Who may do what: the one place access rules live. Pure (no database, no
 // request), so every rule is covered by tests/authz/policy.test.ts.
 //
-// Access = membership ∩ role ∩ resource. Without a membership in the course's
-// tenant there is no access at all, with one exception: platform staff (InaraX
-// admins) review courses in personal workspaces.
+// Access = membership ∩ role ∩ resource, or a course grant. Without a
+// membership in the course's tenant there is no access unless the course was
+// shared with the user (a grant reaches that one course only), with one more
+// exception: platform staff (InaraX admins) review courses in personal
+// workspaces.
 //
 //   personal workspace   owner    writes their courses; staff review them
 //   organization         admin    everything in the org, including review
 //                        creator  creates courses; works on the ones they own
+//   shared course        co_owner · editor · commenter · viewer (lib/authz/sharing.ts)
 
-import type { MembershipRole, TenantKind } from "@/lib/db/schema"
+import type { GrantRole, MembershipRole, TenantKind } from "@/lib/db/schema"
 
 export type Subject = {
   userId: string
   staff: boolean
   memberships: readonly { tenantId: string; role: MembershipRole }[]
+  /** Effective course grants (lib/authz/identity.ts loadIdentity). */
+  grants?: readonly { courseId: string; role: GrantRole }[]
 }
 
-export type CourseResource = { tenantId: string; tenantKind: TenantKind; ownerId: string }
+export type CourseResource = { courseId?: string; tenantId: string; tenantKind: TenantKind; ownerId: string }
 
 export type CourseAction =
   | "course.read"
@@ -30,8 +35,12 @@ export type CourseAction =
   | "course.review"
   /** See the course's history and compare versions. */
   | "course.history"
-  /** Restore an earlier version (written forward as a new one). The author's: reviewers request changes instead. */
+  /** Restore an earlier version (written forward as a new one). Reviewers request changes instead. */
   | "course.restore"
+  /** Change the course's settings (title, summary, pricing, limits …); editors change only the outline and lessons. */
+  | "course.settings"
+  /** Give, change and remove access (grants, invitations). */
+  | "course.share"
 
 export type TenantAction = "tenant.view" | "course.create"
 
@@ -49,24 +58,52 @@ function isAuthor(subject: Subject, course: CourseResource, role: MembershipRole
   return role !== null && course.ownerId === subject.userId
 }
 
+/** The user's grant on this course, if any. */
+export function grantRole(subject: Subject, course: CourseResource): GrantRole | null {
+  if (!course.courseId) return null
+  return subject.grants?.find((g) => g.courseId === course.courseId)?.role ?? null
+}
+
 export function can(subject: Subject, action: CourseAction, course: CourseResource): boolean {
   const role = roleIn(subject, course.tenantId)
   const author = isAuthor(subject, course, role)
   const reviewer = isReviewer(subject, course, role)
+  const grant = grantRole(subject, course)
+  const coOwner = grant === "co_owner"
+  const editor = grant === "editor"
 
   switch (action) {
     case "course.read":
-    case "course.export":
-    case "course.edit":
-    case "course.delete":
-    case "course.publish":
+      return author || reviewer || grant !== null
     case "course.history":
-      return author || reviewer
-    case "course.submit":
+      return author || reviewer || (grant !== null && grant !== "viewer")
+    case "course.edit":
+      return author || reviewer || coOwner || editor
     case "course.restore":
-      return author
+      return author || coOwner || editor
+    case "course.settings":
+    case "course.export":
+    case "course.publish":
+      return author || reviewer || coOwner
+    case "course.submit":
+      return author || coOwner
+    case "course.delete":
+      return author || reviewer
     case "course.review":
       return reviewer
+    case "course.share":
+      // Org admins manage sharing in their org; platform staff don't manage personal workspaces' sharing.
+      return author || coOwner || (role === "admin" && course.tenantKind === "org")
+  }
+}
+
+/** What someone may do when sharing this course (lib/authz/sharing.ts maxGrantable / mayManage). */
+export function sharingPower(subject: Subject, course: CourseResource) {
+  const role = roleIn(subject, course.tenantId)
+  return {
+    isOwner: isAuthor(subject, course, role),
+    isAdmin: role === "admin" && course.tenantKind === "org",
+    role: grantRole(subject, course),
   }
 }
 
