@@ -2,6 +2,7 @@ import type { RequestContext } from "@/lib/authz/context"
 import type { Course } from "@/lib/course"
 import type { WorkflowResult } from "@/lib/course-status"
 import { ApprovalMismatchError, findCourse, publishableContent, recordPublish } from "@/lib/course-store"
+import { flushLiveCourse, LiveFlushError } from "@/lib/collab/live"
 import type { Lesson } from "@/lib/lesson"
 import { validateLesson } from "@/lib/lesson-validate"
 import {
@@ -32,6 +33,8 @@ export async function publishAndRecord(ctx: RequestContext, course: Course): Pro
 
     // Only lessons that pass validation are sent. One with problems keeps its
     // last published version on the platform; the rest of the course still goes.
+    // Live edits not yet stored go first, so what's published includes every acknowledged edit.
+    await flushLiveCourse(course.id)
     const content = await publishableContent(ctx, course.id)
     if (!content) throw new Error("Course not found")
     const lessons = new Map<string, Lesson>()
@@ -64,6 +67,9 @@ export async function publishAndRecord(ctx: RequestContext, course: Course): Pro
     if (summary.warnings.length) console.warn(`Published course ${course.id} with warnings:`, summary.warnings)
     return { publishedAt, summary }
   } catch (error) {
+    if (error instanceof LiveFlushError) {
+      return { error: error.message, status: 503, code: "unavailable" }
+    }
     if (error instanceof ApprovalMismatchError) {
       return { error: error.message, status: 409, code: "error" }
     }

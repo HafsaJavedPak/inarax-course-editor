@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { flushLiveCourse, LiveFlushError } from "@/lib/collab/live"
 import { courseForRoute } from "@/lib/authz/context"
 import { ChangeRequestSchema } from "@/lib/course"
 import { allowMoreResubmissions, review } from "@/lib/course-status"
@@ -35,6 +36,13 @@ export async function POST(request: Request, ctx: RouteContext<"/api/courses/[co
     return Response.json({ error: "Invalid review", issues: z.flattenError(parsed.error) }, { status: 400 })
   }
 
+  // Live edits not yet stored go first: decisions and submissions are about the stored content.
+  try {
+    await flushLiveCourse(courseId)
+  } catch (error) {
+    if (error instanceof LiveFlushError) return Response.json({ error: error.message }, { status: 503 })
+    throw error
+  }
   const { decision, note, changes, revision_id, content_hash } = parsed.data
   if (decision === "allow_resubmissions") {
     return publishedWorkflowResponse(

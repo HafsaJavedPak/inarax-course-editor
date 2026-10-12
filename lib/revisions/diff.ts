@@ -10,7 +10,7 @@
 
 import { LEVELS } from "@/lib/course"
 import type { Lesson, LessonBlock, LessonSection } from "@/lib/lesson"
-import { canonicalJson } from "@/lib/revisions/hash"
+import { canonicalJson } from "@/lib/revisions/canonical"
 import { fieldLabel } from "@/lib/revisions/text"
 
 export { fieldLabel, wordDiff, type WordPart } from "@/lib/revisions/text"

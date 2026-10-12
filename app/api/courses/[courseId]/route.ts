@@ -13,6 +13,7 @@ import {
   saveCourseContent,
 } from "@/lib/course-store"
 import { audit } from "@/lib/authz/identity"
+import { notifyCourseDeleted } from "@/lib/collab/notify"
 import { getPlatform, PLATFORM_ERROR_STATUS, PlatformError } from "@/lib/platform"
 
 type Ctx = RouteContext<"/api/courses/[courseId]">
@@ -83,6 +84,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     )
   }
   await deleteCourse(loaded.ctx, courseId)
+  await notifyCourseDeleted(courseId)
   await audit({ actorId: loaded.ctx.userId, action: "course.delete", tenantId: loaded.record.tenantId, courseId, target: courseId })
   return new Response(null, { status: 204 })
 }

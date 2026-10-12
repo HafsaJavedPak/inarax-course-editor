@@ -34,10 +34,48 @@ services:
         sync: false
       - key: EDITOR_PUBLIC_URL
         sync: false
+      # Live co-editing (docs/collaboration/phase-4.md): the gateway's public
+      # wss:// address, its private address for flushes, and the two secrets
+      # shared with the gateway service below (at least 32 characters each).
+      - key: COLLAB_PUBLIC_URL
+        sync: false
+      - key: COLLAB_INTERNAL_URL
+        sync: false
+      - key: COLLAB_TICKET_SECRET
+        sync: false
+      - key: COLLAB_INTERNAL_SECRET
+        sync: false
     disk:
       name: inara-data
       mountPath: /var/data
       sizeGB: 1
+
+  # The collaboration gateway: live lesson documents over WebSocket. One
+  # instance (it holds open documents in memory). Same database as the app;
+  # only the app runs migrations.
+  - type: web
+    name: inara-course-editor-collab
+    runtime: node
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm run collab
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: EDITOR_DATABASE_URL
+        fromDatabase:
+          name: inara-course-editor-db
+          property: connectionString
+      - key: PLATFORM_ADAPTER
+        value: protocol
+      # The editor's public address: browsers from any other origin are refused.
+      - key: EDITOR_PUBLIC_URL
+        sync: false
+      - key: COLLAB_TICKET_SECRET
+        sync: false
+      - key: COLLAB_INTERNAL_SECRET
+        sync: false
 
 databases:
   - name: inara-course-editor-db

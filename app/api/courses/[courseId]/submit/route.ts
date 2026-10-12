@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { flushLiveCourse, LiveFlushError } from "@/lib/collab/live"
 import { courseForRoute } from "@/lib/authz/context"
 import { submit } from "@/lib/course-status"
 import { getCourseReport, submitForReview } from "@/lib/course-store"
@@ -21,6 +22,13 @@ export async function POST(request: Request, ctx: RouteContext<"/api/courses/[co
   const parsed = SubmitSchema.safeParse((await request.json().catch(() => null)) ?? {})
   if (!parsed.success) return Response.json({ error: "Invalid submission" }, { status: 400 })
 
+  // Live edits not yet stored go first: decisions and submissions are about the stored content.
+  try {
+    await flushLiveCourse(courseId)
+  } catch (error) {
+    if (error instanceof LiveFlushError) return Response.json({ error: error.message }, { status: 503 })
+    throw error
+  }
   // Validate against the lessons as they are now.
   const report = await getCourseReport(access, record.course)
   return publishedWorkflowResponse(

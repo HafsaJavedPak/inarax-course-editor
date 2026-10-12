@@ -57,6 +57,20 @@
       "when": 1791796433171,
       "tag": "0007_sharing_row_level_security",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791797694801,
+      "tag": "0008_live_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791797696755,
+      "tag": "0009_live_documents_row_level_security",
+      "breakpoints": true
     }
   ]
 }

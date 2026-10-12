@@ -17,6 +17,7 @@ import { and, eq, isNull } from "drizzle-orm"
 
 import { sessions, users } from "@/lib/db/schema"
 import { withoutTenantScope } from "@/lib/db/tenant-db"
+import { notifyAccess } from "@/lib/collab/notify"
 import type { KeyResolver } from "@/lib/protocol/jwks"
 
 export { SESSION_COOKIE } from "@/lib/auth-gate"
@@ -91,23 +92,31 @@ export async function validateSession(token: string | undefined, hostKeys: KeyRe
 /** Ends one session (sign out). */
 export async function revokeSession(token: string | undefined, now = new Date()): Promise<void> {
   if (!token) return
-  await withoutTenantScope((tx) =>
-    tx
+  await withoutTenantScope(async (tx) => {
+    const ended = await tx
       .update(sessions)
       .set({ revokedAt: now, revokedReason: "signed_out" })
-      .where(and(eq(sessions.id, hashToken(token)), isNull(sessions.revokedAt))),
-  )
+      .where(and(eq(sessions.id, hashToken(token)), isNull(sessions.revokedAt)))
+      .returning({ userId: sessions.userId })
+    // Live sockets opened in that session close.
+    for (const { userId } of ended) await notifyAccess(tx, { kind: "session", user: userId })
+  })
 }
+
+/** The session id (stored hash) of a cookie token: what collaboration tickets are bound to. */
+export const sessionIdOf = (token: string) => hashToken(token)
 
 /** Ends every session of a user, e.g. when the host says their role or organizations changed. Returns how many. */
 export async function revokeUserSessions(userId: string, now = new Date()): Promise<number> {
-  const ended = await withoutTenantScope((tx) =>
-    tx
+  const ended = await withoutTenantScope(async (tx) => {
+    const rows = await tx
       .update(sessions)
       .set({ revokedAt: now, revokedReason: "access_changed" })
       .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)))
-      .returning({ id: sessions.id }),
-  )
+      .returning({ id: sessions.id })
+    if (rows.length) await notifyAccess(tx, { kind: "session", user: userId })
+    return rows
+  })
   return ended.length
 }
 

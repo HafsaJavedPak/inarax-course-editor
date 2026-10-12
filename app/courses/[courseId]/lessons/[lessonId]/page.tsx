@@ -6,6 +6,7 @@ import { coursePaths } from "@/lib/admin-mode"
 import { authorCourseForPage, permissionsFor } from "@/lib/authz/context"
 import { readLessonRecord } from "@/lib/course-store"
 import { createLesson } from "@/lib/lesson"
+import { liveEditing } from "@/lib/collab/live"
 import { publishingEnabled } from "@/lib/platform"
 
 export default async function Page({ params }: PageProps<"/courses/[courseId]/lessons/[lessonId]">) {
@@ -36,6 +37,7 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]/le
       wordsPerMinute={limits.words_per_minute}
       courseStatus={course.status}
       publishedAt={course.published_at}
+      live={liveEditing() !== null}
       publishingEnabled={publishingEnabled() && permissionsFor(ctx, record).publish}
       canEdit={permissionsFor(ctx, record).edit}
     />

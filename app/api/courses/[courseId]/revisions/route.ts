@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { flushLiveCourse, LiveFlushError } from "@/lib/collab/live"
 import { courseForRoute } from "@/lib/authz/context"
 import { saveVersion } from "@/lib/course-store"
 import { idempotent } from "@/lib/http/idempotency"
@@ -27,6 +28,13 @@ export async function POST(request: Request, ctx: Ctx) {
   return idempotent(request, loaded.ctx.userId, async (body) => {
     const parsed = SaveVersionSchema.safeParse(JSON.parse(body || "null"))
     if (!parsed.success) return Response.json({ error: parsed.error.issues[0]?.message ?? "Invalid version" }, { status: 400 })
+    // Live edits not yet stored go into the history first.
+    try {
+      await flushLiveCourse(courseId)
+    } catch (error) {
+      if (error instanceof LiveFlushError) return Response.json({ error: error.message }, { status: 503 })
+      throw error
+    }
     const revision = await saveVersion(loaded.ctx, courseId, parsed.data.label)
     if (!revision) return Response.json({ error: "Course not found" }, { status: 404 })
     return Response.json({ revision: { id: revision.id, number: revision.number, label: revision.label } }, { status: 201 })

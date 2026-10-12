@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "collab": "tsx --conditions=react-server --env-file-if-exists=.env.local collab/main.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -55,6 +56,7 @@
     "fflate": "^0.8.3",
     "fractional-indexing": "4.0.0",
     "katex": "^0.16.47",
+    "lib0": "0.2.119",
     "lodash.throttle": "^4.1.1",
     "lucide-react": "^1.47.0",
     "mermaid": "^11.17.2",

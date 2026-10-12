@@ -6,7 +6,7 @@ import type { Course } from "@/lib/course"
 import { courseRevisions, lessonSnapshots, revisionLessons, type RevisionKind } from "@/lib/db/schema"
 import { withTenantScope, type Scope, type Tx } from "@/lib/db/tenant-db"
 import { parseLesson, type Lesson } from "@/lib/lesson"
-import { extendsRevision, staysOpen } from "@/lib/revisions/coalesce"
+import { actorsOf, extendsRevision, staysOpen } from "@/lib/revisions/coalesce"
 import { summarizeChange, type ChangeSummary, type CourseContent } from "@/lib/revisions/diff"
 import { courseContent } from "@/lib/revisions/hash"
 
@@ -25,7 +25,7 @@ export type HeadContent = {
   lessons: ReadonlyMap<string, { hash: string; data: Lesson }>
 }
 
-export type RevisionChange = { kind: RevisionKind; actorId: string; restoredFrom?: string }
+export type RevisionChange = { kind: RevisionKind; actorId: string; actorIds?: readonly string[]; restoredFrom?: string }
 
 const lessonHashesOf = (head: HeadContent) => Object.fromEntries([...head.lessons].map(([id, l]) => [id, l.hash]))
 
@@ -95,7 +95,7 @@ export async function recordRevision(
         kind: change.kind,
         contentHash: head.contentHash,
         courseData,
-        actors: [change.actorId],
+        actors: actorsOf(change),
         summary,
         restoredFrom: change.restoredFrom ?? null,
         createdAt: now,

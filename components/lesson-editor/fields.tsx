@@ -10,6 +10,7 @@ import { Input } from "@/components/tiptap-ui-primitive/input"
 import { ChevronDownIcon } from "@/components/tiptap-icons/chevron-down-icon"
 import { ChevronUpIcon } from "@/components/tiptap-icons/chevron-up-icon"
 import { TrashIcon } from "@/components/tiptap-icons/trash-icon"
+import { minimalEdit, shiftPosition } from "@/lib/collab/text-edit"
 
 /** Field label with an optional red * (required) or "(optional)" marker. */
 export function FieldLabel({
@@ -171,20 +172,37 @@ export function AutoTextarea({
   minRows?: number
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
+  // The text and caret as this field last knew them, so a change from
+  // elsewhere (someone editing live) keeps the caret where it was in the text.
+  const known = useRef({ value, start: 0, end: 0 })
 
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
     el.style.height = "auto"
     el.style.height = `${el.scrollHeight + 2}px`
+    const before = known.current
+    if (value !== before.value && document.activeElement === el) {
+      const edit = minimalEdit(before.value, value)
+      if (edit) el.setSelectionRange(shiftPosition(before.start, edit), shiftPosition(before.end, edit))
+    }
+    known.current = { value, start: el.selectionStart, end: el.selectionEnd }
   }, [value])
+
+  const remember = (el: HTMLTextAreaElement) => {
+    known.current = { value: el.value, start: el.selectionStart, end: el.selectionEnd }
+  }
 
   return (
     <textarea
       ref={ref}
       rows={minRows}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onSelect={(e) => remember(e.currentTarget)}
+      onChange={(e) => {
+        remember(e.currentTarget)
+        onChange(e.target.value)
+      }}
       className={`le-textarea ${className ?? ""}`}
       {...props}
     />

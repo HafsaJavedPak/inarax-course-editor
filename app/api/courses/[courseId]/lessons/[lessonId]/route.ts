@@ -12,6 +12,7 @@ import {
   readLessonRecord,
   saveLessonContent,
 } from "@/lib/course-store"
+import { liveEditing } from "@/lib/collab/live"
 import { isUuid, parseLesson } from "@/lib/lesson"
 
 type Ctx = RouteContext<"/api/courses/[courseId]/lessons/[lessonId]">
@@ -62,6 +63,10 @@ export async function GET(_request: Request, ctx: Ctx) {
  * while the course is in review (authors only).
  */
 export async function PUT(request: Request, ctx: Ctx) {
+  // With live editing, lessons are written only through the collaboration gateway (one writer).
+  if (liveEditing()) {
+    return Response.json({ error: "Lessons are edited live. Reload the page.", code: "live_editing" }, { status: 409 })
+  }
   const loaded = await loadCourseFor(ctx, "course.edit")
   if (loaded.error) return loaded.error
 

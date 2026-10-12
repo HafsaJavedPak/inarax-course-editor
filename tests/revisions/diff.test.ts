@@ -23,6 +23,13 @@ describe("extendsRevision (grouping autosaves into revisions)", () => {
     expect(extendsRevision(null, { kind: "edit", actorId: "alice" }, at(1))).toBe(false)
   })
 
+  it("groups people editing together, and starts anew when someone new joins", () => {
+    const together = { ...open, actors: ["alice", "bob"] }
+    expect(extendsRevision(together, { kind: "edit", actorId: "alice" }, at(1))).toBe(true)
+    expect(extendsRevision(together, { kind: "edit", actorId: "alice", actorIds: ["alice", "bob"] }, at(1))).toBe(true)
+    expect(extendsRevision(together, { kind: "edit", actorId: "carol", actorIds: ["alice", "carol"] }, at(1))).toBe(false)
+  })
+
   it("never groups restores or first versions", () => {
     expect(extendsRevision({ ...open, kind: "restored" }, { kind: "restored", actorId: "alice" }, at(1))).toBe(false)
     expect(extendsRevision({ ...open, kind: "initial" }, { kind: "initial", actorId: "alice" }, at(1))).toBe(false)

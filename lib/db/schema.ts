@@ -17,6 +17,7 @@ import {
   bigint,
   boolean,
   check,
+  customType,
   foreignKey,
   index,
   integer,
@@ -228,6 +229,61 @@ export const courseInvitationDeliveries = pgTable(
     at: createdAt(),
   },
   (t) => [index("course_invitation_deliveries_invitation_idx").on(t.invitationId)],
+)
+
+/** bytea, for Yjs state and updates. */
+const bytes = customType<{ data: Uint8Array; driverData: Uint8Array }>({
+  dataType: () => "bytea",
+  // node-postgres sends Buffers as binary; PGlite accepts them too.
+  toDriver: (value) => Buffer.from(value.buffer, value.byteOffset, value.byteLength),
+  fromDriver: (value) => new Uint8Array(value),
+})
+
+/**
+ * A live document's compacted state (collaboration gateway, module 19): one
+ * row per document (`lesson:<courseId>:<lessonId>`). The first process to
+ * open a document stores its initial state here, so every process starts from
+ * the same bytes.
+ */
+export const collabDocuments = pgTable(
+  "collab_documents",
+  {
+    name: text("name").primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+    state: bytes("state").notNull(),
+    /** The last update (collab_updates.seq) folded into `state`. */
+    stateSeq: bigint("state_seq", { mode: "number" }).notNull().default(0),
+    /** Set when the document couldn't be turned into a valid lesson (the last good one is kept). */
+    attention: jsonb("attention"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("collab_documents_course_idx").on(t.courseId),
+    foreignKey({ name: "collab_documents_course_fk", columns: [t.tenantId, t.courseId], foreignColumns: [courses.tenantId, courses.id] }).onDelete("cascade"),
+  ],
+)
+
+/**
+ * Every edit to a live document, appended before it's acknowledged, so an
+ * acknowledged edit survives any crash. Deleted once folded into
+ * collab_documents.state (raw edits aren't kept).
+ */
+export const collabUpdates = pgTable(
+  "collab_updates",
+  {
+    seq: bigint("seq", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    name: text("name").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+    update: bytes("update").notNull(),
+    actorId: text("actor_id").notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("collab_updates_name_seq_idx").on(t.name, t.seq),
+    foreignKey({ name: "collab_updates_course_fk", columns: [t.tenantId, t.courseId], foreignColumns: [courses.tenantId, courses.id] }).onDelete("cascade"),
+  ],
 )
 
 /** How a revision's content came about (docs/collaboration: module 21). */

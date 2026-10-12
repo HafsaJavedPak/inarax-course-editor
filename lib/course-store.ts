@@ -5,8 +5,11 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm"
 import { CourseSchema, getCourseLimits, type Course } from "@/lib/course"
 import { afterEdit, isLocked, type ReviewDecision, type WorkflowResult } from "@/lib/course-status"
 import { getLessonStats, validateCourse, type LessonStats } from "@/lib/course-validate"
-import { courses, lessons, tenants, type RevisionKind, type TenantKind } from "@/lib/db/schema"
+import { collabDocuments, collabUpdates, courses, lessons, tenants, type RevisionKind, type TenantKind } from "@/lib/db/schema"
 import { tenantFilter, withTenantScope, type Scope, type Tx } from "@/lib/db/tenant-db"
+import { findLessonRef } from "@/lib/course"
+import { notifyAccess } from "@/lib/collab/notify"
+import { lessonDocName } from "@/lib/collab/protocol"
 import { isUuid, parseLesson, type Lesson } from "@/lib/lesson"
 import { contentHash, lessonHash } from "@/lib/revisions/hash"
 import {
@@ -224,6 +227,22 @@ async function ensureHistory(tx: Tx, scope: Scope, record: CourseRecord): Promis
   await commitContent(tx, scope, record.tenantId, record.course, { kind: "initial", actorId: record.course.owner_id })
 }
 
+/**
+ * Lessons whose content was just written from outside live editing (a
+ * restore, an import, a delete): their live documents would no longer match,
+ * so they're dropped, and the gateway closes them (editors reload the lesson).
+ */
+async function resetLiveDocs(tx: Tx, courseId: string, lessonIds: string[]) {
+  if (lessonIds.length === 0) return
+  const names = lessonIds.map((id) => lessonDocName(courseId, id))
+  await tx.delete(collabUpdates).where(and(eq(collabUpdates.courseId, courseId), inArray(collabUpdates.name, names)))
+  const dropped = await tx
+    .delete(collabDocuments)
+    .where(and(eq(collabDocuments.courseId, courseId), inArray(collabDocuments.name, names)))
+    .returning({ name: collabDocuments.name })
+  if (dropped.length) await notifyAccess(tx, { kind: "doc_reset", course: courseId, lessons: lessonIds })
+}
+
 /** Stores a brand-new course in a tenant, as its first revision. */
 export async function insertCourse(scope: Scope, tenantId: string, course: Course): Promise<Course> {
   await withTenantScope(scope, async (tx) => {
@@ -282,6 +301,8 @@ export async function saveCourseContent(scope: Scope, course: Course, editor: Ed
     const next = editor.asReviewer ? saved : afterEdit(saved, editor.id)
     await writeCourse(tx, next)
     await commitContent(tx, scope, record.tenantId, next, { kind: editKind(editor), actorId: editor.id })
+    // The outline or the status may have changed what live sockets on its lessons may do.
+    await notifyAccess(tx, { kind: "course", course: course.id })
     return next
   })
 }
@@ -314,6 +335,8 @@ async function workflowTransaction(
     const next = { ...result.course, updated_at: new Date().toISOString() }
     await writeCourse(tx, next)
     await after?.(tx, record, next)
+    // Live sockets may change what they're allowed (e.g. read-only once in review).
+    if (next.status !== record.course.status) await notifyAccess(tx, { kind: "course", course: courseId })
     return { course: next }
   })
 }
@@ -516,15 +539,22 @@ export async function restoreRevision(
       .from(lessons)
       .where(and(eq(lessons.courseId, courseId), tenantFilter(lessons, scope)))
     const storedHash = new Map(stored.map((r) => [r.id, r.hash]))
+    const touched: string[] = []
     for (const id of outlineLessonIds(next)) {
       const lesson = target.lessons.get(id)
       if (lesson) {
         // Unchanged lessons aren't rewritten, so open editors on them aren't disturbed.
-        if (storedHash.get(id) !== lessonHash(lesson)) await writeLesson(tx, record.tenantId, courseId, id, lesson)
+        if (storedHash.get(id) !== lessonHash(lesson)) {
+          await writeLesson(tx, record.tenantId, courseId, id, lesson)
+          touched.push(id)
+        }
       } else if (storedHash.has(id)) {
         await tx.delete(lessons).where(and(eq(lessons.courseId, courseId), eq(lessons.id, id)))
+        touched.push(id)
       }
     }
+    await resetLiveDocs(tx, courseId, touched)
+    await notifyAccess(tx, { kind: "course", course: courseId })
 
     const revision = await commitContent(tx, scope, record.tenantId, next, { kind: "restored", actorId: editor.id, restoredFrom: revisionId })
     return { course: next, revision }
@@ -603,6 +633,7 @@ export async function saveCourseLesson(scope: Scope, courseId: string, lessonId:
     await ensureHistory(tx, scope, record)
     const revision = await writeLesson(tx, record.tenantId, courseId, lessonId, lesson)
     await commitContent(tx, scope, record.tenantId, record.course, { kind: "imported", actorId: record.course.owner_id })
+    await resetLiveDocs(tx, courseId, [lessonId])
     return revision
   })
 }
@@ -660,6 +691,52 @@ export async function saveLessonContent(
   })
 }
 
+/** Who edited a live lesson since its last checkpoint. */
+export type LiveEditor = { id: string; asReviewer: boolean }
+
+/**
+ * Stores a live lesson's content (from the collaboration gateway's
+ * checkpoint). Its edits were already accepted, logged and acknowledged, so
+ * nothing here refuses them: they're recorded like any other edit (history,
+ * and an author's edit of an accepted course returns it to draft). Lessons no
+ * longer in the outline aren't written. Returns whether anything changed.
+ */
+export async function saveLessonFromLive(
+  scope: Scope,
+  courseId: string,
+  lessonId: string,
+  lesson: Lesson,
+  editors: readonly LiveEditor[],
+): Promise<boolean> {
+  return withTenantScope(scope, async (tx) => {
+    const record = await selectCourse(tx, scope, courseId, true)
+    if (!record || !findLessonRef(record.course, lessonId)) return false
+    const [stored] = await tx
+      .select({ hash: lessons.hash, data: lessons.data })
+      .from(lessons)
+      .where(and(eq(lessons.courseId, courseId), eq(lessons.id, lessonId)))
+    const hash = lessonHash(lesson)
+    if ((stored?.hash ?? (stored ? lessonHash(stored.data) : null)) === hash) return false
+
+    await ensureHistory(tx, scope, record)
+    await writeLesson(tx, record.tenantId, courseId, lessonId, lesson)
+    const authors = editors.filter((e) => !e.asReviewer)
+    let course = record.course
+    if (authors.length) {
+      course = { ...afterEdit(course, authors[0].id), updated_at: new Date().toISOString() }
+      await writeCourse(tx, course)
+    }
+    const ids = editors.map((e) => e.id)
+    await commitContent(tx, scope, record.tenantId, course, {
+      kind: authors.length ? "edit" : "reviewer_edit",
+      actorId: ids[0] ?? course.owner_id,
+      actorIds: ids,
+    })
+    if (course.status !== record.course.status) await notifyAccess(tx, { kind: "course", course: courseId })
+    return true
+  })
+}
+
 /**
  * Deletes a lesson's content (the builder calls this before removing the
  * lesson from the outline), with the same rules as saving it. Its earlier
@@ -672,6 +749,7 @@ export async function deleteLessonContent(scope: Scope, courseId: string, lesson
     assertEditable(record.course, editor)
     await ensureHistory(tx, scope, record)
     await tx.delete(lessons).where(and(eq(lessons.courseId, courseId), eq(lessons.id, lessonId), tenantFilter(lessons, scope)))
+    await resetLiveDocs(tx, courseId, [lessonId])
     let course = record.course
     if (!editor.asReviewer) {
       course = { ...afterEdit(course, editor.id), updated_at: new Date().toISOString() }

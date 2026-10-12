@@ -27,6 +27,7 @@ import { usePublish } from "@/components/lesson-editor/use-publish"
 import { ReadOnlyContext } from "@/components/lesson-editor/read-only"
 import { LessonPlayer } from "@/components/preview/lesson-player"
 import { lessonReducer, type LessonAction } from "@/components/lesson-editor/lesson-state"
+import { PresenceContext, useLiveLesson, type LiveLesson, type Peer } from "@/components/collab/use-live-lesson"
 import { createSection, type Lesson } from "@/lib/lesson"
 import { validateLesson, type LessonIssue } from "@/lib/lesson-validate"
 import type { CourseStatus } from "@/lib/course"
@@ -37,6 +38,65 @@ import { getLessonStats } from "@/lib/course-validate"
 import "@/components/lesson-editor/lesson-editor.scss"
 
 type Range = readonly [number, number]
+
+/** The save bar's status while editing live. */
+function liveSaveStatus(live: LiveLesson): SaveStatus {
+  if (live.status === "offline") return { error: `Offline: ${live.unsynced || "your"} change${live.unsynced === 1 ? "" : "s"} kept here until you reconnect` }
+  return live.unsynced > 0 ? "saving" : "saved"
+}
+
+const CLOSED_MESSAGES: Record<string, string> = {
+  access_revoked: "You no longer have access to this lesson. Changes you made after that weren't saved.",
+  session_ended: "Your session ended. Open the editor from InaraX again; changes made since weren't saved.",
+}
+
+function LiveBanner({ live }: { live: LiveLesson }) {
+  if (live.status === "closed") {
+    return (
+      <p className="le-banner" data-tone="conflict" role="alert">
+        {CLOSED_MESSAGES[live.closed ?? ""] ?? `Live editing stopped: ${live.closed ?? "unknown reason"}. Reload the page.`}
+      </p>
+    )
+  }
+  if (live.attention) {
+    return (
+      <p className="le-banner" data-tone="conflict" role="alert">
+        Some changes couldn&apos;t be saved as a valid lesson ({live.attention}). Everything is kept; fix the highlighted problem and it saves
+        again.
+      </p>
+    )
+  }
+  if (live.mode === "read" && live.readReason === "in_review") {
+    return (
+      <p className="le-banner" data-tone="review" role="status">
+        This course is in review, so its lessons are read-only.
+      </p>
+    )
+  }
+  if (live.mode === "read" && live.readReason === "approved") {
+    return (
+      <p className="le-banner" data-tone="approved" role="status">
+        This course is accepted, so its content is frozen. Revoke the acceptance to edit it.
+      </p>
+    )
+  }
+  return null
+}
+
+function PresenceAvatars({ peers }: { peers: Peer[] }) {
+  const unique = [...new Map(peers.map((p) => [p.user.id, p])).values()]
+  if (unique.length === 0) return null
+  return (
+    <span className="le-presence" aria-label={`Also here: ${unique.map((p) => p.user.name).join(", ")}`}>
+      {unique.slice(0, 5).map((p) => (
+        <span key={p.user.id} className="le-avatar" style={{ background: p.user.color }} title={p.user.name}>
+          {p.user.name.trim().charAt(0).toUpperCase() || "?"}
+        </span>
+      ))}
+      {unique.length > 5 && <span className="le-avatar le-avatar-more">+{unique.length - 5}</span>}
+    </span>
+  )
+}
 
 /** What the server has when a save is refused as stale (409 revision_conflict). */
 type LessonConflict = { revision: number; lesson: Lesson | null }
@@ -72,6 +132,8 @@ export interface LessonEditorProps {
   publishingEnabled: boolean
   /** False for people the course is shared with who may only read it. */
   canEdit?: boolean
+  /** Edit together, live, through the collaboration gateway (lib/collab/live.ts). */
+  live?: boolean
 }
 
 const inRange = (value: number, [min, max]: Range) => value >= min && value <= max
@@ -93,8 +155,13 @@ export function LessonEditor({
   publishedAt,
   publishingEnabled,
   canEdit = true,
+  live: liveEnabled = false,
 }: LessonEditorProps) {
-  const [lesson, rawDispatch] = useReducer(lessonReducer, initialLesson)
+  const [localLesson, rawDispatch] = useReducer(lessonReducer, initialLesson)
+  const live = useLiveLesson({ courseId, lessonId, isAdmin, enabled: liveEnabled })
+  // Live: the lesson is the shared document's (the page's copy until it arrives).
+  const lesson = liveEnabled ? (live.lesson ?? initialLesson) : localLesson
+  const liveReadOnly = liveEnabled && (live.status === "connecting" || live.status === "closed" || live.mode === "read")
   const [selectedId, setSelectedId] = useState(initialLesson.sections[0]?.id ?? null)
   const [status, setStatus] = useState<SaveStatus>(isNew ? "dirty" : "saved")
   // False until the lesson file exists on disk.
@@ -102,7 +169,7 @@ export function LessonEditor({
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   // Saving a lesson of an accepted course moves the course back to draft.
   const [courseStatus, setCourseStatus] = useState(initialCourseStatus)
-  const readOnly = (isLocked(courseStatus) && !isAdmin) || !canEdit
+  const readOnly = (isLocked(courseStatus) && !isAdmin) || !canEdit || liveReadOnly
   const publisher = usePublish(courseId, isAdmin, publishedAt, publishingEnabled)
   const { markChanged, publish } = publisher
   const [showJson, setShowJson] = useState(false)
@@ -126,17 +193,24 @@ export function LessonEditor({
   // The in-flight save, so leaving the page can wait for it to land.
   const savePromiseRef = useRef<Promise<boolean> | null>(null)
   const router = useRouter()
+  // The lesson as rendered: what each edit was made on (kept current during render, not after).
   const lessonRef = useRef(lesson)
-  useEffect(() => {
-    lessonRef.current = lesson
-  }, [lesson])
+  // eslint-disable-next-line react-hooks/refs -- a render-time mirror read only by event handlers
+  lessonRef.current = lesson
 
+  const { apply } = live
   const dispatch = useCallback((action: LessonAction) => {
+    markChanged()
+    if (liveEnabled) {
+      // Written into the shared document as the smallest change; it comes back as the new lesson.
+      const base = lessonRef.current
+      apply(base, lessonReducer(base, action))
+      return
+    }
     revisionRef.current += 1
     setStatus("dirty")
-    markChanged()
     rawDispatch(action)
-  }, [markChanged])
+  }, [markChanged, liveEnabled, apply])
 
   const issues = useMemo(() => validateLesson(lesson), [lesson])
   const errorCount = issues.filter((i) => i.level === "error").length
@@ -173,6 +247,8 @@ export function LessonEditor({
   /** Saves the lesson file; resolves false if the save failed. */
   const save = useCallback((): Promise<boolean> => {
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
+    // Live: every edit is stored by the gateway as it's made.
+    if (liveEnabled) return Promise.resolve(true)
     if (savingRef.current) return savePromiseRef.current ?? Promise.resolve(false)
     // Saving again would only be refused again; the banner asks what to do.
     if (conflictRef.current) return Promise.resolve(false)
@@ -214,7 +290,7 @@ export function LessonEditor({
       }
     })()
     return savePromiseRef.current
-  }, [courseId, lessonId, isAdmin])
+  }, [courseId, lessonId, isAdmin, liveEnabled])
 
   const saveRef = useRef(save)
   useEffect(() => {
@@ -223,13 +299,13 @@ export function LessonEditor({
 
   // Autosave: restart the timer on every edit; save once typing pauses.
   useEffect(() => {
-    if (revisionRef.current === savedRevisionRef.current) return
+    if (liveEnabled || revisionRef.current === savedRevisionRef.current) return
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
     autosaveTimerRef.current = setTimeout(() => void saveRef.current(), AUTOSAVE_DELAY_MS)
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
     }
-  }, [lesson])
+  }, [lesson, liveEnabled])
 
   /**
    * The Save button: save the lesson now, then publish the course to the
@@ -253,7 +329,8 @@ export function LessonEditor({
     enableOnFormTags: true,
   })
 
-  const isDirty = status !== "saved" && status !== "saving"
+  // Live: what's not yet acknowledged by the gateway is what would be lost.
+  const isDirty = liveEnabled ? live.unsynced > 0 : status !== "saved" && status !== "saving"
 
   useEffect(() => {
     if (!isDirty) return
@@ -367,13 +444,14 @@ export function LessonEditor({
               <span className="tiptap-button-text">JSON</span>
             </Button>
           )}
+          {liveEnabled && <PresenceAvatars peers={live.peers} />}
           {readOnly ? (
             <span className="in-status" data-status="in_review">
-              Read-only
+              {liveEnabled && live.status === "connecting" ? "Connecting…" : "Read-only"}
             </span>
           ) : (
             <SaveBar
-              status={status}
+              status={liveEnabled ? liveSaveStatus(live) : status}
               savedAt={savedAt}
               neverSaved={!hasFile}
               publisher={publisher}
@@ -385,12 +463,13 @@ export function LessonEditor({
           )}
         </header>
 
+        {liveEnabled && <LiveBanner live={live} />}
         {!canEdit && (
           <p className="le-banner" data-tone="admin" role="status">
             This course is shared with you to read. You can&apos;t change its lessons.
           </p>
         )}
-        {readOnly && canEdit && (
+        {readOnly && canEdit && !liveReadOnly && (
           <p className="le-banner" data-tone="review" role="status">
             This course is in review, so its lessons are read-only. To make changes, withdraw it from the{" "}
             <a href={coursePaths(isAdmin).course(courseId)}>course page</a>.
@@ -437,6 +516,7 @@ export function LessonEditor({
           </div>
         )}
 
+        <PresenceContext.Provider value={live.peers}>
         <ReadOnlyContext.Provider value={readOnly}>
           <fieldset className="le-layout le-fieldset" disabled={readOnly} hidden={mode === "preview"}>
             <SectionSidebar
@@ -448,7 +528,14 @@ export function LessonEditor({
               onMove={(id, offset) => dispatch({ type: "moveSection", id, offset })}
             />
 
-            <main className="le-main">
+            <main
+              className="le-main"
+              onFocusCapture={(event) => {
+                if (!liveEnabled) return
+                const block = (event.target as HTMLElement).closest("[data-block-id]")
+                live.setActiveBlock(block?.getAttribute("data-block-id") ?? null)
+              }}
+            >
               <div className="le-format-toolbar">
                 <SimpleEditorToolbar />
               </div>
@@ -547,6 +634,7 @@ export function LessonEditor({
             </main>
           </fieldset>
         </ReadOnlyContext.Provider>
+        </PresenceContext.Provider>
       </div>
     </ActiveEditorProvider>
   )

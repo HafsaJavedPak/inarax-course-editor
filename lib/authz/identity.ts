@@ -7,6 +7,7 @@ import { auditLog, courseGrants, memberships, tenants, users, type GrantRole } f
 import { withoutTenantScope, type Tx } from "@/lib/db/tenant-db"
 import { TRACE_HEADER } from "@/lib/trace"
 import { effectiveRole } from "@/lib/authz/sharing"
+import { notifyAccess } from "@/lib/collab/notify"
 
 // Who belongs to which workspace. The host platform is the source of truth for
 // organizations: each sign-in (app/launch) mirrors the user's org memberships
@@ -86,6 +87,8 @@ export async function syncIdentity(input: IdentityInput): Promise<void> {
       detail: { staff: input.staff, orgs: input.orgs?.map((o) => ({ id: o.id, role: o.role })) ?? null },
       traceId,
     })
+    // Live sockets re-check what this user may do (they may have left or joined workspaces).
+    await notifyAccess(tx, { kind: "membership", user: input.userId })
   })
 }
 

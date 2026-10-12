@@ -21,7 +21,12 @@ export type Db = PgDatabase<PgQueryResultHKT, typeof schema>
 
 const MIGRATIONS_FOLDER = path.join(process.cwd(), "db/drizzle")
 
-type Connection = { db: Db; migrate: () => Promise<void>; close: () => Promise<void> }
+/** Called for each notification on a channel; `onReconnect` after the listening connection was re-established (notifications sent meanwhile are lost). */
+export type Listen = (channel: string, onMessage: (payload: string) => void, onReconnect?: () => void) => Promise<() => Promise<void>>
+
+type Connection = { db: Db; migrate: () => Promise<void>; close: () => Promise<void>; listen: Listen }
+
+const CHANNEL = /^[a-z_][a-z0-9_]*$/
 
 /** Opens a connection for an EDITOR_DATABASE_URL value (see the top of this file). */
 export async function connect(url: string): Promise<Connection> {
@@ -39,6 +44,8 @@ export async function connect(url: string): Promise<Connection> {
       db: db as unknown as Db,
       migrate: () => migrate(db, { migrationsFolder: MIGRATIONS_FOLDER }),
       close: () => client.close(),
+      // PGlite runs in this process: NOTIFY from any transaction here reaches these listeners.
+      listen: async (channel, onMessage) => client.listen(channel, onMessage),
     }
   }
 
@@ -51,6 +58,52 @@ export async function connect(url: string): Promise<Connection> {
     db: db as unknown as Db,
     migrate: () => migrate(db, { migrationsFolder: MIGRATIONS_FOLDER }),
     close: () => pool.end(),
+    listen: (channel, onMessage, onReconnect) => listenOnPostgres(url, channel, onMessage, onReconnect),
+  }
+}
+
+/**
+ * LISTEN on a dedicated connection (not from the pool: a pooled connection
+ * would stop listening when returned). Reconnects with backoff when the
+ * connection drops, then calls onReconnect, since notifications sent while it
+ * was down are gone.
+ */
+async function listenOnPostgres(url: string, channel: string, onMessage: (payload: string) => void, onReconnect?: () => void) {
+  if (!CHANNEL.test(channel)) throw new Error(`Invalid channel name: ${channel}`)
+  const { Client } = await import("pg")
+  let stopped = false
+  let current: InstanceType<typeof Client> | null = null
+
+  const open = async () => {
+    const client = new Client({ connectionString: url })
+    client.on("notification", (message) => {
+      if (message.channel === channel) onMessage(message.payload ?? "")
+    })
+    client.on("error", () => {}) // "end" follows; reconnecting happens there
+    client.on("end", () => {
+      if (stopped || current !== client) return
+      current = null
+      void retry(1)
+    })
+    await client.connect()
+    await client.query(`LISTEN ${channel}`)
+    current = client
+  }
+  const retry = async (attempt: number): Promise<void> => {
+    if (stopped) return
+    await new Promise((r) => setTimeout(r, Math.min(30_000, 250 * 2 ** attempt)))
+    try {
+      await open()
+      onReconnect?.()
+    } catch {
+      return retry(attempt + 1)
+    }
+  }
+
+  await open()
+  return async () => {
+    stopped = true
+    await current?.end().catch(() => {})
   }
 }
 
@@ -80,7 +133,15 @@ export async function getDb(): Promise<Db> {
   return (await connection()).db
 }
 
+/** Listens for notifications on a channel of the process-wide database (see Listen). */
+export const listenTo: Listen = async (channel, onMessage, onReconnect) => (await connection()).listen(channel, onMessage, onReconnect)
+
 /** For tests: use this database instead of EDITOR_DATABASE_URL. */
-export function __setDbForTests(db: Db) {
-  holder.__editorDb = Promise.resolve({ db, migrate: async () => {}, close: async () => {} })
+export function __setDbForTests(db: Db, listen?: Listen) {
+  holder.__editorDb = Promise.resolve({
+    db,
+    migrate: async () => {},
+    close: async () => {},
+    listen: listen ?? (async () => async () => {}),
+  })
 }

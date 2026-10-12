@@ -22,32 +22,32 @@ import { initialKeys, keyBetween, sortByOrder } from "./order"
 
 export class CodecError extends Error {}
 
-const META = "meta"
-const SECTIONS = "sections"
-const BLOCKS = "blocks"
-const ORDER = "$order"
-const SECTION = "$section"
-const EXTRA = "$extra"
-const GROUP = "$g:"
+export const META = "meta"
+export const SECTIONS = "sections"
+export const BLOCKS = "blocks"
+export const ORDER = "$order"
+export const SECTION = "$section"
+export const EXTRA = "$extra"
+export const GROUP = "$g:"
 
-type PlainObject = Record<string, unknown>
+export type PlainObject = Record<string, unknown>
 
-const isPlainObject = (value: unknown): value is PlainObject =>
+export const isPlainObject = (value: unknown): value is PlainObject =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
 /** Copies a JSON value, so the document never shares objects with the caller. */
-const plain = <T>(value: T): T => (value === undefined ? value : structuredClone(value))
+export const plain = <T>(value: T): T => (value === undefined ? value : structuredClone(value))
 
 /** Data and item keys starting with "$" are escaped so they can't collide with the codec's own. */
-const escapeKey = (key: string) => (key.startsWith("$") ? `$${key}` : key)
+export const escapeKey = (key: string) => (key.startsWith("$") ? `$${key}` : key)
 const unescapeKey = (key: string) => (key.startsWith("$$") ? key.slice(1) : key)
 
-function omit(object: PlainObject, keys: readonly string[]): PlainObject | undefined {
+export function omit(object: PlainObject, keys: readonly string[]): PlainObject | undefined {
   const rest = Object.fromEntries(Object.entries(object).filter(([key]) => !keys.includes(key)))
   return Object.keys(rest).length > 0 ? rest : undefined
 }
 
-function text(value: string) {
+export function text(value: string) {
   const t = new Y.Text()
   t.insert(0, value)
   return t
@@ -84,7 +84,7 @@ export function lessonToDoc(lesson: Lesson, doc: Y.Doc = new Y.Doc()): Y.Doc {
   return doc
 }
 
-function encodeSection(section: LessonSection, order: string): Y.Map<unknown> {
+export function encodeSection(section: LessonSection, order: string): Y.Map<unknown> {
   const map = new Y.Map<unknown>()
   map.set(ORDER, order)
   map.set("required_to_advance", section.required_to_advance)
@@ -94,7 +94,7 @@ function encodeSection(section: LessonSection, order: string): Y.Map<unknown> {
   return map
 }
 
-function encodeBlock(block: LessonBlock, sectionId: string, order: string): Y.Map<unknown> {
+export function encodeBlock(block: LessonBlock, sectionId: string, order: string): Y.Map<unknown> {
   const map = new Y.Map<unknown>()
   map.set(SECTION, sectionId)
   map.set(ORDER, order)
@@ -109,7 +109,7 @@ function encodeBlock(block: LessonBlock, sectionId: string, order: string): Y.Ma
   return map
 }
 
-function encodeData(data: PlainObject, spec: BlockSpec): Y.Map<unknown> {
+export function encodeData(data: PlainObject, spec: BlockSpec): Y.Map<unknown> {
   const map = new Y.Map<unknown>()
   const grouped = new Set(Object.values(spec.groups ?? {}).flat())
   for (const [name, fields] of Object.entries(spec.groups ?? {})) {
@@ -127,7 +127,7 @@ function encodeData(data: PlainObject, spec: BlockSpec): Y.Map<unknown> {
 }
 
 /** A list can be keyed when every item is an object with a unique string id; otherwise it stays one plain value. */
-function isKeyedList(value: unknown): value is (PlainObject & { id: string })[] {
+export function isKeyedList(value: unknown): value is (PlainObject & { id: string })[] {
   if (!Array.isArray(value)) return false
   const ids = new Set<string>()
   for (const item of value) {
@@ -137,19 +137,22 @@ function isKeyedList(value: unknown): value is (PlainObject & { id: string })[] 
   return true
 }
 
-function encodeList(items: (PlainObject & { id: string })[], spec: ItemSpec): Y.Map<Y.Map<unknown>> {
+export function encodeList(items: (PlainObject & { id: string })[], spec: ItemSpec): Y.Map<Y.Map<unknown>> {
   const list = new Y.Map<Y.Map<unknown>>()
   const keys = initialKeys(items.length)
-  items.forEach((item, i) => {
-    const map = new Y.Map<unknown>()
-    map.set(ORDER, keys[i])
-    for (const [key, value] of Object.entries(item)) {
-      if (key === "id" || value === undefined) continue
-      map.set(escapeKey(key), spec.text?.includes(key) && typeof value === "string" ? text(value) : plain(value))
-    }
-    list.set(item.id, map)
-  })
+  items.forEach((item, i) => list.set(item.id, encodeItem(item, spec, keys[i])))
   return list
+}
+
+/** One list item (its id is the key it's stored under). */
+export function encodeItem(item: PlainObject & { id: string }, spec: ItemSpec, order: string): Y.Map<unknown> {
+  const map = new Y.Map<unknown>()
+  map.set(ORDER, order)
+  for (const [key, value] of Object.entries(item)) {
+    if (key === "id" || value === undefined) continue
+    map.set(escapeKey(key), spec.text?.includes(key) && typeof value === "string" ? text(value) : plain(value))
+  }
+  return map
 }
 
 // ---------------------------------------------------------------------------

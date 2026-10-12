@@ -53,6 +53,7 @@ import {
   type TypedBlock,
 } from "@/lib/lesson"
 import type { LessonIssue } from "@/lib/lesson-validate"
+import { usePeersIn } from "@/components/collab/use-live-lesson"
 
 function BlockBody({
   block,
@@ -120,17 +121,26 @@ export function BlockEditor({
   const meta = isAuthorableBlock(block) ? BLOCK_CATALOG[block.type] : null
   const errors = issues.filter((i) => i.level === "error")
   const warnings = issues.filter((i) => i.level === "warning")
+  // Others editing this block right now (live editing).
+  const here = usePeersIn(block.id)
 
   return (
     <article
       className="le-block"
       data-block-id={block.id}
+      data-peer={here.length > 0 || undefined}
+      style={here.length ? ({ "--le-peer": here[0].user.color } as React.CSSProperties) : undefined}
       data-category={meta?.category ?? "other"}
       data-invalid={errors.length > 0}
     >
       <header className="le-block-header">
         <span className="le-block-type">{meta?.label ?? block.type}</span>
         {meta && <span className="le-block-category">{meta.category}</span>}
+        {here.map((p) => (
+          <span key={p.clientId} className="le-peer" style={{ background: p.user.color }}>
+            {p.user.name}
+          </span>
+        ))}
         <div className="le-block-actions">
           <Button variant="ghost" size="small" tooltip="Move up" aria-label="Move block up" disabled={index === 0} onClick={() => onMove(-1)}>
             <ChevronUpIcon className="tiptap-button-icon" />

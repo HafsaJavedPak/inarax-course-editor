@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { flushLiveCourse, LiveFlushError } from "@/lib/collab/live"
 import { courseForRoute, editsAsReviewer } from "@/lib/authz/context"
 import { audit } from "@/lib/authz/identity"
 import { ApprovedLockedError, CourseLockedError, HeadMovedError, restoreRevision } from "@/lib/course-store"
@@ -27,6 +28,13 @@ export async function POST(request: Request, ctx: RouteContext<"/api/courses/[co
     const parsed = RestoreSchema.safeParse(JSON.parse(body || "null"))
     if (!parsed.success) return Response.json({ error: "Say which version the history showed (expected_head)." }, { status: 400 })
     try {
+      // Live edits not yet stored go into the history first.
+      try {
+        await flushLiveCourse(courseId)
+      } catch (error) {
+        if (error instanceof LiveFlushError) return Response.json({ error: error.message }, { status: 503 })
+        throw error
+      }
       const editor = { id: access.userId, asReviewer: await editsAsReviewer(access, record) }
       const restored = await restoreRevision(access, courseId, revisionId, parsed.data.expected_head, editor)
       if (!restored) return Response.json({ error: "Revision not found" }, { status: 404 })

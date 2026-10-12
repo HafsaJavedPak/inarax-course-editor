@@ -2,7 +2,7 @@ import "server-only"
 
 import { sql } from "drizzle-orm"
 
-import type { Tx } from "@/lib/db/tenant-db"
+import { withoutTenantScope, type Tx } from "@/lib/db/tenant-db"
 
 // "Someone's access changed: check again." Sent with Postgres NOTIFY from
 // inside the transaction that changed the access, so it's delivered only if
@@ -18,12 +18,19 @@ export type AccessEvent =
   | { kind: "membership"; user: string }
   /** The user's sessions ended (sign-out, or the host said their access changed). */
   | { kind: "session"; user: string }
-  /** The course's status changed (e.g. submitted: authors' sockets become read-only). */
-  | { kind: "status"; course: string }
+  /** The course changed in a way that can change what sockets may do (status, outline). */
+  | { kind: "course"; course: string }
+  /** These lessons' content was replaced from outside live editing (a restore, an import): their live documents start over. */
+  | { kind: "doc_reset"; course: string; lessons: string[] }
   | { kind: "course_deleted"; course: string }
   /** A workspace's sharing settings changed (guest grants may have changed worth). */
   | { kind: "tenant"; tenant: string }
 
 export async function notifyAccess(tx: Tx, event: AccessEvent): Promise<void> {
   await tx.execute(sql`SELECT pg_notify(${ACCESS_CHANNEL}, ${JSON.stringify(event)})`)
+}
+
+/** After a course is deleted (its rows are gone, so outside its transaction). */
+export async function notifyCourseDeleted(courseId: string): Promise<void> {
+  await withoutTenantScope((tx) => notifyAccess(tx, { kind: "course_deleted", course: courseId }))
 }

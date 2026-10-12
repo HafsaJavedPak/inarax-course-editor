@@ -5,6 +5,7 @@ import { findLessonRef, getCourseLimits } from "@/lib/course"
 import { courseForPage } from "@/lib/authz/context"
 import { readLessonRecord } from "@/lib/course-store"
 import { createLesson } from "@/lib/lesson"
+import { liveEditing } from "@/lib/collab/live"
 import { publishingEnabled } from "@/lib/platform"
 
 /** Reviewer editing of a lesson: allowed in review, never changes the course status. */
@@ -35,6 +36,7 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
       wordsPerMinute={limits.words_per_minute}
       courseStatus={course.status}
       publishedAt={course.published_at}
+      live={liveEditing() !== null}
       publishingEnabled={publishingEnabled()}
       isAdmin
     />

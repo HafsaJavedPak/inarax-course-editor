@@ -28,7 +28,7 @@ async function openPglite(): Promise<Db> {
   await conn.db.execute(sql`GRANT ALL ON ALL TABLES IN SCHEMA public TO editor_app`)
   await conn.db.execute(sql`GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO editor_app`)
   await conn.db.execute(sql`SET ROLE editor_app`)
-  __setDbForTests(conn.db)
+  __setDbForTests(conn.db, conn.listen)
   return conn.db
 }
 
@@ -64,7 +64,7 @@ async function openPostgresServer(serverUrl: string): Promise<Db> {
   appUrl.username = APP_ROLE
   appUrl.password = APP_PASSWORD
   const app = await connect(appUrl.toString())
-  __setDbForTests(app.db)
+  __setDbForTests(app.db, app.listen)
   return app.db
 }
 
