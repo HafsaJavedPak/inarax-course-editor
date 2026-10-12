@@ -34,15 +34,20 @@ npm run dev        # http://localhost:3000
 |---|---|---|
 | `PLATFORM_ADAPTER` | publishing | `protocol`, or `none` (default: Save only saves locally) |
 | `PLATFORM_URL` | publishing | The host's protocol base URL. inara-next: `<inara-next URL>/api/integrations/course-editor`. https except for localhost |
-| `PLATFORM_KEY_ID`, `PLATFORM_KEY_SECRET` | publishing | The signing key pair shared with the host. The secret is at least 32 characters. See [platform-integration.md](platform-integration.md) |
+| `EDITOR_PRIVATE_KEYS` | publishing, sign-in | The editor's own Ed25519 private key(s), JSON list of JWKs, active first (`npm run keys:generate`). The public halves are served at `/.well-known/jwks.json`. See [platform-integration.md](platform-integration.md) |
+| `PLATFORM_JWKS_URL` | optional | The host's public keys, if not `<PLATFORM_URL>/v1/jwks` |
 | `EDITOR_PUBLIC_URL` | publishing images | This editor's public address, for images the host can't store |
-| `DATA_DIR` | optional | Folder holding `course/` and `uploads/`. Defaults to the project folder. On Render it's `/var/data`, a persistent disk. |
-| `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | no longer used | Left over from direct database publishing. Safe to remove from `.env.local`. |
+| `EDITOR_DATABASE_URL` | always | The editor's database: `postgres://…` (Render Postgres in production; not a superuser, or row-level security is skipped) or `pglite:./.data/pglite` for local work. See `.env.example` |
+| `DATA_DIR` | optional | Folder holding `uploads/` (and `course/` from before the database). Defaults to the project folder. On Render it's `/var/data`, a persistent disk. |
+| `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | no longer used | Left over from direct database publishing; the editor never reads `DATABASE_URL`. Safe to remove from `.env.local`. |
 
 **Deploying:** `render.yaml` is a Render Blueprint. It needs a paid plan (for the persistent disk),
-and it sets `PLATFORM_ADAPTER=protocol`. `PLATFORM_URL`, `PLATFORM_KEY_ID`, `PLATFORM_KEY_SECRET`
-and `EDITOR_PUBLIC_URL` must be set in the Render dashboard. inara-next needs the same key pair in
-`COURSE_EDITOR_KEYS=<id>:<secret>` (and optionally `COURSE_EDITOR_ORGANIZATION_ID`).
+creates a Render Postgres database (`EDITOR_DATABASE_URL`, migrated by `npm run db:migrate` before
+each deploy), and sets `PLATFORM_ADAPTER=protocol`. After the first deploy, move existing courses
+into the database once with `npm run db:import-files` (Render shell). `PLATFORM_URL`, `EDITOR_PRIVATE_KEYS`
+and `EDITOR_PUBLIC_URL` must be set in the Render dashboard. inara-next needs its own key in
+`COURSE_EDITOR_PRIVATE_KEYS` (`npm run course-editor:keys`), `COURSE_EDITOR_URL` (and optionally
+`COURSE_EDITOR_ORGANIZATION_ID`). No secret is shared: each side reads the other's public keys.
 
 ---
 
@@ -341,11 +346,11 @@ Set up local inara-next first: [platform-integration.md § 3, Local testing](pla
 | `lib/course-status.ts` | Review state machine |
 | `lib/course-store.ts` | Reads and writes local JSON (atomic writes, writes queued per course, revision check) |
 | `lib/platform/` | Publishing: `PlatformPort` interface (`publishCourse`, `deleteCourse`), signing HTTP client, protocol adapter (`adapters/protocol/`) |
-| `lib/protocol/` | The Course Publishing Protocol: `wire.ts` (messages, zod) and `signing.ts` (HMAC request signing) |
+| `lib/protocol/` | The Course Publishing Protocol: `wire.ts` (messages, zod) and `signing.ts` (Ed25519 request signing), `keys.ts`, `jwks.ts` (fetching the other side's public keys), `launch.ts` (launch tokens) |
 | `contract/` | The protocol spec for hosts: `README.md`, `openapi.yaml`, generated JSON Schemas, test fixtures |
 | `tests/` | Vitest unit tests (signing, package building, the adapter against an in-memory host, env checks) |
 | `lib/course-export.ts` | Zip downloads |
-| `lib/auth.ts`, `lib/auth-gate.ts`, `lib/session.ts`, `proxy.ts` | Current user from the sign-in session, who may open what, the session cookie |
+| `lib/auth.ts`, `lib/auth-gate.ts`, `lib/session.ts`, `proxy.ts` | Current user from the database session, who may open what (and CSRF check), the session cookie (a random token) |
 | `app/launch/`, `app/sign-out/`, `app/signed-out/`, `lib/protocol/launch.ts` | Sign-in through the platform's launch token, sign out, the signed-out page |
 | `lib/admin-mode.ts` | Admin-area links; the `x-inara-mode` header only matters locally, without a platform |
 | `json-guide/` | Lesson format reference and AI prompt for writing lessons in JSON |

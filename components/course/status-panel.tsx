@@ -5,8 +5,19 @@ import Link from "next/link"
 
 import { StatusBadge } from "@/components/course/status-badge"
 import { coursePaths } from "@/lib/admin-mode"
-import { describeChangeTarget, type ChangeRequest, type Course } from "@/lib/course"
-import { STATUS_DESCRIPTIONS, STATUS_LABELS } from "@/lib/course-status"
+import { describeChangeTarget, type ChangeRequest, type ChangeTarget, type Course } from "@/lib/course"
+import {
+  eventAction,
+  eventLabel,
+  lastDecision,
+  needsResubmitNote,
+  RESUBMIT_NOTE_MAX,
+  RESUBMIT_NOTE_MIN,
+  resubmissionsAfterRejection,
+  STATUS_DESCRIPTIONS,
+  STATUS_LABELS,
+  type SubmitBlocker,
+} from "@/lib/course-status"
 
 /** The parts of a course the review workflow changes. */
 export type Workflow = Pick<Course, "status" | "review_history" | "change_requests" | "content_updated_at">
@@ -14,8 +25,9 @@ export type Workflow = Pick<Course, "status" | "review_history" | "change_reques
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" })
 
 /**
- * Review status for a course: what it means, the admins' feedback, the
- * requested-changes checklist, and submit / withdraw.
+ * Review status for a course: what it means, the reviewers' latest feedback,
+ * the requested-changes checklist, and submit / withdraw. After a rejection,
+ * submitting asks for a note on what changed, and counts toward the limit.
  */
 export function StatusPanel({
   course,
@@ -28,7 +40,7 @@ export function StatusPanel({
   course: Course
   workflow: Workflow
   /** Why it can't be submitted yet (empty = it can). */
-  blockers: string[]
+  blockers: SubmitBlocker[]
   onWorkflowChange: (workflow: Workflow) => void
   /** Saves pending edits; false if that failed. */
   beforeSubmit: () => Promise<boolean>
@@ -38,13 +50,19 @@ export function StatusPanel({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
+  const [note, setNote] = useState("")
 
   const { status, review_history: history, change_requests: changes } = workflow
-  const latest = [...history].reverse().find((e) => e.status === status)
-  const lastSubmitted = [...history].reverse().find((e) => e.status === "in_review")
-  const canSubmit = blockers.length === 0
+  // Feedback always comes from the reviewers' last decision, so withdrawing never hides it.
+  const decision = lastDecision(history)
+  const lastSubmitted = history.findLast((e) => eventAction(e) === "submitted")
   const showSubmit = !isAdmin && (status === "draft" || status === "rejected" || status === "changes_requested")
+  const askNote = showSubmit && needsResubmitNote(workflow)
+  const resubmits = resubmissionsAfterRejection(history)
+  const noteOk = !askNote || note.trim().length >= RESUBMIT_NOTE_MIN
+  const canSubmit = blockers.length === 0 && noteOk
   const doneCount = changes.filter((c) => c.done).length
+  const changesEditable = !isAdmin && status !== "in_review" && decision?.status === "changes_requested"
 
   const apply = (data: { course: Course }) =>
     onWorkflowChange({
@@ -62,13 +80,18 @@ export function StatusPanel({
         setError("Save your latest changes before submitting.")
         return
       }
-      const res = await fetch(`/api/courses/${course.id}/${action}`, { method: "POST" })
+      const res = await fetch(`/api/courses/${course.id}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(action === "submit" ? { note } : {}),
+      })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setError(data.error ?? "Something went wrong")
         return
       }
       apply(data)
+      if (action === "submit") setNote("")
       // The status change stands; only the copy in the platform database is behind.
       if (data.publishError) setError(`Status updated, but not published to the platform: ${[data.publishError, ...(data.publishIssues ?? [])].join(" · ")}`)
     } finally {
@@ -110,6 +133,11 @@ export function StatusPanel({
           {status === "in_review" && lastSubmitted && (
             <p className="sp-meta">Submitted {dateFormat.format(new Date(lastSubmitted.at))}</p>
           )}
+          {resubmits.applies && (
+            <p className="sp-meta">
+              Resubmissions since the rejection: {resubmits.used} of {resubmits.limit}
+            </p>
+          )}
         </div>
         <div className="sp-actions">
           {showSubmit && (
@@ -144,14 +172,16 @@ export function StatusPanel({
         </div>
       </div>
 
-      {latest?.note && (status === "rejected" || status === "changes_requested" || status === "approved") && (
+      {decision?.note && (
         <blockquote className="sp-note">
-          <span>Feedback from the admins</span>
-          {latest.note}
+          <span>
+            Feedback from the reviewers · {STATUS_LABELS[decision.status]}, {dateFormat.format(new Date(decision.at))}
+          </span>
+          {decision.note}
         </blockquote>
       )}
 
-      {changes.length > 0 && (status === "changes_requested" || status === "in_review") && (
+      {changes.length > 0 && decision?.status === "changes_requested" && (
         <div className="sp-changes">
           <div className="sp-changes-head">
             <h3>Requested changes</h3>
@@ -165,7 +195,7 @@ export function StatusPanel({
                 key={change.id}
                 change={change}
                 course={course}
-                editable={!isAdmin && status === "changes_requested"}
+                editable={changesEditable}
                 onUpdate={(patch) => void updateChange(change, patch)}
                 isAdmin={isAdmin}
               />
@@ -174,13 +204,43 @@ export function StatusPanel({
         </div>
       )}
 
-      {showSubmit && !canSubmit && (
+      {askNote && (
+        <div className="sp-resubmit">
+          <label htmlFor="sp-resubmit-note">
+            <strong>What did you change since the rejection?</strong> Reviewers see this note with your resubmission.
+          </label>
+          <textarea
+            id="sp-resubmit-note"
+            className="tiptap-input"
+            rows={3}
+            maxLength={RESUBMIT_NOTE_MAX}
+            value={note}
+            placeholder="e.g. Rewrote lesson 2 with the examples you asked for, fixed the quiz answers in module 3"
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+      )}
+
+      {showSubmit && blockers.length > 0 && (
         <div className="sp-blockers">
           <h3>Before you can submit</h3>
           <ul>
-            {blockers.map((b, i) => (
-              <li key={i}>{b}</li>
-            ))}
+            {blockers.map((b, i) => {
+              const link = blockerLink(course, b.target, isAdmin)
+              return (
+                <li key={i}>
+                  {b.message}
+                  {link && (
+                    <>
+                      {" "}
+                      <Link href={link} className="sp-link">
+                        Go to lesson
+                      </Link>
+                    </>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
@@ -200,7 +260,7 @@ export function StatusPanel({
             <ol>
               {[...history].reverse().map((event, i) => (
                 <li key={i}>
-                  <span className="sp-history-status">{STATUS_LABELS[event.status]}</span>
+                  <span className="sp-history-status">{eventLabel(event)}</span>
                   <span className="sp-history-date">{dateFormat.format(new Date(event.at))}</span>
                   {event.note && <span className="sp-history-note">{event.note}</span>}
                 </li>
@@ -264,6 +324,11 @@ function ChangeItem({
       )}
     </li>
   )
+}
+
+/** A link to the lesson a blocker is about, if it's about one. */
+function blockerLink(course: Course, target: ChangeTarget | undefined, isAdmin: boolean) {
+  return target?.lessonId ? coursePaths(isAdmin).lesson(course.id, target.lessonId) : null
 }
 
 /** "Associate · Module 1 · Lesson title" for a change's target, plus a link to the lesson. */

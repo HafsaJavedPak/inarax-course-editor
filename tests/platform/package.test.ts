@@ -23,6 +23,19 @@ describe("buildPackage", () => {
     expect(pkg.actor).toEqual({ id: "me" })
   })
 
+  it("says which host organization the course belongs to (null for a personal workspace)", () => {
+    const personal = buildPackage({ course: sampleCourse(), lessons: new Map(), coverImageUrl: null, actor: { id: "me" } })
+    expect(personal.course.organization).toBeNull()
+    const org = buildPackage({
+      course: sampleCourse(),
+      lessons: new Map(),
+      coverImageUrl: null,
+      actor: { id: "me" },
+      organization: { hostOrgId: "acme-uuid" },
+    })
+    expect(org.course.organization).toEqual({ host_org_id: "acme-uuid" })
+  })
+
   it("sends null content for lessons it has nothing to publish for", () => {
     const pkg = buildPackage({ course: sampleCourse(), lessons: new Map(), coverImageUrl: null, actor: { id: "me" } })
     expect(pkg.levels[0].modules[0].lessons[0].content).toBeNull()

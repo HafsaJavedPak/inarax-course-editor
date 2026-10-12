@@ -14,7 +14,8 @@ import path from "path"
 import type { Lesson } from "@/lib/lesson"
 import { ContractError, createHttpClient, HttpError, type HttpClient } from "@/lib/platform/http-client"
 import { PlatformError, type PlatformPort, type PublishSummary } from "@/lib/platform/port"
-import { signRequest, type SigningKey } from "@/lib/protocol/signing"
+import type { SigningKey } from "@/lib/protocol/keys"
+import { signRequest } from "@/lib/protocol/signing"
 import {
   CoursePackageSchema,
   DeleteResultSchema,
@@ -78,8 +79,10 @@ export function toPlatformError(error: unknown, pkg?: CoursePackage): unknown {
 
   switch (problem?.code) {
     case "unauthenticated":
+      return new PlatformError("auth", `The platform refused the editor's credentials (${message}). Check EDITOR_PRIVATE_KEYS, and that the platform can read this editor's public keys at /.well-known/jwks.json.`, error)
     case "forbidden":
-      return new PlatformError("auth", `The platform refused the editor's credentials (${message}). Check PLATFORM_KEY_ID and PLATFORM_KEY_SECRET.`, error)
+      // The key is fine; the person publishing isn't allowed to (not a creator or admin there).
+      return new PlatformError("auth", `The platform didn't allow this: ${message}`, error)
     case "validation_failed":
     case "invalid_request":
     case "payload_too_large":
@@ -98,7 +101,7 @@ export function toPlatformError(error: unknown, pkg?: CoursePackage): unknown {
 export function createProtocolPlatform(config: ProtocolPlatformConfig): PlatformPort {
   const http: HttpClient = createHttpClient({
     baseUrl: config.baseUrl,
-    sign: (request) => signRequest(request, config.key),
+    sign: (request) => signRequest(request, config.key, "course-editor-request"),
     fetch: config.fetch,
   })
   const readUpload = config.readUpload ?? readUploadFromDisk
@@ -133,7 +136,7 @@ export function createProtocolPlatform(config: ProtocolPlatformConfig): Platform
   return {
     name: NAME,
 
-    publishCourse({ course, lessons, actor }) {
+    publishCourse({ course, lessons, actor, organization }) {
       return serialized(course.id, async () => {
         let pkg: CoursePackage | undefined
         try {
@@ -156,7 +159,7 @@ export function createProtocolPlatform(config: ProtocolPlatformConfig): Platform
           }
 
           const coverImageUrl = course.cover_image_url ? await assets.resolve(course.cover_image_url) : null
-          pkg = CoursePackageSchema.parse(buildPackage({ course, lessons: publishable, coverImageUrl, actor }))
+          pkg = CoursePackageSchema.parse(buildPackage({ course, lessons: publishable, coverImageUrl, actor, organization }))
 
           const bytes = new TextEncoder().encode(JSON.stringify(pkg)).byteLength
           if (bytes > manifest.max_package_bytes) {
@@ -179,11 +182,12 @@ export function createProtocolPlatform(config: ProtocolPlatformConfig): Platform
       })
     },
 
-    async launchUrl() {
+    async links() {
       try {
-        return (await getManifest()).host.launch_url ?? null
+        const { host } = await getManifest()
+        return { launchUrl: host.launch_url, logoutUrl: host.logout_url, signInUrl: host.sign_in_url }
       } catch {
-        return null
+        return {}
       }
     },
 

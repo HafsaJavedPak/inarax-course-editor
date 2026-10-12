@@ -7,7 +7,11 @@ import { Input } from "@/components/tiptap-ui-primitive/input"
 import { COURSE_STATUSES, type CourseStatus } from "@/lib/course"
 import { STATUS_LABELS } from "@/lib/course-status"
 import { coursePaths } from "@/lib/admin-mode"
+import { requireReviewArea, resourceOf } from "@/lib/authz/context"
+import { can } from "@/lib/authz/policy"
 import { listCourses } from "@/lib/course-store"
+import { usersByIds } from "@/lib/authz/identity"
+import { PersonLabel } from "@/components/admin/person"
 import { summarizeCourse, timeAgo } from "@/lib/course-summary"
 
 type Filter = CourseStatus | "all"
@@ -19,13 +23,20 @@ function parseFilter(value: unknown): Filter {
     : "in_review"
 }
 
-/** Admin course list. Open to anyone for now: there is no sign-in. */
+/**
+ * The courses this user reviews: personal workspaces' courses for platform
+ * staff, their organizations' courses for org admins.
+ */
 export default async function Page({ searchParams }: PageProps<"/admin">) {
   const params = await searchParams
   const filter = parseFilter(params.status)
   const query = typeof params.q === "string" ? params.q.trim() : ""
 
-  const all = await Promise.all((await listCourses()).map(summarizeCourse))
+  const ctx = await requireReviewArea()
+  const reviewable = (await listCourses(ctx)).filter((r) => can(ctx, "course.review", resourceOf(r)))
+  const workspaceOf = new Map(reviewable.map((r) => [r.course.id, r.tenantName]))
+  const all = await Promise.all(reviewable.map((r) => summarizeCourse(ctx, r.course)))
+  const people = await usersByIds(reviewable.map((r) => r.course.owner_id))
 
   const counts = Object.fromEntries(COURSE_STATUSES.map((s) => [s, 0])) as Record<CourseStatus, number>
   for (const row of all) counts[row.course.status]++
@@ -33,7 +44,15 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
   const needle = query.toLowerCase()
   const rows = all
     .filter((r) => filter === "all" || r.course.status === filter)
-    .filter((r) => !needle || r.course.title.toLowerCase().includes(needle) || r.course.owner_id.toLowerCase().includes(needle))
+    .filter(
+      (r) =>
+        !needle ||
+        r.course.title.toLowerCase().includes(needle) ||
+        r.course.owner_id.toLowerCase().includes(needle) ||
+        (people.get(r.course.owner_id)?.name ?? "").toLowerCase().includes(needle) ||
+        (people.get(r.course.owner_id)?.email ?? "").toLowerCase().includes(needle) ||
+        workspaceOf.get(r.course.id)!.toLowerCase().includes(needle),
+    )
     // The queue is first come, first served; everything else newest first.
     .sort((a, b) =>
       filter === "in_review"
@@ -58,7 +77,7 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
         <div className="in-page-title-row">
           <div className="in-page-title">
             <h1>Course reviews</h1>
-            <p>Courses from every creator. Review what’s waiting, or open any course to edit it.</p>
+            <p>Courses you review, from every workspace. Review what’s waiting, or open any course to edit it.</p>
           </div>
           <form className="adm-search" action="/admin" role="search">
             <input type="hidden" name="status" value={filter} />
@@ -66,8 +85,8 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
               type="search"
               name="q"
               defaultValue={query}
-              placeholder="Search title or creator"
-              aria-label="Search courses by title or creator"
+              placeholder="Search title, creator or workspace"
+              aria-label="Search courses by title, creator or workspace"
             />
           </form>
         </div>
@@ -99,7 +118,7 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
                       {course.title}
                     </Link>
                     <span className="db-row-meta">
-                      by <code>{course.owner_id}</code> · {course.length_hours} h
+                      by <PersonLabel id={course.owner_id} person={people.get(course.owner_id)} /> · {workspaceOf.get(course.id)} · {course.length_hours} h
                     </span>
                   </div>
                 </div>

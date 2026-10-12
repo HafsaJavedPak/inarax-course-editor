@@ -334,6 +334,14 @@ export function CourseBuilder({
               {levelIssues.map((issue, i) => (
                 <li key={i} data-level={issue.level}>
                   {issue.message}
+                  {issue.target?.lessonId && (
+                    <>
+                      {" "}
+                      <Link href={paths.lesson(course.id, issue.target.lessonId)} className="course-issue-link">
+                        Go to lesson
+                      </Link>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>

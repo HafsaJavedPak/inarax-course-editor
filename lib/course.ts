@@ -205,9 +205,25 @@ const ChangeTargetSchema = z.object({
 })
 export type ChangeTarget = z.infer<typeof ChangeTargetSchema>
 
+/**
+ * What a review-timeline entry records. Entries saved before this field
+ * existed are classified by `eventAction()` in lib/course-status.ts.
+ *
+ *   created     the course was made
+ *   submitted   the author sent it for review (note: what they changed, after a rejection)
+ *   withdrawn   the author took it back out of review
+ *   decided     a reviewer accepted, rejected or requested changes (note: their feedback)
+ *   edited      the author edited an accepted course, which reopened it as a draft
+ *   unlocked    a reviewer allowed more resubmissions after the limit was reached
+ */
+export const REVIEW_ACTIONS = ["created", "submitted", "withdrawn", "decided", "edited", "unlocked"] as const
+export type ReviewAction = (typeof REVIEW_ACTIONS)[number]
+
 /** One entry in a course's review timeline. */
 export const ReviewEventSchema = z.object({
+  /** The course's status after this event. */
   status: z.enum(COURSE_STATUSES),
+  action: z.enum(REVIEW_ACTIONS).optional(),
   at: z.iso.datetime(),
   /** User id of whoever caused the change (creator or admin). */
   by: z.string(),
@@ -263,7 +279,7 @@ export function createCourse(info: CourseInfo, ownerId: string): Course {
     revision: 0,
     levels: LEVELS.map((l) => ({ id: l.id, modules: [] })),
     status: "draft",
-    review_history: [{ status: "draft", at: now, by: ownerId, note: "Course created", changes: [] }],
+    review_history: [{ status: "draft", action: "created", at: now, by: ownerId, note: "Course created", changes: [] }],
     change_requests: [],
     created_at: now,
     updated_at: now,

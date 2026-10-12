@@ -2,17 +2,19 @@ import { promises as fs } from "fs"
 import path from "path"
 import { zipSync, type Zippable } from "fflate"
 
-import { isUuid } from "@/lib/lesson"
-import { COURSE_DIR, UPLOAD_DIR } from "@/lib/storage"
+import type { Course } from "@/lib/course"
+import { readCourseLessons } from "@/lib/course-store"
+import type { Scope } from "@/lib/db/tenant-db"
+import { UPLOAD_DIR } from "@/lib/storage"
 
 /**
- * Course downloads. A zip mirrors the data folder (DATA_DIR):
+ * Course downloads. A zip has the layout of the original data folder:
  *
  *   course/<courseId>/course.json
  *   course/<courseId>/lessons/<lessonId>.json
  *   uploads/<image>          ← every image the course or its lessons use
  *
- * so unzipping it into DATA_DIR restores the courses exactly.
+ * which scripts/import-files-to-db.ts reads back into the database.
  */
 
 // Matches the images /api/uploads creates, whatever host they were saved with.
@@ -21,30 +23,24 @@ const UPLOAD_REF_RE = /\/uploads\/([0-9a-f-]{36}\.(?:png|jpg|gif|webp|avif))/gi
 // Images are already compressed; don't spend time deflating them again.
 const STORE = { level: 0 } as const
 
-async function listCourseFiles(courseId: string) {
-  const dir = path.join(COURSE_DIR, courseId)
-  const files: { zipPath: string; text: string }[] = [
-    { zipPath: `course/${courseId}/course.json`, text: await fs.readFile(path.join(dir, "course.json"), "utf8") },
-  ]
-  const lessons = await fs.readdir(path.join(dir, "lessons")).catch(() => [])
-  for (const name of lessons) {
-    if (!name.endsWith(".json") || !isUuid(name.slice(0, -5))) continue
-    files.push({
-      zipPath: `course/${courseId}/lessons/${name}`,
-      text: await fs.readFile(path.join(dir, "lessons", name), "utf8"),
-    })
+const asFile = (data: unknown) => JSON.stringify(data, null, 2) + "\n"
+
+async function listCourseFiles(scope: Scope, course: Course) {
+  const files: { zipPath: string; text: string }[] = [{ zipPath: `course/${course.id}/course.json`, text: asFile(course) }]
+  for (const [lessonId, lesson] of await readCourseLessons(scope, course.id)) {
+    files.push({ zipPath: `course/${course.id}/lessons/${lessonId}.json`, text: asFile(lesson) })
   }
   return files
 }
 
-/** Builds the zip for the given courses; images shared between courses are included once. */
-export async function exportCourses(courseIds: string[]): Promise<Uint8Array> {
+/** Builds the zip for the given courses (already authorized); images shared between courses are included once. */
+export async function exportCourses(scope: Scope, courses: Course[]): Promise<Uint8Array> {
   const zip: Zippable = {}
   const images = new Set<string>()
   const encoder = new TextEncoder()
 
-  for (const courseId of courseIds) {
-    for (const file of await listCourseFiles(courseId)) {
+  for (const course of courses) {
+    for (const file of await listCourseFiles(scope, course)) {
       zip[file.zipPath] = encoder.encode(file.text)
       for (const [, name] of file.text.matchAll(UPLOAD_REF_RE)) images.add(name.toLowerCase())
     }

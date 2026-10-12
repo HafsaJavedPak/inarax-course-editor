@@ -2,21 +2,22 @@ import { notFound } from "next/navigation"
 
 import { LessonEditor } from "@/components/lesson-editor/lesson-editor"
 import { findLessonRef, getCourseLimits } from "@/lib/course"
-import { getCurrentUser } from "@/lib/auth"
-import { getAccessibleCourse, readCourseLesson } from "@/lib/course-store"
+import { coursePaths } from "@/lib/admin-mode"
+import { authorCourseForPage } from "@/lib/authz/context"
+import { readCourseLesson } from "@/lib/course-store"
 import { createLesson } from "@/lib/lesson"
 import { publishingEnabled } from "@/lib/platform"
 
 export default async function Page({ params }: PageProps<"/courses/[courseId]/lessons/[lessonId]">) {
   const { courseId, lessonId } = await params
 
-  const user = await getCurrentUser()
-  const course = await getAccessibleCourse(courseId, user)
-  const found = course ? findLessonRef(course, lessonId) : null
-  if (!course || !found) notFound()
+  const { ctx, record } = await authorCourseForPage(courseId, coursePaths(true).lesson(courseId, lessonId))
+  const course = record.course
+  const found = findLessonRef(course, lessonId)
+  if (!found) notFound()
 
-  // A lesson added in the builder has no file until its first save.
-  const saved = await readCourseLesson(courseId, lessonId)
+  // A lesson added in the builder has no content until its first save.
+  const saved = await readCourseLesson(ctx, courseId, lessonId)
   const limits = getCourseLimits(course)
 
   return (

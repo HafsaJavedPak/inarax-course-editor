@@ -2,19 +2,21 @@ import { notFound } from "next/navigation"
 
 import { LessonEditor } from "@/components/lesson-editor/lesson-editor"
 import { findLessonRef, getCourseLimits } from "@/lib/course"
-import { readCourse, readCourseLesson } from "@/lib/course-store"
+import { courseForPage } from "@/lib/authz/context"
+import { readCourseLesson } from "@/lib/course-store"
 import { createLesson } from "@/lib/lesson"
 import { publishingEnabled } from "@/lib/platform"
 
-/** Admin editing of any lesson: allowed in review, never changes the course status. */
+/** Reviewer editing of a lesson: allowed in review, never changes the course status. */
 export default async function Page({ params }: PageProps<"/admin/courses/[courseId]/lessons/[lessonId]">) {
   const { courseId, lessonId } = await params
 
-  const course = await readCourse(courseId)
-  const found = course ? findLessonRef(course, lessonId) : null
-  if (!course || !found) notFound()
+  const { ctx, record } = await courseForPage(courseId, "course.review")
+  const course = record.course
+  const found = findLessonRef(course, lessonId)
+  if (!found) notFound()
 
-  const saved = await readCourseLesson(courseId, lessonId)
+  const saved = await readCourseLesson(ctx, courseId, lessonId)
   const limits = getCourseLimits(course)
 
   return (

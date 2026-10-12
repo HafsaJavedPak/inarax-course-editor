@@ -117,7 +117,7 @@ export function validateCourse(
     // Anything below that is an "error" blocks submitting the course for review.
     for (const mod of level.modules) {
       if (mod.lessons.length === 0) {
-        issues.push({ level: "error", message: `Module “${mod.title}” has no lessons. Add one or delete the module`, target: { levelId: id, moduleId: mod.id } })
+        issues.push({ level: "error", message: `${where(label, mod.title)}: module has no lessons. Add one or delete the module`, target: { levelId: id, moduleId: mod.id } })
       }
       for (const ref of mod.lessons) {
         const stats = lessons[ref.id]
@@ -126,20 +126,21 @@ export function validateCourse(
         sectionCount += stats?.sections ?? 0
 
         const target = { levelId: id, moduleId: mod.id, lessonId: ref.id }
+        const lesson = where(label, mod.title, ref.title)
         if (!stats) {
-          issues.push({ level: "error", target, message: `“${ref.title}” hasn't been written yet` })
+          issues.push({ level: "error", target, message: `${lesson} hasn't been written yet` })
           continue
         }
 
         const { words, sections } = limits
         if (stats.words < words.min || stats.words > words.max) {
-          issues.push({ level: "error", target, message: `“${ref.title}” has ${plural(stats.words, "word")}; lessons must have ${words.min}–${words.max}` })
+          issues.push({ level: "error", target, message: `${lesson} has ${plural(stats.words, "word")}; lessons must have ${words.min}–${words.max}` })
         }
         if (stats.sections < sections.min || stats.sections > sections.max) {
-          issues.push({ level: "error", target, message: `“${ref.title}” has ${plural(stats.sections, "section")}; lessons must have ${sections.min}–${sections.max}` })
+          issues.push({ level: "error", target, message: `${lesson} has ${plural(stats.sections, "section")}; lessons must have ${sections.min}–${sections.max}` })
         }
         if (stats.errors > 0) {
-          issues.push({ level: "error", target, message: `“${ref.title}” has ${plural(stats.errors, "problem")} to fix in the lesson editor` })
+          issues.push({ level: "error", target, message: `${lesson} has ${plural(stats.errors, "problem")} to fix in the lesson editor` })
         }
       }
     }
@@ -165,8 +166,8 @@ export function validateCourse(
         target: { levelId: id },
         message:
           status === "under"
-            ? `About ${plural(needed, "more lesson")} needed to reach ~${targetMinutes} min`
-            : `About ${plural(-needed, "lesson")} over the ~${targetMinutes} min target`,
+            ? `${label}: about ${plural(needed, "more lesson")} needed to reach ~${targetMinutes} min`
+            : `${label}: about ${plural(-needed, "lesson")} over the ~${targetMinutes} min target`,
       })
     }
 
@@ -200,7 +201,7 @@ function duplicateTitleIssues(course: Course): CourseIssue[] {
         issues.push({
           level: "error",
           target: { levelId, moduleId: mod.id },
-          message: `Module title “${mod.title.trim()}” is already used${firstIn === label ? "" : ` in ${firstIn}`}. Module titles must be unique across the course`,
+          message: `${where(label, mod.title)}: this module title is already used${firstIn === label ? " in this level" : ` in ${firstIn}`}. Module titles must be unique across the course`,
         })
       } else {
         modules.set(key, label)
@@ -213,7 +214,7 @@ function duplicateTitleIssues(course: Course): CourseIssue[] {
           issues.push({
             level: "error",
             target: { levelId, moduleId: mod.id, lessonId: ref.id },
-            message: `Lesson title “${ref.title.trim()}” appears more than once in “${mod.title}”. Lesson titles must be unique within a module`,
+            message: `${where(label, mod.title, ref.title)}: this lesson title appears more than once in the module. Lesson titles must be unique within a module`,
           })
         }
         lessons.add(lessonKey)
@@ -221,6 +222,13 @@ function duplicateTitleIssues(course: Course): CourseIssue[] {
     }
   }
   return issues
+}
+
+/** Where an issue is, for its message: `Associate › “Basics” › “Lesson 2”`. */
+export function where(levelLabel: string, moduleTitle: string, lessonTitle?: string) {
+  const parts = [levelLabel, `“${moduleTitle.trim()}”`]
+  if (lessonTitle !== undefined) parts.push(`“${lessonTitle.trim()}”`)
+  return parts.join(" › ")
 }
 
 /** For the course form: how many lessons fit each level with the given limits. */

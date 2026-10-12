@@ -1,20 +1,30 @@
 import { NextResponse, type NextRequest } from "next/server"
 
-import { authConfig, gate } from "@/lib/auth-gate"
+import { authConfig, gate, isCrossSiteWrite, SESSION_COOKIE, WORKSPACE_COOKIE, workspaceInPath } from "@/lib/auth-gate"
 import { redirectTo } from "@/lib/redirect"
-import { decodeSession, SESSION_COOKIE } from "@/lib/session"
 
-// Signed-in check for every page and API route (lib/auth-gate.ts). With no
-// platform connected (auth mode "none") everything passes, as before.
+// Runs before every page and API route (lib/auth-gate.ts). It refuses
+// cross-site API writes and requests without a session cookie; whether the
+// session is still valid is checked against the database by each page and
+// route (lib/auth.ts). With no platform connected (auth mode "none")
+// everything passes, as before.
 export default function proxy(request: NextRequest) {
-  const config = authConfig()
-  const session =
-    config.mode === "launch" && config.key ? decodeSession(request.cookies.get(SESSION_COOKIE)?.value, config.key.secret) : null
+  const { pathname } = request.nextUrl
+  if (isCrossSiteWrite(request.method, pathname, request.headers.get("sec-fetch-site"))) {
+    return NextResponse.json({ error: "Cross-site requests aren't allowed." }, { status: 403 })
+  }
 
-  const decision = gate(request.nextUrl.pathname, session, config)
+  const config = authConfig()
+  const decision = gate(pathname, Boolean(request.cookies.get(SESSION_COOKIE)?.value), config)
   if (decision.kind === "redirect") return redirectTo(request, decision.to)
   if (decision.kind === "json") return NextResponse.json({ error: decision.error }, { status: decision.status })
-  return NextResponse.next()
+
+  const response = NextResponse.next()
+  const workspace = workspaceInPath(pathname)
+  if (workspace && request.cookies.get(WORKSPACE_COOKIE)?.value !== workspace) {
+    response.cookies.set(WORKSPACE_COOKIE, workspace, { path: "/", sameSite: "lax", httpOnly: true, maxAge: 60 * 60 * 24 * 365 })
+  }
+  return response
 }
 
 export const config = {

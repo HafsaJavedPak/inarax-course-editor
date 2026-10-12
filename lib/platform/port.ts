@@ -16,6 +16,8 @@ export type PublishInput = {
   lessons: Map<string, Lesson>
   /** Who pressed Save or made the review decision. With a platform, their platform user id. */
   actor: { id: string; name?: string | null; email?: string | null }
+  /** The host organization of the course's workspace; null for a personal workspace. */
+  organization?: { hostOrgId: string } | null
 }
 
 export type PublishSummary = {
@@ -49,9 +51,15 @@ export interface PlatformPort {
    * when the platform never had it.
    */
   deleteCourse(courseId: string): Promise<DeleteSummary>
-  /** Where people sign in to the editor through the platform, if it says (for the signed-out page). */
-  launchUrl(): Promise<string | null>
+  /**
+   * The platform's sign-in and sign-out addresses, as far as it says (all
+   * optional; empty when it can't be reached): for the sign-out flow and the
+   * signed-out page.
+   */
+  links(): Promise<PlatformLinks>
 }
+
+export type PlatformLinks = { launchUrl?: string; logoutUrl?: string; signInUrl?: string }
 
 /**
  * Why a platform call failed, in terms the editor can act on. Adapters throw

@@ -1,63 +1,66 @@
-import { cookies, headers } from "next/headers"
+import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
+import { cache } from "react"
 
-import { ADMIN_MODE_HEADER } from "@/lib/admin-mode"
-import { authConfig } from "@/lib/auth-gate"
-import { decodeSession, SESSION_COOKIE } from "@/lib/session"
+import { authConfig, DEFAULT_USER_ID, SESSION_COOKIE } from "@/lib/auth-gate"
+import { hostKeys } from "@/lib/keys"
+import { validateSession, type SessionEndReason } from "@/lib/session"
 
 /**
- * Who is making the request.
+ * Who is making the request: identity only. What they may do (which
+ * workspaces, which roles) comes from the database on every request
+ * (lib/authz/context.ts), never from the session.
  *
- * With a platform connected, people sign in through it (app/launch): the
- * platform decides who is a creator and who is an admin, and the user id is
- * theirs on the platform, stored as `owner_id` on the courses they create.
- * proxy.ts already turns away requests without a session; this checks again.
+ * With a platform connected, people sign in through it (app/launch) and the
+ * user id is theirs on the platform, stored as `owner_id` on the courses they
+ * create. The session is checked against the database on every request
+ * (lib/session.ts): signed out, expired, idle, ended by the host, or from a
+ * rotated host key all count as signed out.
  *
- * Without a platform (local work), everyone is one local creator, and pages
- * in /admin mark their requests with a header to get admin rules.
+ * Without a platform (local work), everyone is one local user, who owns a
+ * personal workspace and also reviews (so /admin works locally).
  */
 export type CurrentUser = {
   /** Stored as `owner_id` on courses. */
   id: string
-  role: "creator" | "admin"
   name: string | null
   email: string | null
 }
 
-export const DEFAULT_USER_ID = "user_local_creator"
+export { DEFAULT_USER_ID }
+
+/** The signed-out page's `reason` for each way a session ends. */
+const SIGNED_OUT_REASON: Record<SessionEndReason, string | null> = {
+  unknown: null,
+  expired: "session_expired",
+  idle: "idle",
+  signed_out: "signed_out",
+  access_changed: "access_changed",
+  rotated: "renew",
+}
+
+type SessionLookup = { user: CurrentUser } | { user: null; reason: string | null }
+
+/** The request's session, checked once per request. */
+const lookupSession = cache(async (): Promise<SessionLookup> => {
+  const config = authConfig()
+  if (config.mode === "none") return { user: { id: DEFAULT_USER_ID, name: null, email: null } }
+  const keys = hostKeys()
+  if (!config.configured || !keys) return { user: null, reason: "not_configured" }
+  const token = (await cookies()).get(SESSION_COOKIE)?.value
+  if (!token) return { user: null, reason: null }
+  const check = await validateSession(token, keys)
+  return check.ok ? { user: check.user } : { user: null, reason: SIGNED_OUT_REASON[check.reason] }
+})
 
 /** The signed-in user, or null (local mode never returns null). */
 export async function getOptionalUser(): Promise<CurrentUser | null> {
-  const config = authConfig()
-  if (config.mode === "none") {
-    // Reading the request also makes pages that use this render per request.
-    const requestHeaders = await headers()
-    return {
-      id: DEFAULT_USER_ID,
-      role: requestHeaders.get(ADMIN_MODE_HEADER) === "admin" ? "admin" : "creator",
-      name: null,
-      email: null,
-    }
-  }
-  if (!config.key) return null
-  const session = decodeSession((await cookies()).get(SESSION_COOKIE)?.value, config.key.secret)
-  return session ? { id: session.sub, role: session.role, name: session.name, email: session.email } : null
+  return (await lookupSession()).user
 }
 
-/** The signed-in user; without one, sends the browser to the signed-out page. */
+/** The signed-in user; without one, sends the browser to the signed-out page (saying why, when known). */
 export async function getCurrentUser(): Promise<CurrentUser> {
-  const user = await getOptionalUser()
-  if (!user) redirect("/signed-out")
-  return user
-}
-
-/**
- * For the admin area. With a platform connected, only people the platform made
- * admins get in; others go to their own courses. Locally (no platform) the
- * admin area stays open, as it always has been.
- */
-export async function requireAdminArea(): Promise<void> {
-  if (authConfig().mode === "none") return
-  const user = await getCurrentUser()
-  if (user.role !== "admin") redirect("/dashboard")
+  const session = await lookupSession()
+  if (session.user) return session.user
+  redirect(session.reason ? `/signed-out?reason=${session.reason}` : "/signed-out")
 }

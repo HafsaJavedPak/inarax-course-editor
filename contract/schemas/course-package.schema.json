@@ -1,5 +1,5 @@
 {
-  "$id": "https://inara.dev/course-publishing-protocol/1.1/course-package.schema.json",
+  "$id": "https://inara.dev/course-publishing-protocol/2.0/course-package.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
@@ -96,6 +96,27 @@
                 "amount",
                 "currency"
               ]
+            }
+          ]
+        },
+        "organization": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "host_org_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "required": [
+                "host_org_id"
+              ]
+            },
+            {
+              "type": "null"
             }
           ]
         }

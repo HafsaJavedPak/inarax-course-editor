@@ -1,7 +1,7 @@
-import { requireAdminArea } from "@/lib/auth"
+import { requireReviewArea } from "@/lib/authz/context"
 
-/** Everything under /admin is for admins (proxy.ts checks first; this is the second check). */
+/** Everything under /admin is for reviewers (staff or org admins); each course page checks its own course too. */
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
-  await requireAdminArea()
+  await requireReviewArea()
   return children
 }

@@ -77,8 +77,11 @@ export function CourseInfoForm({
   onSubmit,
   submitLabel = "Create course",
   savingLabel = "Creating…",
+  workspace,
 }: {
   initial?: CourseInfo
+  /** The workspace (tenant id) a new course is created in. */
+  workspace?: string
   /** Omit to create a new course (POST) and open its builder. */
   onSubmit?: (info: CourseInfo) => Promise<string | void>
   submitLabel?: string
@@ -165,7 +168,7 @@ export function CourseInfoForm({
         if (error) setFormError(error)
         return
       }
-      const res = await fetch("/api/courses", {
+      const res = await fetch(workspace ? `/api/courses?workspace=${encodeURIComponent(workspace)}` : "/api/courses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),

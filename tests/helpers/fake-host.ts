@@ -2,10 +2,13 @@
 // It checks every request's signature the way a real host must, and records
 // what it was sent.
 
+import { staticKeyResolver, type KeyResolver } from "@/lib/protocol/jwks"
+import { generateSigningKey, toJwks } from "@/lib/protocol/keys"
 import { sha256Hex, verifyRequest } from "@/lib/protocol/signing"
 import { CoursePackageSchema, PROTOCOL_VERSION, type CoursePackage, type Manifest, type Problem } from "@/lib/protocol/wire"
 
-export const TEST_KEY = { id: "test-key", secret: "s3cret-s3cret-s3cret-s3cret-s3cret!" }
+/** The editor's key in tests; the fake host trusts its public half (as a host reads the editor's JWKS). */
+export const TEST_KEY = generateSigningKey("test-editor-key").signingKey
 export const BASE_URL = "https://host.test/api/integrations/course-editor"
 
 export const defaultManifest = (): Manifest => ({
@@ -22,8 +25,8 @@ export const defaultManifest = (): Manifest => ({
 
 type Recorded = { method: string; path: string; body: Uint8Array }
 
-export function createFakeHost(options: { manifest?: Manifest; keys?: Map<string, string> } = {}) {
-  const keys = options.keys ?? new Map([[TEST_KEY.id, TEST_KEY.secret]])
+export function createFakeHost(options: { manifest?: Manifest; keys?: KeyResolver } = {}) {
+  const keys = options.keys ?? staticKeyResolver(toJwks([TEST_KEY]))
   const state = {
     manifest: options.manifest ?? defaultManifest(),
     courses: new Map<string, CoursePackage>(),
@@ -44,7 +47,12 @@ export function createFakeHost(options: { manifest?: Manifest; keys?: Map<string
     const headers = new Headers(init?.headers)
     state.requests.push({ method, path: url.pathname, body })
 
-    const verified = verifyRequest({ method, pathWithQuery: url.pathname + url.search, body }, (name) => headers.get(name), keys)
+    const verified = await verifyRequest(
+      { method, pathWithQuery: url.pathname + url.search, body },
+      (name) => headers.get(name),
+      keys,
+      "course-editor-request",
+    )
     if (!verified.ok) return problem({ title: "Unauthenticated", status: 401, code: "unauthenticated", detail: verified.reason })
 
     const base = new URL(BASE_URL).pathname

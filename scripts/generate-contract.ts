@@ -16,6 +16,7 @@ import path from "path"
 import { z } from "zod"
 
 import { signLaunchToken } from "../lib/protocol/launch"
+import { parsePrivateKeys, toJwks } from "../lib/protocol/keys"
 import { signRequest, stringToSign } from "../lib/protocol/signing"
 import {
   AssetSchema,
@@ -49,14 +50,32 @@ function schemaFile(name: string, schema: z.ZodType) {
   }
 }
 
-// Fixed inputs, so the vectors only change when the algorithm does.
-const SIGNING_KEY = { id: "example-key", secret: "example-secret-do-not-use-in-production" }
+// Fixed inputs, so the vectors only change when the algorithm does. These are
+// EXAMPLE keys, published on purpose for checking implementations; never
+// configure them anywhere. Ed25519 signatures are deterministic, so the
+// vectors are reproducible.
+const EXAMPLE_EDITOR_PRIVATE_JWK = {
+  kty: "OKP",
+  crv: "Ed25519",
+  kid: "example-editor-key",
+  x: "JKq7S6lGt34wayEJP3vUFlMwmU6v-JLltqlDItn7iQI",
+  d: "1M2cjJwLCwULH1TUsAAnoq8DIUQwTTVQwNIbLR7GRfI",
+}
+const EXAMPLE_HOST_PRIVATE_JWK = {
+  kty: "OKP",
+  crv: "Ed25519",
+  kid: "example-host-key",
+  x: "The0h9XWOIcf9B-V6cco05IfjKdfYw1jopJZUwbNHi0",
+  d: "Q3OuegVZmAJAld0FapqpLygRSh68XtPROPEkqgI5tak",
+}
+const EDITOR_KEY = parsePrivateKeys(JSON.stringify([EXAMPLE_EDITOR_PRIVATE_JWK]), "example")[0]
+const HOST_KEY = parsePrivateKeys(JSON.stringify([EXAMPLE_HOST_PRIVATE_JWK]), "example")[0]
 const SIGNING_CASES = [
   { method: "GET", path_with_query: "/api/integrations/course-editor/v1/manifest", body: "", timestamp: 1_800_000_000 },
   {
     method: "PUT",
     path_with_query: "/api/integrations/course-editor/v1/courses/7f72e600-3425-490c-b530-0179826cb206",
-    body: '{"protocol":"1.0"}',
+    body: '{"protocol":"2.0"}',
     timestamp: 1_800_000_123,
   },
   {
@@ -68,13 +87,23 @@ const SIGNING_CASES = [
 ]
 
 function signingVectors() {
-  return {
-    description: "Test vectors for X-Editor-Signature. See contract/README.md § Authentication.",
-    key: SIGNING_KEY,
-    cases: SIGNING_CASES.map((c) => {
+  const sign = (context: "course-editor-request" | "course-editor-event", key: typeof EDITOR_KEY) =>
+    SIGNING_CASES.map((c) => {
       const request = { method: c.method, pathWithQuery: c.path_with_query, body: c.body }
-      return { ...c, string_to_sign: stringToSign(request, c.timestamp), signature: signRequest(request, SIGNING_KEY, c.timestamp)["x-editor-signature"] }
-    }),
+      return {
+        ...c,
+        context,
+        string_to_sign: stringToSign(request, c.timestamp, context),
+        headers: signRequest(request, key, context, c.timestamp),
+      }
+    })
+  return {
+    description:
+      "Test vectors for X-Signature (Ed25519). See contract/README.md § Authentication. Example keys only: never configure them.",
+    editor: { private_jwk: EXAMPLE_EDITOR_PRIVATE_JWK, jwks: toJwks([EDITOR_KEY]) },
+    host: { private_jwk: EXAMPLE_HOST_PRIVATE_JWK, jwks: toJwks([HOST_KEY]) },
+    requests: sign("course-editor-request", EDITOR_KEY),
+    events: sign("course-editor-event", HOST_KEY).slice(1, 2),
   }
 }
 
@@ -92,6 +121,7 @@ function examplePackage(): CoursePackage {
       length_hours: 2,
       lesson_size: "short",
       pricing: { type: "free" },
+      organization: null,
     },
     review: { status: "in_review", note: null, changes: [] },
     levels: [
@@ -151,19 +181,25 @@ function launchVector() {
       sub: "3f0c2b9e-8a41-4d7e-9c55-2b6f1e0a7d13",
       email: "sara@example.com",
       name: "Sara Khan",
-      role: "creator",
+      role: "admin",
+      orgs: [
+        { id: "8b7e6c5d-4f3a-4b2c-9d1e-0f1a2b3c4d5e", name: "Acme Learning", role: "admin" },
+        { id: "1c2d3e4f-5a6b-4c7d-8e9f-a0b1c2d3e4f5", name: "Beta Academy", role: "creator" },
+      ],
+      staff: false,
       iat: now,
       exp: now + 60,
       jti: "7d1f0e5a-2c4b-4e8f-9a3d-6b5c4d3e2f1a",
     },
-    SIGNING_KEY,
+    HOST_KEY,
     now,
   )
   const [, payload, signature] = token.split(".")
   return {
-    description: "A launch token and its parts. See contract/README.md § Launch. Valid at verify_at; expired 60 s later.",
-    key: SIGNING_KEY,
-    signing_context: "course-editor-launch.v1.",
+    description:
+      "A launch token (signed by the host's example key) and its parts. See contract/README.md § Launch. Valid at verify_at; expired 60 s later.",
+    host_jwks: toJwks([HOST_KEY]),
+    signing_context: "course-editor-launch.v2.",
     verify_at: now + 10,
     token,
     payload_b64url: payload,

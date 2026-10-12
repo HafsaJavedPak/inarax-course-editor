@@ -1,18 +1,16 @@
-import { notFound } from "next/navigation"
 import { CourseBuilder } from "@/components/course/course-builder"
-import { getCurrentUser } from "@/lib/auth"
-import { getAccessibleCourse, getCourseReport } from "@/lib/course-store"
+import { coursePaths } from "@/lib/admin-mode"
+import { authorCourseForPage } from "@/lib/authz/context"
+import { getCourseReport } from "@/lib/course-store"
 import { publishingEnabled } from "@/lib/platform"
 
 export default async function Page({ params }: PageProps<"/courses/[courseId]">) {
   const { courseId } = await params
-  const user = await getCurrentUser()
-  const course = await getAccessibleCourse(courseId, user)
-  if (!course) notFound()
+  const { ctx, record } = await authorCourseForPage(courseId, coursePaths(true).course(courseId))
   return (
     <CourseBuilder
-      initialCourse={course}
-      initialReport={await getCourseReport(course)}
+      initialCourse={record.course}
+      initialReport={await getCourseReport(ctx, record.course)}
       publishingEnabled={publishingEnabled()}
     />
   )

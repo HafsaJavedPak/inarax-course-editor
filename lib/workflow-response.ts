@@ -1,7 +1,7 @@
-import type { CurrentUser } from "@/lib/auth"
+import type { RequestContext } from "@/lib/authz/context"
 import type { Course } from "@/lib/course"
 import type { WorkflowResult } from "@/lib/course-status"
-import { readCourseLesson, recordPublish } from "@/lib/course-store"
+import { findCourse, readCourseLessons, recordPublish } from "@/lib/course-store"
 import type { Lesson } from "@/lib/lesson"
 import { validateLesson } from "@/lib/lesson-validate"
 import {
@@ -18,7 +18,8 @@ type PublishOutcome =
   | { error: string; status: number; code: PlatformErrorKind | "error"; issues?: string[] }
 
 /** Publishes the course (with every saved lesson) to the platform and notes when it happened. */
-export async function publishAndRecord(course: Course, actor: CurrentUser): Promise<PublishOutcome> {
+export async function publishAndRecord(ctx: RequestContext, course: Course): Promise<PublishOutcome> {
+  const actor = ctx.user
   try {
     const platform = getPlatform()
     if (!platform) {
@@ -29,8 +30,9 @@ export async function publishAndRecord(course: Course, actor: CurrentUser): Prom
     // last published version on the platform; the rest of the course still goes.
     const lessons = new Map<string, Lesson>()
     const skipped: string[] = []
+    const saved = await readCourseLessons(ctx, course.id)
     for (const ref of course.levels.flatMap((l) => l.modules.flatMap((m) => m.lessons))) {
-      const lesson = await readCourseLesson(course.id, ref.id)
+      const lesson = saved.get(ref.id)
       if (!lesson) continue
       const errors = validateLesson(lesson).filter((i) => i.level === "error")
       if (errors.length) {
@@ -41,10 +43,18 @@ export async function publishAndRecord(course: Course, actor: CurrentUser): Prom
       }
     }
 
-    const published = await platform.publishCourse({ course, lessons, actor: { id: actor.id, name: actor.name, email: actor.email } })
+    // The course lands in the host organization of its workspace (personal workspaces: the host's default).
+    const record = await findCourse(ctx, course.id)
+    const organization = record?.tenantHostOrgId ? { hostOrgId: record.tenantHostOrgId } : null
+    const published = await platform.publishCourse({
+      course,
+      lessons,
+      actor: { id: actor.id, name: actor.name, email: actor.email },
+      organization,
+    })
     const summary = { ...published, warnings: [...skipped, ...published.warnings] }
     const publishedAt = new Date().toISOString()
-    await recordPublish(course.id, publishedAt)
+    await recordPublish(ctx, course.id, publishedAt)
     if (summary.warnings.length) console.warn(`Published course ${course.id} with warnings:`, summary.warnings)
     return { publishedAt, summary }
   } catch (error) {
@@ -72,9 +82,9 @@ export function workflowResponse(result: WorkflowResult | null) {
  * publishing fails; the response then carries `publishError`. With no
  * platform set up, only the local status changes.
  */
-export async function publishedWorkflowResponse(result: WorkflowResult | null, actor: CurrentUser) {
+export async function publishedWorkflowResponse(ctx: RequestContext, result: WorkflowResult | null) {
   if (!result || "error" in result || !publishingEnabled()) return workflowResponse(result)
-  const published = await publishAndRecord(result.course, actor)
+  const published = await publishAndRecord(ctx, result.course)
   if ("error" in published) {
     return Response.json({ course: result.course, publishError: published.error, publishIssues: published.issues })
   }

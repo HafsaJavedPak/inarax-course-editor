@@ -1,14 +1,16 @@
 import Link from "next/link"
-import { notFound } from "next/navigation"
 
+import { AllowResubmissionsButton } from "@/components/admin/allow-resubmissions-button"
 import { DecisionPanel } from "@/components/admin/decision-panel"
+import { PersonLabel } from "@/components/admin/person"
 import { DeleteCourseButton } from "@/components/admin/delete-course-button"
 import { AppHeader } from "@/components/course/app-header"
 import { StatusBadge } from "@/components/course/status-badge"
 import { coursePaths } from "@/lib/admin-mode"
 import { describeChangeTarget, getCourseLimits, LEVELS, type ChangeTarget, type Course } from "@/lib/course"
-import { STATUS_LABELS } from "@/lib/course-status"
-import { readCourse } from "@/lib/course-store"
+import { eventAction, eventLabel, resubmissionsAfterRejection } from "@/lib/course-status"
+import { courseForPage } from "@/lib/authz/context"
+import { usersByIds } from "@/lib/authz/identity"
 import { summarizeCourse, timeAgo } from "@/lib/course-summary"
 
 import "@/components/lesson-editor/lesson-editor.scss"
@@ -17,13 +19,15 @@ const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyl
 
 export default async function Page({ params }: PageProps<"/admin/courses/[courseId]">) {
   const { courseId } = await params
-  const course = await readCourse(courseId)
-  if (!course) notFound()
+  const { ctx, record } = await courseForPage(courseId, "course.review")
+  const course = record.course
 
-  const { report, planned, written, submittedAt } = await summarizeCourse(course)
+  const { report, planned, written, submittedAt } = await summarizeCourse(ctx, course)
   const limits = getCourseLimits(course)
   const errors = report.issues.filter((i) => i.level === "error")
   const warnings = report.issues.filter((i) => i.level === "warning")
+  const people = await usersByIds([course.owner_id, ...course.review_history.map((e) => e.by)])
+  const resubmits = resubmissionsAfterRejection(course.review_history)
 
   return (
     <div className="in-page">
@@ -40,7 +44,7 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
               <StatusBadge status={course.status} />
             </div>
             <p>
-              by <code>{course.owner_id}</code> · created {timeAgo(course.created_at)} · updated {timeAgo(course.updated_at)}
+              by <PersonLabel id={course.owner_id} person={people.get(course.owner_id)} /> in {record.tenantName} · created {timeAgo(course.created_at)} · updated {timeAgo(course.updated_at)}
               {course.status === "in_review" && submittedAt && <> · submitted {timeAgo(submittedAt)}</>}
             </p>
           </div>
@@ -187,17 +191,22 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
 
           <aside className="adm-aside">
             <DecisionPanel course={course} />
+            {resubmits.reached && <AllowResubmissionsButton courseId={course.id} limit={resubmits.limit} />}
 
             <section className="adm-card">
               <h2>History</h2>
               <ol className="adm-history">
                 {[...course.review_history].reverse().map((event, i) => (
                   <li key={i}>
-                    <span className="adm-history-status">{STATUS_LABELS[event.status]}</span>
+                    <span className="adm-history-status">{eventLabel(event)}</span>
                     <span className="adm-muted">
-                      {dateFormat.format(new Date(event.at))} · <code>{event.by}</code>
+                      {dateFormat.format(new Date(event.at))} · <PersonLabel id={event.by} person={people.get(event.by)} />
                     </span>
-                    {event.note && <span className="adm-history-note">{event.note}</span>}
+                    {event.note && (
+                      <span className="adm-history-note">
+                        {eventAction(event) === "submitted" ? <>What the author changed: {event.note}</> : event.note}
+                      </span>
+                    )}
                     {event.changes.length > 0 && (
                       <ul className="adm-history-changes">
                         {event.changes.map((change, j) => (

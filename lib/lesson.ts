@@ -77,8 +77,36 @@ export const BLOCK_LIMITS = {
   add_next_layer: { min: 2, max: 6 },
   roadmap_eras: { min: 1, max: 6 },
   roadmap_events: { min: 2, max: 30 },
+  roadmap_era_name: { max: 40 },
+  roadmap_event_text: { max: 300 },
   button_label: { max: 40 },
 } as const
+
+/** The date formats a roadmap event accepts: numbers only. */
+export const ROADMAP_DATE_FORMATS = ["YYYY", "YYYY-MM", "YYYY-MM-DD"] as const
+
+/**
+ * A roadmap event date as a sortable number (YYYYMMDD, missing parts as 0),
+ * or null when it isn't one of ROADMAP_DATE_FORMATS or isn't a real date
+ * (month 01–12, a day that exists in that month, year 1–9999).
+ */
+export function parseRoadmapDate(value: string): number | null {
+  const match = /^(\d{1,4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(value.trim())
+  if (!match) return null
+  const year = Number(match[1])
+  const month = match[2] === undefined ? 0 : Number(match[2])
+  const day = match[3] === undefined ? 0 : Number(match[3])
+  if (year < 1) return null
+  if (match[2] !== undefined && (month < 1 || month > 12)) return null
+  if (match[3] !== undefined) {
+    const daysInMonth = new Date(Date.UTC(2000 + (year % 400), month, 0)).getUTCDate()
+    if (day < 1 || day > daysInMonth) return null
+  }
+  return year * 10000 + month * 100 + day
+}
+
+/** Keeps only the characters a roadmap date can contain (digits and "-"), for the date input. */
+export const cleanRoadmapDateInput = (value: string) => value.replace(/[^0-9-]/g, "").slice(0, 10)
 
 export type BlockDataMap = {
   rich_text: RichTextData
