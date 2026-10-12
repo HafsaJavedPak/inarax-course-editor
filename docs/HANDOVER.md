@@ -182,6 +182,12 @@ sequenceDiagram
 **Use theirs**, or **Keep mine** (overwrite on purpose). Opening a lesson never saves it.
 Details: [collaboration/phase-0.md](collaboration/phase-0.md).
 
+**Live co-editing:** with the collaboration gateway running (`npm run collab`, or
+`COLLAB_EMBEDDED=1 npm run dev` locally), several people edit a lesson at once and see each
+other's typing and where they are. Every edit is stored before it shows as saved. Removing
+someone's access closes their editor within seconds. Details and settings:
+[collaboration/phase-4.md](collaboration/phase-4.md).
+
 **Sharing:** the course builder's **Share** button adds people from the workspace as co-owner,
 editor, commenter or viewer, or invites anyone by email with a link to copy (they open it signed
 in with that email). Organizations allow no outside guests unless an org admin turns it on (on the

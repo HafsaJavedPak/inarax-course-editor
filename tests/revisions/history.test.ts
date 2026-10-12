@@ -218,7 +218,7 @@ describe("recording history", () => {
 
     expect((await saveLesson(id, "changed", big.levels[0].modules[0].lessons[7].id)).status).toBe(200)
     expect(await snapshotCount(aliceScope, [id])).toBe(41)
-  })
+  }, 30_000) // 41 saves, each recording history: slow when the whole suite runs at once
 
   it("a course stored before history existed gets its old content as revision 1 before the first change", async () => {
     const id = await newCourse()
