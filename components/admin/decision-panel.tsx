@@ -31,9 +31,21 @@ function toTarget(value: string, course: Course): ChangeRequest["target"] {
 
 const newChange = (): DraftChange => ({ key: crypto.randomUUID(), text: "", target: "" })
 
+/** The version the reviewer is looking at; the decision is recorded against exactly this content. */
+export type SeenVersion = { revisionId: string; contentHash: string; number: number }
+
 /** Admin decision on a course: accept, request changes (with a checklist), or reject. */
-export function DecisionPanel({ course }: { course: Course }) {
+export function DecisionPanel({
+  course,
+  seen,
+  historyHref,
+}: {
+  course: Course
+  seen: SeenVersion | null
+  historyHref: string
+}) {
   const router = useRouter()
+  const [changedSince, setChangedSince] = useState(false)
   const revoking = course.status === "approved"
   const [decision, setDecision] = useState<ReviewDecision>(revoking ? "changes_requested" : "approved")
   const [note, setNote] = useState("")
@@ -76,6 +88,8 @@ export function DecisionPanel({ course }: { course: Course }) {
         headers: modeHeaders(true, { "Content-Type": "application/json" }),
         body: JSON.stringify({
           decision,
+          revision_id: seen?.revisionId,
+          content_hash: seen?.contentHash,
           note,
           changes:
             decision === "changes_requested"
@@ -84,6 +98,11 @@ export function DecisionPanel({ course }: { course: Course }) {
         }),
       })
       const data = await res.json().catch(() => ({}))
+      if (res.status === 409 && data.code === "content_changed") {
+        // Someone changed the course while it was on screen: nothing was decided.
+        setChangedSince(true)
+        return
+      }
       if (!res.ok) {
         setError(data.error ?? "Couldn't save the decision")
         return
@@ -100,6 +119,20 @@ export function DecisionPanel({ course }: { course: Course }) {
   return (
     <section className="adm-card adm-decision" aria-labelledby="decision-title">
       <h2 id="decision-title">{revoking ? "Revoke acceptance" : "Decision"}</h2>
+      {seen && (
+        <p className="adm-muted adm-reviewing">
+          {revoking ? "Accepted" : "Reviewing"} <a href={historyHref}>version {seen.number}</a>. Your decision is recorded
+          against exactly this version.
+        </p>
+      )}
+      {changedSince && (
+        <div className="sp-error adm-changed" role="alert">
+          This course changed while you were reviewing it, so nothing was decided.{" "}
+          <button type="button" className="in-btn in-btn-secondary in-btn-sm" onClick={() => router.refresh()}>
+            Reload the latest version
+          </button>
+        </div>
+      )}
       {revoking && (
         <p className="adm-muted">
           This course is accepted. You can still send it back for changes or reject it if you find a problem.

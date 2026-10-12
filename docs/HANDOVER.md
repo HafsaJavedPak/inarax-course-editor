@@ -182,6 +182,14 @@ sequenceDiagram
 **Use theirs**, or **Keep mine** (overwrite on purpose). Opening a lesson never saves it.
 Details: [collaboration/phase-0.md](collaboration/phase-0.md).
 
+**History and review binding:** every content change is kept as a version (one person's
+continuous editing is one version). **History** (course builder, and the review page) compares any
+two versions and restores an old one as a new version; nothing is ever deleted. Submitting seals the
+content for review; a reviewer's decision is recorded against the exact version they saw (if the
+course changed meanwhile, nothing is decided and they're asked to reload); editing an accepted
+course withdraws the acceptance; an accepted course publishes exactly the accepted version.
+Details: [collaboration/phase-2.md](collaboration/phase-2.md).
+
 **When publishing happens:**
 - the **Save** button or Ctrl/⌘+S, in the course builder and the lesson editor
 - **submit**, **withdraw**, and the admin's **accept / reject / request changes**. If publishing fails

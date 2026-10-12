@@ -10,6 +10,7 @@ import { coursePaths } from "@/lib/admin-mode"
 import { describeChangeTarget, getCourseLimits, LEVELS, type ChangeTarget, type Course } from "@/lib/course"
 import { eventAction, eventLabel, resubmissionsAfterRejection } from "@/lib/course-status"
 import { courseForPage } from "@/lib/authz/context"
+import { ensureHead } from "@/lib/course-store"
 import { usersByIds } from "@/lib/authz/identity"
 import { summarizeCourse, timeAgo } from "@/lib/course-summary"
 
@@ -28,6 +29,8 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
   const warnings = report.issues.filter((i) => i.level === "warning")
   const people = await usersByIds([course.owner_id, ...course.review_history.map((e) => e.by)])
   const resubmits = resubmissionsAfterRejection(course.review_history)
+  // The version on screen: a decision is recorded against exactly this content.
+  const head = await ensureHead(ctx, course.id)
 
   return (
     <div className="in-page">
@@ -54,6 +57,9 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
             </Link>
             <Link href={coursePaths(true).preview(course.id)} className="in-btn in-btn-secondary in-btn-sm">
               Preview as learner
+            </Link>
+            <Link href={coursePaths(true).history(course.id)} className="in-btn in-btn-secondary in-btn-sm">
+              History
             </Link>
             <a href={`/api/courses/${course.id}/export`} className="in-btn in-btn-secondary in-btn-sm" download>
               Download
@@ -190,7 +196,7 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
           </div>
 
           <aside className="adm-aside">
-            <DecisionPanel course={course} />
+            <DecisionPanel course={course} seen={head} historyHref={coursePaths(true).history(course.id)} />
             {resubmits.reached && <AllowResubmissionsButton courseId={course.id} limit={resubmits.limit} />}
 
             <section className="adm-card">

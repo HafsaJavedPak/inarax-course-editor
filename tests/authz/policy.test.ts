@@ -19,20 +19,32 @@ const stranger = subject("stranger", [{ tenantId: "elsewhere", role: "owner" }])
 // Wrote the course, then left the org.
 const formerAuthor = subject("author", [])
 
-const ALL: CourseAction[] = ["course.read", "course.edit", "course.delete", "course.publish", "course.export", "course.submit", "course.review"]
+const ALL: CourseAction[] = [
+  "course.read",
+  "course.edit",
+  "course.delete",
+  "course.publish",
+  "course.export",
+  "course.submit",
+  "course.review",
+  "course.history",
+  "course.restore",
+]
+/** The author's side only: submitting and restoring versions. */
+const AUTHOR_ONLY: CourseAction[] = ["course.submit", "course.restore"]
 const allowed = (s: Subject, course: typeof orgCourse | typeof personalCourse) => ALL.filter((a) => can(s, a, course))
 
 describe("course access", () => {
   it("personal workspace: the owner writes, staff review, nobody else gets anything", () => {
     expect(allowed(owner, personalCourse)).toEqual(ALL.filter((a) => a !== "course.review"))
-    expect(allowed(staff, personalCourse)).toEqual(ALL.filter((a) => a !== "course.submit"))
+    expect(allowed(staff, personalCourse)).toEqual(ALL.filter((a) => !AUTHOR_ONLY.includes(a)))
     expect(allowed(stranger, personalCourse)).toEqual([])
     expect(allowed(orgAdmin, personalCourse)).toEqual([])
   })
 
   it("organization: the author writes their course, admins review, other creators see nothing", () => {
     expect(allowed(author, orgCourse)).toEqual(ALL.filter((a) => a !== "course.review"))
-    expect(allowed(orgAdmin, orgCourse)).toEqual(ALL.filter((a) => a !== "course.submit"))
+    expect(allowed(orgAdmin, orgCourse)).toEqual(ALL.filter((a) => !AUTHOR_ONLY.includes(a)))
     expect(allowed(otherCreator, orgCourse)).toEqual([])
   })
 

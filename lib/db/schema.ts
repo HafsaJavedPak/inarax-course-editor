@@ -26,6 +26,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core"
 
@@ -99,6 +100,12 @@ export const courses = pgTable(
     revision: integer("revision").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
     data: jsonb("data").$type<Course>().notNull(),
+    /** contentHash() of the course as stored now (lib/revisions); null until its first revision. */
+    headHash: text("head_hash"),
+    /** The newest revision (course_revisions); it always holds exactly the stored content. */
+    headRevisionId: uuid("head_revision_id"),
+    /** The revision last published to the platform. */
+    publishedRevisionId: uuid("published_revision_id"),
   },
   (t) => [
     // Target of the lessons' composite foreign key.
@@ -132,6 +139,119 @@ export const lessons = pgTable(
       columns: [t.tenantId, t.courseId],
       foreignColumns: [courses.tenantId, courses.id],
     }).onDelete("cascade"),
+  ],
+)
+
+/** How a revision's content came about (docs/collaboration: module 21). */
+export const REVISION_KINDS = ["initial", "edit", "reviewer_edit", "imported", "restored"] as const
+export type RevisionKind = (typeof REVISION_KINDS)[number]
+
+/**
+ * A course's history: each row is the course's content at one point. The
+ * newest row is the "open" one while someone keeps editing (sealed_at null);
+ * it's sealed when someone else edits, after 10 minutes, or when the course is
+ * submitted, published or a version is saved. Rows are never deleted while
+ * the course exists; restoring writes a new row.
+ */
+export const courseRevisions = pgTable(
+  "course_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+    /** 1, 2, 3 … per course. */
+    number: integer("number").notNull(),
+    parentId: uuid("parent_id"),
+    kind: text("kind", { enum: REVISION_KINDS }).notNull(),
+    /** "Save version" name. */
+    label: text("label"),
+    contentHash: text("content_hash").notNull(),
+    /** The course's content fields (courseContent() in lib/revisions/hash.ts). */
+    courseData: jsonb("course_data").notNull(),
+    /** Who changed the content in this revision (user ids). */
+    actors: text("actors").array().notNull().default(sql`'{}'::text[]`),
+    /** What changed since the previous revision (lib/revisions/diff.ts summarizeChange). */
+    summary: jsonb("summary"),
+    restoredFrom: uuid("restored_from"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    sealedAt: timestamp("sealed_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("course_revisions_course_number_key").on(t.courseId, t.number),
+    // Only one revision per course is open at a time.
+    uniqueIndex("course_revisions_one_open_idx").on(t.courseId).where(sql`${t.sealedAt} IS NULL`),
+    foreignKey({ name: "course_revisions_course_fk", columns: [t.tenantId, t.courseId], foreignColumns: [courses.tenantId, courses.id] }).onDelete("cascade"),
+  ],
+)
+
+/** A lesson's content, stored once per distinct content hash and shared by every revision that has it. */
+export const lessonSnapshots = pgTable(
+  "lesson_snapshots",
+  {
+    tenantId: uuid("tenant_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+    hash: text("hash").notNull(),
+    data: jsonb("data").$type<Lesson>().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.courseId, t.hash] }),
+    foreignKey({ name: "lesson_snapshots_course_fk", columns: [t.tenantId, t.courseId], foreignColumns: [courses.tenantId, courses.id] }).onDelete("cascade"),
+  ],
+)
+
+/** Which lesson content each revision has: (revision, lesson) → snapshot hash. */
+export const revisionLessons = pgTable(
+  "revision_lessons",
+  {
+    revisionId: uuid("revision_id")
+      .notNull()
+      .references(() => courseRevisions.id, { onDelete: "cascade" }),
+    lessonId: uuid("lesson_id").notNull(),
+    tenantId: uuid("tenant_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+    hash: text("hash").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.revisionId, t.lessonId] }),
+    foreignKey({ name: "revision_lessons_snapshot_fk", columns: [t.courseId, t.hash], foreignColumns: [lessonSnapshots.courseId, lessonSnapshots.hash] }).onDelete("cascade"),
+  ],
+)
+
+export const REVIEW_OUTCOMES = ["approved", "changes_requested", "rejected", "withdrawn"] as const
+export type ReviewOutcome = (typeof REVIEW_OUTCOMES)[number]
+
+/**
+ * One row per submission for review. A decision names the exact revision and
+ * content hash the reviewer saw; an approval stops counting (invalidated_at)
+ * as soon as the course's content changes.
+ */
+export const courseReviews = pgTable(
+  "course_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+    submittedRevisionId: uuid("submitted_revision_id").notNull(),
+    submittedHash: text("submitted_hash").notNull(),
+    submittedBy: text("submitted_by").notNull(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    note: text("note").notNull().default(""),
+    /** Null while the round is open. */
+    decision: text("decision", { enum: REVIEW_OUTCOMES }),
+    /** What the decision was made on (may differ from what was submitted if a reviewer edited). */
+    decidedRevisionId: uuid("decided_revision_id"),
+    decidedHash: text("decided_hash"),
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    invalidatedAt: timestamp("invalidated_at", { withTimezone: true }),
+    invalidatedByRevisionId: uuid("invalidated_by_revision_id"),
+  },
+  (t) => [
+    index("course_reviews_course_idx").on(t.courseId, t.submittedAt),
+    uniqueIndex("course_reviews_one_open_idx").on(t.courseId).where(sql`${t.decision} IS NULL`),
+    foreignKey({ name: "course_reviews_course_fk", columns: [t.tenantId, t.courseId], foreignColumns: [courses.tenantId, courses.id] }).onDelete("cascade"),
   ],
 )
 

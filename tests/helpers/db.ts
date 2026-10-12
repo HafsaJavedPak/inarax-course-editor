@@ -44,11 +44,10 @@ async function openPostgresServer(serverUrl: string): Promise<Db> {
   await admin.connect()
   try {
     await admin.query(`CREATE DATABASE ${database}`)
-    await admin.query(`DO $$ BEGIN
-      IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${APP_ROLE}') THEN
-        CREATE ROLE ${APP_ROLE} LOGIN NOSUPERUSER PASSWORD '${APP_PASSWORD}';
-      END IF;
-    END $$`)
+    // Test files run in parallel and race to create the shared role; "already exists" is fine.
+    await admin.query(`CREATE ROLE ${APP_ROLE} LOGIN NOSUPERUSER PASSWORD '${APP_PASSWORD}'`).catch((error: { code?: string }) => {
+      if (error.code !== "42710" && error.code !== "23505") throw error
+    })
   } finally {
     await admin.end()
   }

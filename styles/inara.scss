@@ -1337,3 +1337,16 @@ select[aria-invalid="true"] {
     color: var(--in-muted);
   }
 }
+
+// Decision panel: the version under review, and "changed while reviewing".
+.adm-reviewing a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.adm-changed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}

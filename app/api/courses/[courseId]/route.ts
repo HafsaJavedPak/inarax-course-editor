@@ -3,6 +3,7 @@ import { z } from "zod"
 import { courseForRoute, editsAsReviewer } from "@/lib/authz/context"
 import { CourseSchema } from "@/lib/course"
 import {
+  ApprovedLockedError,
   CourseLockedError,
   deleteCourse,
   getCourseReport,
@@ -42,7 +43,7 @@ export async function PUT(request: Request, ctx: Ctx) {
     const course = await saveCourseContent(loaded.ctx, parsed.data, { id: loaded.ctx.userId, asReviewer })
     return Response.json({ course, report: await getCourseReport(loaded.ctx, course) })
   } catch (e) {
-    if (e instanceof RevisionConflictError || e instanceof CourseLockedError) {
+    if (e instanceof RevisionConflictError || e instanceof CourseLockedError || e instanceof ApprovedLockedError) {
       return Response.json({ error: e.message }, { status: 409 })
     }
     throw e

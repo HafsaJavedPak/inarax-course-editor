@@ -2,13 +2,17 @@ import { z } from "zod"
 
 import { courseForRoute } from "@/lib/authz/context"
 import { submit } from "@/lib/course-status"
-import { getCourseReport, updateCourseWorkflow } from "@/lib/course-store"
+import { getCourseReport, submitForReview } from "@/lib/course-store"
 import { publishedWorkflowResponse } from "@/lib/workflow-response"
 
 // Body is optional: `note` (what changed) is required only after a rejection (lib/course-status.ts).
 const SubmitSchema = z.object({ note: z.string().default("") })
 
-/** Submit a course for review (from draft, rejected or changes requested). Only its author can. */
+/**
+ * Submit a course for review (from draft, rejected or changes requested). Only
+ * its author can. The content is sealed as a revision, and the review round
+ * records exactly that revision.
+ */
 export async function POST(request: Request, ctx: RouteContext<"/api/courses/[courseId]/submit">) {
   const { courseId } = await ctx.params
   const loaded = await courseForRoute(courseId, "course.submit")
@@ -21,6 +25,8 @@ export async function POST(request: Request, ctx: RouteContext<"/api/courses/[co
   const report = await getCourseReport(access, record.course)
   return publishedWorkflowResponse(
     access,
-    await updateCourseWorkflow(access, courseId, (current) => submit(current, report, access.userId, parsed.data.note)),
+    await submitForReview(access, courseId, access.userId, parsed.data.note, (current) =>
+      submit(current, report, access.userId, parsed.data.note),
+    ),
   )
 }

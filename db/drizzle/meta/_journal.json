@@ -29,6 +29,20 @@
       "when": 1791792373232,
       "tag": "0003_change_control_foundations",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791794658663,
+      "tag": "0004_revisions_and_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791794671028,
+      "tag": "0005_revisions_row_level_security",
+      "breakpoints": true
     }
   ]
 }

@@ -28,6 +28,10 @@ export type CourseAction =
   /** Submit, withdraw, tick off requested changes: the author's side of review. */
   | "course.submit"
   | "course.review"
+  /** See the course's history and compare versions. */
+  | "course.history"
+  /** Restore an earlier version (written forward as a new one). The author's: reviewers request changes instead. */
+  | "course.restore"
 
 export type TenantAction = "tenant.view" | "course.create"
 
@@ -56,8 +60,10 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
     case "course.edit":
     case "course.delete":
     case "course.publish":
+    case "course.history":
       return author || reviewer
     case "course.submit":
+    case "course.restore":
       return author
     case "course.review":
       return reviewer

@@ -5,11 +5,11 @@ import type { CourseAction } from "@/lib/authz/policy"
 import { findLessonRef, getCourseLimits } from "@/lib/course"
 import { getLessonStats } from "@/lib/course-validate"
 import {
+  ApprovedLockedError,
   CourseLockedError,
-  deleteCourseLesson,
+  deleteLessonContent,
   LessonConflictError,
   readLessonRecord,
-  recordLessonEdit,
   saveLessonContent,
 } from "@/lib/course-store"
 import { isUuid, parseLesson } from "@/lib/lesson"
@@ -101,22 +101,26 @@ export async function PUT(request: Request, ctx: Ctx) {
     if (error instanceof CourseLockedError) {
       return Response.json({ error: error.message, code: "course_locked" }, { status: 409 })
     }
+    if (error instanceof ApprovedLockedError) {
+      return Response.json({ error: error.message, code: "approved_locked" }, { status: 409 })
+    }
     console.error(`Failed to save lesson ${loaded.lessonId}:`, error)
     return Response.json({ error: "Failed to save lesson" }, { status: 500 })
   }
 }
 
-/** Delete a lesson's content (call before removing it from the course). */
+/** Delete a lesson's content (call before removing it from the course). Its earlier content stays in the history. */
 export async function DELETE(_request: Request, ctx: Ctx) {
   const loaded = await loadCourseFor(ctx, "course.edit")
   if (loaded.error) return loaded.error
 
   try {
-    await recordLessonEdit(loaded.access, loaded.course.id, loaded.editor)
+    await deleteLessonContent(loaded.access, loaded.course.id, loaded.lessonId, loaded.editor)
   } catch (error) {
-    if (error instanceof CourseLockedError) return Response.json({ error: error.message }, { status: 409 })
+    if (error instanceof CourseLockedError || error instanceof ApprovedLockedError) {
+      return Response.json({ error: error.message }, { status: 409 })
+    }
     throw error
   }
-  await deleteCourseLesson(loaded.access, loaded.course.id, loaded.lessonId)
   return new Response(null, { status: 204 })
 }

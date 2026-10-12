@@ -19,11 +19,13 @@ export function coursePaths(isAdmin: boolean | undefined) {
         lesson: (courseId: string, lessonId: string) => `/admin/courses/${courseId}/lessons/${lessonId}`,
         settings: (courseId: string) => `/admin/courses/${courseId}/settings`,
         preview: (courseId: string) => `/admin/courses/${courseId}/preview`,
+        history: (courseId: string) => `/admin/courses/${courseId}/history`,
       }
     : {
         course: (courseId: string) => `/courses/${courseId}`,
         lesson: (courseId: string, lessonId: string) => `/courses/${courseId}/lessons/${lessonId}`,
         settings: (courseId: string) => `/courses/${courseId}/settings`,
         preview: (courseId: string) => `/courses/${courseId}/preview`,
+        history: (courseId: string) => `/courses/${courseId}/history`,
       }
 }

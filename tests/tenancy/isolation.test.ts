@@ -186,7 +186,8 @@ describe("inside an organization", () => {
     expect((await getCourse(new Request("http://editor.test"), params({ courseId: ids.aliceOrg }))).status).toBe(200)
     expect((await submitRoute(new Request("http://editor.test"), params({ courseId: ids.aliceOrg }))).status).toBe(403)
     // Not in review yet: the review itself is refused by the workflow, not by access rules.
-    expect((await reviewRoute(json("POST", { decision: "approved" }), params({ courseId: ids.aliceOrg }))).status).toBe(409)
+    const seen = { revision_id: randomUUID(), content_hash: "0".repeat(64) }
+    expect((await reviewRoute(json("POST", { decision: "approved", ...seen }), params({ courseId: ids.aliceOrg }))).status).toBe(409)
   })
 
   it("someone removed from the organization on the host loses its courses at their next sign-in", async () => {

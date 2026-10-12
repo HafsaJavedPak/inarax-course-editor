@@ -3,7 +3,7 @@ import { z } from "zod"
 import { courseForRoute } from "@/lib/authz/context"
 import { ChangeRequestSchema } from "@/lib/course"
 import { allowMoreResubmissions, review } from "@/lib/course-status"
-import { updateCourseWorkflow } from "@/lib/course-store"
+import { decideReview, updateCourseWorkflow } from "@/lib/course-store"
 import { publishedWorkflowResponse } from "@/lib/workflow-response"
 
 const ReviewSchema = z.object({
@@ -11,11 +11,16 @@ const ReviewSchema = z.object({
   decision: z.enum(["approved", "rejected", "changes_requested", "allow_resubmissions"]),
   note: z.string().default(""),
   changes: z.array(ChangeRequestSchema.pick({ text: true, target: true })).default([]),
+  /** What the reviewer saw (the review page sends the course's head revision): decisions are bound to it. */
+  revision_id: z.uuid().optional(),
+  content_hash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
 })
 
 /**
  * A reviewer's decision on a course in review: accept, reject (note
- * required), or request changes (list required). Or `allow_resubmissions`,
+ * required), or request changes (list required). A decision must name the
+ * `revision_id` and `content_hash` the reviewer saw; if the course changed
+ * since, nothing is decided (409 content_changed). Or `allow_resubmissions`,
  * once the author has used up their resubmissions after a rejection. Used by
  * the review area.
  */
@@ -30,13 +35,23 @@ export async function POST(request: Request, ctx: RouteContext<"/api/courses/[co
     return Response.json({ error: "Invalid review", issues: z.flattenError(parsed.error) }, { status: 400 })
   }
 
-  const { decision, note, changes } = parsed.data
+  const { decision, note, changes, revision_id, content_hash } = parsed.data
+  if (decision === "allow_resubmissions") {
+    return publishedWorkflowResponse(
+      access,
+      await updateCourseWorkflow(access, courseId, (current) => allowMoreResubmissions(current, access.userId)),
+    )
+  }
+  if (!revision_id || !content_hash) {
+    return Response.json(
+      { error: "A decision must say which version was reviewed (revision_id and content_hash). Reload the review page." },
+      { status: 400 },
+    )
+  }
   return publishedWorkflowResponse(
     access,
-    await updateCourseWorkflow(access, courseId, (current) =>
-      decision === "allow_resubmissions"
-        ? allowMoreResubmissions(current, access.userId)
-        : review(current, decision, note, changes, access.userId),
+    await decideReview(access, courseId, access.userId, decision, { revisionId: revision_id, contentHash: content_hash }, (current) =>
+      review(current, decision, note, changes, access.userId),
     ),
   )
 }

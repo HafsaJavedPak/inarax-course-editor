@@ -1,7 +1,7 @@
 import type { RequestContext } from "@/lib/authz/context"
 import type { Course } from "@/lib/course"
 import type { WorkflowResult } from "@/lib/course-status"
-import { findCourse, readCourseLessons, recordPublish } from "@/lib/course-store"
+import { ApprovalMismatchError, findCourse, publishableContent, recordPublish } from "@/lib/course-store"
 import type { Lesson } from "@/lib/lesson"
 import { validateLesson } from "@/lib/lesson-validate"
 import {
@@ -17,7 +17,11 @@ type PublishOutcome =
   | { publishedAt: string; summary: PublishSummary }
   | { error: string; status: number; code: PlatformErrorKind | "error"; issues?: string[] }
 
-/** Publishes the course (with every saved lesson) to the platform and notes when it happened. */
+/**
+ * Publishes the course (with every saved lesson) to the platform and notes
+ * when it happened and which revision went. An accepted course publishes
+ * exactly its accepted revision (lib/course-store.ts publishableContent).
+ */
 export async function publishAndRecord(ctx: RequestContext, course: Course): Promise<PublishOutcome> {
   const actor = ctx.user
   try {
@@ -28,10 +32,12 @@ export async function publishAndRecord(ctx: RequestContext, course: Course): Pro
 
     // Only lessons that pass validation are sent. One with problems keeps its
     // last published version on the platform; the rest of the course still goes.
+    const content = await publishableContent(ctx, course.id)
+    if (!content) throw new Error("Course not found")
     const lessons = new Map<string, Lesson>()
     const skipped: string[] = []
-    const saved = await readCourseLessons(ctx, course.id)
-    for (const ref of course.levels.flatMap((l) => l.modules.flatMap((m) => m.lessons))) {
+    const saved = content.lessons
+    for (const ref of content.course.levels.flatMap((l) => l.modules.flatMap((m) => m.lessons))) {
       const lesson = saved.get(ref.id)
       if (!lesson) continue
       const errors = validateLesson(lesson).filter((i) => i.level === "error")
@@ -47,17 +53,20 @@ export async function publishAndRecord(ctx: RequestContext, course: Course): Pro
     const record = await findCourse(ctx, course.id)
     const organization = record?.tenantHostOrgId ? { hostOrgId: record.tenantHostOrgId } : null
     const published = await platform.publishCourse({
-      course,
+      course: content.course,
       lessons,
       actor: { id: actor.id, name: actor.name, email: actor.email },
       organization,
     })
     const summary = { ...published, warnings: [...skipped, ...published.warnings] }
     const publishedAt = new Date().toISOString()
-    await recordPublish(ctx, course.id, publishedAt)
+    await recordPublish(ctx, course.id, publishedAt, content.revisionId)
     if (summary.warnings.length) console.warn(`Published course ${course.id} with warnings:`, summary.warnings)
     return { publishedAt, summary }
   } catch (error) {
+    if (error instanceof ApprovalMismatchError) {
+      return { error: error.message, status: 409, code: "error" }
+    }
     if (error instanceof PlatformError) {
       if (error.kind === "unavailable" || error.kind === "auth") {
         console.error(`Failed to publish course ${course.id}:`, error.message, error.detail)
@@ -72,7 +81,12 @@ export async function publishAndRecord(ctx: RequestContext, course: Course): Pro
 /** Turns a workflow result into the JSON response every status route returns. */
 export function workflowResponse(result: WorkflowResult | null) {
   if (!result) return Response.json({ error: "Course not found" }, { status: 404 })
-  if ("error" in result) return Response.json({ error: result.error }, { status: result.status })
+  if ("error" in result) {
+    return Response.json(
+      { error: result.error, ...(result.code ? { code: result.code } : {}), ...(result.detail !== undefined ? { detail: result.detail } : {}) },
+      { status: result.status },
+    )
+  }
   return Response.json({ course: result.course })
 }
 

@@ -250,6 +250,16 @@ export function CourseBuilder({
         <button
           type="button"
           className="in-btn in-btn-secondary in-btn-sm"
+          title="Every version of this course: compare and restore (saves first)"
+          onClick={async () => {
+            if (await flush()) router.push(paths.history(course.id))
+          }}
+        >
+          History
+        </button>
+        <button
+          type="button"
+          className="in-btn in-btn-secondary in-btn-sm"
           onClick={async () => {
             if (await flush()) router.push(paths.settings(course.id))
           }}

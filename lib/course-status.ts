@@ -153,7 +153,10 @@ export function getSubmitBlockers(course: Course, report: CourseReport): SubmitB
 // Transitions. Each returns the updated course, or an error message.
 // ---------------------------------------------------------------------------
 
-export type WorkflowResult = { course: Course } | { error: string; status: number }
+export type WorkflowResult =
+  | { course: Course }
+  /** `code` and `detail` let clients react to specific refusals (e.g. content_changed). */
+  | { error: string; status: number; code?: string; detail?: unknown }
 type Result = WorkflowResult
 
 function withEvent(
