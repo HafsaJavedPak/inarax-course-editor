@@ -4,13 +4,17 @@
 // again. Run it against development or staging, never production.
 //
 //   PLATFORM_URL=http://localhost:3000/api/integrations/course-editor \
-//   PLATFORM_KEY_ID=… PLATFORM_KEY_SECRET=… PLATFORM_ACTOR_ID=… npm run verify-host
+//   EDITOR_PRIVATE_KEYS='[…]' PLATFORM_ACTOR_ID=… npm run verify-host
+//
+// EDITOR_PRIVATE_KEYS must be the editor key the host trusts (its public half
+// is what the host reads from the editor's /.well-known/jwks.json).
 //
 // PLATFORM_ACTOR_ID is the host's id for an admin (the `sub` its launch tokens
 // carry): hosts check who publishes, and the run approves nothing but needs a
 // user allowed to create courses.
 
-import { signRequest, sha256Hex, type SigningKey } from "../lib/protocol/signing"
+import { generateSigningKey, parsePrivateKeys, type SigningKey } from "../lib/protocol/keys"
+import { signRequest, sha256Hex } from "../lib/protocol/signing"
 import {
   AssetSchema,
   DeleteResultSchema,
@@ -23,12 +27,14 @@ import {
 } from "../lib/protocol/wire"
 
 const baseUrl = process.env.PLATFORM_URL
-const key: SigningKey = { id: process.env.PLATFORM_KEY_ID ?? "", secret: process.env.PLATFORM_KEY_SECRET ?? "" }
 const actorId = process.env.PLATFORM_ACTOR_ID ?? ""
-if (!baseUrl || !key.id || !key.secret || !actorId) {
-  console.error("Set PLATFORM_URL, PLATFORM_KEY_ID, PLATFORM_KEY_SECRET and PLATFORM_ACTOR_ID (a host user allowed to create courses).")
+if (!baseUrl || !process.env.EDITOR_PRIVATE_KEYS || !actorId) {
+  console.error("Set PLATFORM_URL, EDITOR_PRIVATE_KEYS and PLATFORM_ACTOR_ID (a host user allowed to create courses).")
   process.exit(2)
 }
+const key: SigningKey = parsePrivateKeys(process.env.EDITOR_PRIVATE_KEYS, "EDITOR_PRIVATE_KEYS")[0]
+// Same key id, different key: the host must refuse its signatures.
+const impostor: SigningKey = { ...generateSigningKey(key.kid).signingKey, kid: key.kid }
 const root = new URL(baseUrl.replace(/\/+$/, "") + "/")
 
 type Sent = { status: number; body: unknown }
@@ -46,9 +52,9 @@ async function send(
   if (options.bytes) headers["Content-Type"] = options.contentType ?? "application/octet-stream"
   const target = { method, pathWithQuery: url.pathname + url.search, body }
   const mode = options.sign ?? "valid"
-  if (mode === "valid") Object.assign(headers, signRequest(target, key))
-  if (mode === "wrong") Object.assign(headers, signRequest(target, { id: key.id, secret: `${key.secret}-wrong` }))
-  if (mode === "stale") Object.assign(headers, signRequest(target, key, Math.floor(Date.now() / 1000) - 3600))
+  if (mode === "valid") Object.assign(headers, signRequest(target, key, "course-editor-request"))
+  if (mode === "wrong") Object.assign(headers, signRequest(target, impostor, "course-editor-request"))
+  if (mode === "stale") Object.assign(headers, signRequest(target, key, "course-editor-request", Math.floor(Date.now() / 1000) - 3600))
   const res = await fetch(url, { method, headers, body: method === "GET" || method === "DELETE" ? undefined : (body as BodyInit) })
   const text = await res.text()
   let parsed: unknown = text
@@ -110,6 +116,7 @@ function testPackage(manifest: Manifest, courseId: string, stamp: string): Cours
       length_hours: 1,
       lesson_size: "short",
       pricing: { type: "free" },
+      organization: null,
     },
     review: { status: "draft", note: null, changes: [] },
     levels: [

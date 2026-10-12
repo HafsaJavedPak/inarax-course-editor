@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest"
 
 import { platformFromEnv } from "@/lib/platform"
+import { generateSigningKey } from "@/lib/protocol/keys"
 
 const valid = {
   PLATFORM_ADAPTER: "protocol",
   PLATFORM_URL: "https://host.test/api/integrations/course-editor",
-  PLATFORM_KEY_ID: "editor-1",
-  PLATFORM_KEY_SECRET: "x".repeat(32),
+  EDITOR_PRIVATE_KEYS: JSON.stringify([generateSigningKey("editor-1").privateJwk]),
 } as unknown as NodeJS.ProcessEnv
 
 const env = (overrides: Record<string, string | undefined>) => ({ ...valid, ...overrides }) as unknown as NodeJS.ProcessEnv
@@ -22,12 +22,29 @@ describe("platformFromEnv", () => {
   })
 
   it.each([
-    [{ PLATFORM_KEY_SECRET: undefined }, /PLATFORM_KEY_SECRET isn't set/],
+    [{ EDITOR_PRIVATE_KEYS: undefined }, /EDITOR_PRIVATE_KEYS isn't set/],
+    [{ EDITOR_PRIVATE_KEYS: "not json" }, /isn't valid JSON/],
+    [{ EDITOR_PRIVATE_KEYS: JSON.stringify([{ kty: "oct", kid: "k", k: "secret" }]) }, /Ed25519 private JWK/],
     [{ PLATFORM_URL: "not a url" }, /isn't a URL/],
     [{ PLATFORM_URL: "http://host.test/x" }, /must use https/],
-    [{ PLATFORM_KEY_SECRET: "short" }, /at least 32 characters/],
     [{ PLATFORM_ADAPTER: "inara-next" }, /Unknown PLATFORM_ADAPTER/],
   ])("refuses incomplete or unsafe settings %#", (overrides, message) => {
     expect(() => platformFromEnv(env(overrides))).toThrow(message)
+  })
+})
+
+describe("PLATFORM_PUBLISHING=off", () => {
+  it("keeps platform sign-in but turns publishing off", async () => {
+    const saved = { ...process.env }
+    try {
+      Object.assign(process.env, valid, { PLATFORM_PUBLISHING: "off" })
+      const { getPlatform, publishingEnabled } = await import("@/lib/platform")
+      const { authConfig } = await import("@/lib/auth-gate")
+      expect(publishingEnabled()).toBe(false)
+      expect(getPlatform()).toBeNull()
+      expect(authConfig()).toEqual({ mode: "launch", configured: true })
+    } finally {
+      process.env = saved
+    }
   })
 })

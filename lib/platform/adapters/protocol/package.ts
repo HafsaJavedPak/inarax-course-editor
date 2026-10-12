@@ -1,6 +1,7 @@
 // Builds the course package (contract/README.md § Course package) from the
 // editor's course file and its lessons.
 
+import { lastDecision } from "@/lib/course-status"
 import { LEVELS, type Course } from "@/lib/course"
 import type { Lesson } from "@/lib/lesson"
 import { PROTOCOL_VERSION, type CoursePackage, type LessonContent } from "@/lib/protocol/wire"
@@ -12,12 +13,17 @@ export type PackageInput = {
   /** The course's cover as a URL the host's learners can load (or null). */
   coverImageUrl: string | null
   actor: { id: string; name?: string | null; email?: string | null }
+  /** The host organization of the course's workspace; null or missing for a personal workspace. */
+  organization?: { hostOrgId: string } | null
   now?: Date
 }
 
-export function buildPackage({ course, lessons, coverImageUrl, actor, now = new Date() }: PackageInput): CoursePackage {
-  // The reviewer's note that goes with the current status, if the latest event for it has one.
-  const event = course.review_history.findLast((e) => e.status === course.status)
+export function buildPackage({ course, lessons, coverImageUrl, actor, organization, now = new Date() }: PackageInput): CoursePackage {
+  // The reviewers' feedback that goes with the current status: their last
+  // decision, when the course is still in the state they decided on. (A
+  // withdrawn or reopened course is a draft and carries no reviewer note.)
+  const decision = lastDecision(course.review_history)
+  const note = decision && decision.status === course.status ? decision.note : null
 
   return {
     protocol: PROTOCOL_VERSION,
@@ -32,10 +38,11 @@ export function buildPackage({ course, lessons, coverImageUrl, actor, now = new 
       length_hours: course.length_hours,
       lesson_size: course.lesson_size,
       pricing: course.pricing,
+      organization: organization ? { host_org_id: organization.hostOrgId } : null,
     },
     review: {
       status: course.status,
-      note: event?.note || null,
+      note: note || null,
       changes: course.change_requests.map((c) => ({ id: c.id, text: c.text, done: c.done })),
     },
     levels: LEVELS.map(({ id, label }) => {

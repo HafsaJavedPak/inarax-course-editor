@@ -1,23 +1,21 @@
 import Link from "next/link"
-import { notFound } from "next/navigation"
 
 import { CourseSettings } from "@/components/course/course-settings"
 import { AppHeader } from "@/components/course/app-header"
-import { getCurrentUser } from "@/lib/auth"
-import { getAccessibleCourse } from "@/lib/course-store"
+import { coursePaths } from "@/lib/admin-mode"
+import { authorCourseForPage, permissionsFor } from "@/lib/authz/context"
 
 import "@/components/lesson-editor/lesson-editor.scss"
 import "@/components/course/course-builder.scss"
 
 export default async function Page({ params }: PageProps<"/courses/[courseId]/settings">) {
   const { courseId } = await params
-  const user = await getCurrentUser()
-  const course = await getAccessibleCourse(courseId, user)
-  if (!course) notFound()
+  const { ctx, record } = await authorCourseForPage(courseId, coursePaths(true).settings(courseId))
+  const course = record.course
 
   return (
     <div className="in-page">
-      <AppHeader />
+      <AppHeader workspace={record.tenantId} />
       <main className="in-container">
         <Link href={`/courses/${course.id}`} className="in-back">
           ← {course.title}
@@ -26,7 +24,7 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]/se
           <h1>Course settings</h1>
           <p>Details, lesson limits and pricing. Levels, modules and lessons are edited in the builder.</p>
         </div>
-        <CourseSettings course={course} />
+        <CourseSettings course={course} canEdit={permissionsFor(ctx, record).settings} />
       </main>
     </div>
   )

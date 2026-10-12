@@ -1,26 +1,28 @@
 import { z } from "zod"
 
-import { getCurrentUser } from "@/lib/auth"
+import { courseForRoute, editsAsReviewer, resourceOf } from "@/lib/authz/context"
+import { can } from "@/lib/authz/policy"
+import { canonicalJson, courseContent } from "@/lib/revisions/hash"
 import { CourseSchema } from "@/lib/course"
 import {
+  ApprovedLockedError,
   CourseLockedError,
   deleteCourse,
-  getAccessibleCourse,
   getCourseReport,
   RevisionConflictError,
   saveCourseContent,
 } from "@/lib/course-store"
+import { audit } from "@/lib/authz/identity"
+import { notifyCourseDeleted } from "@/lib/collab/notify"
 import { getPlatform, PLATFORM_ERROR_STATUS, PlatformError } from "@/lib/platform"
 
 type Ctx = RouteContext<"/api/courses/[courseId]">
 
-const notFound = () => Response.json({ error: "Course not found" }, { status: 404 })
-
 export async function GET(_req: Request, ctx: Ctx) {
   const { courseId } = await ctx.params
-  const course = await getAccessibleCourse(courseId, await getCurrentUser())
-  if (!course) return notFound()
-  return Response.json({ course, report: await getCourseReport(course) })
+  const loaded = await courseForRoute(courseId, "course.read")
+  if (!loaded.ok) return loaded.error
+  return Response.json({ course: loaded.record.course, report: await getCourseReport(loaded.ctx, loaded.record.course) })
 }
 
 /**
@@ -29,8 +31,8 @@ export async function GET(_req: Request, ctx: Ctx) {
  */
 export async function PUT(request: Request, ctx: Ctx) {
   const { courseId } = await ctx.params
-  const user = await getCurrentUser()
-  if (!(await getAccessibleCourse(courseId, user))) return notFound()
+  const loaded = await courseForRoute(courseId, "course.edit")
+  if (!loaded.ok) return loaded.error
 
   const parsed = CourseSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success || parsed.data.id !== courseId) {
@@ -39,24 +41,33 @@ export async function PUT(request: Request, ctx: Ctx) {
       { status: 400 }
     )
   }
+  // Editors change the outline (levels, modules, lessons), not the course's settings.
+  if (!can(loaded.ctx, "course.settings", resourceOf(loaded.record)) && settingsOf(parsed.data) !== settingsOf(loaded.record.course)) {
+    return Response.json({ error: "Only the course's owners can change its settings." }, { status: 403 })
+  }
   try {
-    const course = await saveCourseContent(parsed.data, user)
-    return Response.json({ course, report: await getCourseReport(course) })
+    const asReviewer = await editsAsReviewer(loaded.ctx, loaded.record)
+    const course = await saveCourseContent(loaded.ctx, parsed.data, { id: loaded.ctx.userId, asReviewer })
+    return Response.json({ course, report: await getCourseReport(loaded.ctx, course) })
   } catch (e) {
-    if (e instanceof RevisionConflictError || e instanceof CourseLockedError) {
+    if (e instanceof RevisionConflictError || e instanceof CourseLockedError || e instanceof ApprovedLockedError) {
       return Response.json({ error: e.message }, { status: 409 })
     }
     throw e
   }
 }
 
-/** Delete a course and its lessons: admins any time, owners unless it's in review. */
+/** A course's settings (everything except the outline), comparable as one string. */
+function settingsOf(course: Parameters<typeof courseContent>[0]): string {
+  return canonicalJson(Object.fromEntries(Object.entries(courseContent(course)).filter(([key]) => key !== "levels")))
+}
+
+/** Delete a course and its lessons: reviewers any time, authors unless it's in review. */
 export async function DELETE(_req: Request, ctx: Ctx) {
   const { courseId } = await ctx.params
-  const user = await getCurrentUser()
-  const course = await getAccessibleCourse(courseId, user)
-  if (!course) return notFound()
-  if (user.role !== "admin" && course.status === "in_review") {
+  const loaded = await courseForRoute(courseId, "course.delete")
+  if (!loaded.ok) return loaded.error
+  if (loaded.record.course.status === "in_review" && !(await editsAsReviewer(loaded.ctx, loaded.record))) {
     return Response.json({ error: "Withdraw the course from review before deleting it." }, { status: 409 })
   }
 
@@ -72,6 +83,8 @@ export async function DELETE(_req: Request, ctx: Ctx) {
       { status: PLATFORM_ERROR_STATUS[error.kind] },
     )
   }
-  await deleteCourse(courseId)
+  await deleteCourse(loaded.ctx, courseId)
+  await notifyCourseDeleted(courseId)
+  await audit({ actorId: loaded.ctx.userId, action: "course.delete", tenantId: loaded.record.tenantId, courseId, target: courseId })
   return new Response(null, { status: 204 })
 }

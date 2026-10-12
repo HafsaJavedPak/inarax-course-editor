@@ -1,7 +1,8 @@
 import { z } from "zod"
 
-import { getCurrentUser } from "@/lib/auth"
-import { getAccessibleCourse, updateCourseWorkflow } from "@/lib/course-store"
+import { courseForRoute } from "@/lib/authz/context"
+import { lastDecision } from "@/lib/course-status"
+import { updateCourseWorkflow } from "@/lib/course-store"
 import { workflowResponse } from "@/lib/workflow-response"
 
 const PatchSchema = z.object({
@@ -12,16 +13,17 @@ const PatchSchema = z.object({
 /** Creator ticks off a requested change and/or adds a note about it. */
 export async function PATCH(request: Request, ctx: RouteContext<"/api/courses/[courseId]/changes/[changeId]">) {
   const { courseId, changeId } = await ctx.params
-  const user = await getCurrentUser()
-  const course = await getAccessibleCourse(courseId, user)
-  if (!course || course.owner_id !== user.id) return workflowResponse(null)
+  const loaded = await courseForRoute(courseId, "course.submit")
+  if (!loaded.ok) return loaded.error
 
   const parsed = PatchSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return Response.json({ error: "Invalid update" }, { status: 400 })
 
   return workflowResponse(
-    await updateCourseWorkflow(courseId, (current) => {
-      if (current.status !== "changes_requested") {
+    await updateCourseWorkflow(loaded.ctx, courseId, (current) => {
+      // While changes are requested, or after withdrawing a resubmission (a
+      // draft whose last decision was "changes requested"); never in review.
+      if (current.status === "in_review" || lastDecision(current.review_history)?.status !== "changes_requested") {
         return { error: "Changes can only be updated while changes are requested.", status: 409 }
       }
       if (!current.change_requests.some((c) => c.id === changeId)) {

@@ -1,12 +1,16 @@
-import { getCurrentUser } from "@/lib/auth"
+import { canInTenant } from "@/lib/authz/policy"
+import { getRequestContext, workspaceCourses } from "@/lib/authz/context"
 import { exportCourses, today, zipResponse } from "@/lib/course-export"
-import { listCourses } from "@/lib/course-store"
 
-/** Download all of the signed-in creator's courses, with lessons and images, as one zip. */
-export async function GET() {
-  const courses = await listCourses((await getCurrentUser()).id)
-  if (courses.length === 0) return Response.json({ error: "There are no courses to download" }, { status: 404 })
+/** Download the user's courses (in every workspace, or `?workspace=<id>` only), with lessons and images, as one zip. */
+export async function GET(request: Request) {
+  const ctx = await getRequestContext()
+  const workspace = new URL(request.url).searchParams.get("workspace") ?? undefined
+  if (workspace && !canInTenant(ctx, "tenant.view", workspace)) return Response.json({ error: "Workspace not found" }, { status: 404 })
 
-  const zip = await exportCourses(courses.map((c) => c.id))
+  const records = await workspaceCourses(ctx, workspace)
+  if (records.length === 0) return Response.json({ error: "There are no courses to download" }, { status: 404 })
+
+  const zip = await exportCourses(ctx, records.map((r) => r.course))
   return zipResponse(zip, `inara-courses-${today()}.zip`)
 }

@@ -1,17 +1,25 @@
 {
-  "description": "A launch token and its parts. See contract/README.md § Launch. Valid at verify_at; expired 60 s later.",
-  "key": {
-    "id": "example-key",
-    "secret": "example-secret-do-not-use-in-production"
+  "description": "A launch token (signed by the host's example key) and its parts. See contract/README.md § Launch. Valid at verify_at; expired 60 s later.",
+  "host_jwks": {
+    "keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "kid": "example-host-key",
+        "x": "The0h9XWOIcf9B-V6cco05IfjKdfYw1jopJZUwbNHi0",
+        "alg": "EdDSA",
+        "use": "sig"
+      }
+    ]
   },
-  "signing_context": "course-editor-launch.v1.",
+  "signing_context": "course-editor-launch.v2.",
   "verify_at": 1800000010,
-  "token": "v1.eyJ2IjoxLCJraWQiOiJleGFtcGxlLWtleSIsImF1ZCI6ImNvdXJzZS1lZGl0b3IiLCJpYXQiOjE4MDAwMDAwMDAsImV4cCI6MTgwMDAwMDA2MCwianRpIjoiN2QxZjBlNWEtMmM0Yi00ZThmLTlhM2QtNmI1YzRkM2UyZjFhIiwiaXNzIjoiZXhhbXBsZS1ob3N0Iiwic3ViIjoiM2YwYzJiOWUtOGE0MS00ZDdlLTljNTUtMmI2ZjFlMGE3ZDEzIiwiZW1haWwiOiJzYXJhQGV4YW1wbGUuY29tIiwibmFtZSI6IlNhcmEgS2hhbiIsInJvbGUiOiJjcmVhdG9yIn0.Kuv40Hmd6ynVL0gMEeW1lwSLEjJVQV8QNYMiYE0CVfE",
-  "payload_b64url": "eyJ2IjoxLCJraWQiOiJleGFtcGxlLWtleSIsImF1ZCI6ImNvdXJzZS1lZGl0b3IiLCJpYXQiOjE4MDAwMDAwMDAsImV4cCI6MTgwMDAwMDA2MCwianRpIjoiN2QxZjBlNWEtMmM0Yi00ZThmLTlhM2QtNmI1YzRkM2UyZjFhIiwiaXNzIjoiZXhhbXBsZS1ob3N0Iiwic3ViIjoiM2YwYzJiOWUtOGE0MS00ZDdlLTljNTUtMmI2ZjFlMGE3ZDEzIiwiZW1haWwiOiJzYXJhQGV4YW1wbGUuY29tIiwibmFtZSI6IlNhcmEgS2hhbiIsInJvbGUiOiJjcmVhdG9yIn0",
-  "signature_b64url": "Kuv40Hmd6ynVL0gMEeW1lwSLEjJVQV8QNYMiYE0CVfE",
+  "token": "v2.eyJ2IjoyLCJraWQiOiJleGFtcGxlLWhvc3Qta2V5IiwiYXVkIjoiY291cnNlLWVkaXRvciIsImlhdCI6MTgwMDAwMDAwMCwiZXhwIjoxODAwMDAwMDYwLCJqdGkiOiI3ZDFmMGU1YS0yYzRiLTRlOGYtOWEzZC02YjVjNGQzZTJmMWEiLCJpc3MiOiJleGFtcGxlLWhvc3QiLCJzdWIiOiIzZjBjMmI5ZS04YTQxLTRkN2UtOWM1NS0yYjZmMWUwYTdkMTMiLCJlbWFpbCI6InNhcmFAZXhhbXBsZS5jb20iLCJuYW1lIjoiU2FyYSBLaGFuIiwicm9sZSI6ImFkbWluIiwib3JncyI6W3siaWQiOiI4YjdlNmM1ZC00ZjNhLTRiMmMtOWQxZS0wZjFhMmIzYzRkNWUiLCJuYW1lIjoiQWNtZSBMZWFybmluZyIsInJvbGUiOiJhZG1pbiJ9LHsiaWQiOiIxYzJkM2U0Zi01YTZiLTRjN2QtOGU5Zi1hMGIxYzJkM2U0ZjUiLCJuYW1lIjoiQmV0YSBBY2FkZW15Iiwicm9sZSI6ImNyZWF0b3IifV0sInN0YWZmIjpmYWxzZX0.ZG-Hv84wsacv4VSoKmaUvC1QbYaARRCa1vGZ2akdemfla22HQVu_qyw9JTUL3S-xWZxeMaM6X3_K0PBiNESwAQ",
+  "payload_b64url": "eyJ2IjoyLCJraWQiOiJleGFtcGxlLWhvc3Qta2V5IiwiYXVkIjoiY291cnNlLWVkaXRvciIsImlhdCI6MTgwMDAwMDAwMCwiZXhwIjoxODAwMDAwMDYwLCJqdGkiOiI3ZDFmMGU1YS0yYzRiLTRlOGYtOWEzZC02YjVjNGQzZTJmMWEiLCJpc3MiOiJleGFtcGxlLWhvc3QiLCJzdWIiOiIzZjBjMmI5ZS04YTQxLTRkN2UtOWM1NS0yYjZmMWUwYTdkMTMiLCJlbWFpbCI6InNhcmFAZXhhbXBsZS5jb20iLCJuYW1lIjoiU2FyYSBLaGFuIiwicm9sZSI6ImFkbWluIiwib3JncyI6W3siaWQiOiI4YjdlNmM1ZC00ZjNhLTRiMmMtOWQxZS0wZjFhMmIzYzRkNWUiLCJuYW1lIjoiQWNtZSBMZWFybmluZyIsInJvbGUiOiJhZG1pbiJ9LHsiaWQiOiIxYzJkM2U0Zi01YTZiLTRjN2QtOGU5Zi1hMGIxYzJkM2U0ZjUiLCJuYW1lIjoiQmV0YSBBY2FkZW15Iiwicm9sZSI6ImNyZWF0b3IifV0sInN0YWZmIjpmYWxzZX0",
+  "signature_b64url": "ZG-Hv84wsacv4VSoKmaUvC1QbYaARRCa1vGZ2akdemfla22HQVu_qyw9JTUL3S-xWZxeMaM6X3_K0PBiNESwAQ",
   "claims": {
-    "v": 1,
-    "kid": "example-key",
+    "v": 2,
+    "kid": "example-host-key",
     "aud": "course-editor",
     "iat": 1800000000,
     "exp": 1800000060,
@@ -20,6 +28,19 @@
     "sub": "3f0c2b9e-8a41-4d7e-9c55-2b6f1e0a7d13",
     "email": "sara@example.com",
     "name": "Sara Khan",
-    "role": "creator"
+    "role": "admin",
+    "orgs": [
+      {
+        "id": "8b7e6c5d-4f3a-4b2c-9d1e-0f1a2b3c4d5e",
+        "name": "Acme Learning",
+        "role": "admin"
+      },
+      {
+        "id": "1c2d3e4f-5a6b-4c7d-8e9f-a0b1c2d3e4f5",
+        "name": "Beta Academy",
+        "role": "creator"
+      }
+    ],
+    "staff": false
   }
 }

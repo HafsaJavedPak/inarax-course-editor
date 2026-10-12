@@ -2,21 +2,23 @@ import { notFound } from "next/navigation"
 
 import { LessonEditor } from "@/components/lesson-editor/lesson-editor"
 import { findLessonRef, getCourseLimits } from "@/lib/course"
-import { getCurrentUser } from "@/lib/auth"
-import { getAccessibleCourse, readCourseLesson } from "@/lib/course-store"
+import { coursePaths } from "@/lib/admin-mode"
+import { authorCourseForPage, permissionsFor } from "@/lib/authz/context"
+import { readLessonRecord } from "@/lib/course-store"
 import { createLesson } from "@/lib/lesson"
+import { liveEditing } from "@/lib/collab/live"
 import { publishingEnabled } from "@/lib/platform"
 
 export default async function Page({ params }: PageProps<"/courses/[courseId]/lessons/[lessonId]">) {
   const { courseId, lessonId } = await params
 
-  const user = await getCurrentUser()
-  const course = await getAccessibleCourse(courseId, user)
-  const found = course ? findLessonRef(course, lessonId) : null
-  if (!course || !found) notFound()
+  const { ctx, record } = await authorCourseForPage(courseId, coursePaths(true).lesson(courseId, lessonId))
+  const course = record.course
+  const found = findLessonRef(course, lessonId)
+  if (!found) notFound()
 
-  // A lesson added in the builder has no file until its first save.
-  const saved = await readCourseLesson(courseId, lessonId)
+  // A lesson added in the builder has no content until its first save.
+  const saved = await readLessonRecord(ctx, courseId, lessonId)
   const limits = getCourseLimits(course)
 
   return (
@@ -25,7 +27,8 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]/le
       courseId={courseId}
       lessonId={lessonId}
       lessonTitle={found.ref.title}
-      initialLesson={saved ?? createLesson()}
+      initialLesson={saved?.lesson ?? createLesson()}
+      initialRevision={saved?.revision ?? 0}
       isNew={saved === null}
       sizeHint={{
         words: [limits.words.min, limits.words.max],
@@ -34,7 +37,9 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]/le
       wordsPerMinute={limits.words_per_minute}
       courseStatus={course.status}
       publishedAt={course.published_at}
-      publishingEnabled={publishingEnabled()}
+      live={liveEditing() !== null}
+      publishingEnabled={publishingEnabled() && permissionsFor(ctx, record).publish}
+      canEdit={permissionsFor(ctx, record).edit}
     />
   )
 }

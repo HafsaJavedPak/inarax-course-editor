@@ -270,7 +270,7 @@ flowchart LR
         WR["workflow-response.ts<br/>publishAndRecord"]
         PUBL["platform/index.ts → PlatformPort<br/>adapters/protocol: index · package · assets · locate"]
         DBM["platform/http-client.ts<br/>signing · timeouts · retries · problem+json"]
-        PROT["protocol/<br/>wire.ts (messages) · signing.ts (HMAC)"]
+        PROT["protocol/<br/>wire.ts (messages) · signing.ts · keys.ts · jwks.ts (Ed25519)"]
         EXP["course-export.ts<br/>zip (fflate)"]
         STG["storage.ts<br/>DATA_DIR paths"]
     end
@@ -392,7 +392,7 @@ sequenceDiagram
 | `lib/platform/index.ts` | `getPlatform()`: picks the adapter from env | `workflow-response` |
 | `lib/platform/http-client.ts` | HTTP client: request signing, timeouts, retries, request ids, response validation, RFC 9457 problems | adapters |
 | `lib/protocol/wire.ts` | Course Publishing Protocol messages (zod): manifest, package, result, asset, problem; source of `contract/schemas/` | adapter, `scripts/generate-contract.ts`, tests |
-| `lib/protocol/signing.ts` | HMAC-SHA256 request signing and verification | `http-client`, `scripts/verify-host.ts`, tests |
+| `lib/protocol/signing.ts` | Ed25519 request signing and verification (v2; keys in `keys.ts`, other side's JWKS via `jwks.ts`) | `http-client`, `scripts/verify-host.ts`, tests |
 | `lib/platform/adapters/protocol/` | `index.ts` (manifest, publish, delete, error mapping), `package.ts` (course → package), `assets.ts` (content-addressed image upload), `locate.ts` (error paths → lesson / section / block) | `getPlatform()` |
 | `lib/workflow-response.ts` | `publishAndRecord` (reads lessons, calls the platform); JSON responses for workflow routes | publish / submit / withdraw / review routes |
 | `lib/course-export.ts` | Zip building (fflate) | export routes |
@@ -400,7 +400,7 @@ sequenceDiagram
 | `lib/uploads.ts` | `imageSrc`: serve own uploads from the current host | thumbnails, image blocks |
 | `lib/auth.ts` | Current user from the sign-in session (`getCurrentUser`, `requireAdminArea`) | routes, pages |
 | `lib/auth-gate.ts`, `proxy.ts` | Auth mode and who may open which path, checked on every request | proxy |
-| `lib/session.ts`, `lib/launch-replay.ts`, `lib/protocol/launch.ts` | Session cookie, single-use launch tokens, the token format | `app/launch`, `lib/auth.ts` |
+| `lib/session.ts`, `lib/launch-replay.ts`, `lib/protocol/launch.ts` | Database sessions (8 h, 30 min idle, revocable), single-use launch tokens, the Ed25519 token format | `app/launch`, `lib/auth.ts` |
 | `lib/admin-mode.ts` | Admin-area paths; the local-only admin header | components |
 | `lib/currencies.ts` | Currency list for paid courses | course schema, form |
 | `lib/course-preview.ts` | `readAllLessons`: every saved lesson of a course, for the preview pages | preview pages |

@@ -11,8 +11,8 @@
 import { z } from "zod"
 
 /** major.minor. A host accepts any package whose major it supports. */
-export const PROTOCOL_VERSION = "1.1"
-export const PROTOCOL_MAJOR = 1
+export const PROTOCOL_VERSION = "2.0"
+export const PROTOCOL_MAJOR = 2
 
 /** Paths, relative to the host's base URL (PLATFORM_URL). */
 export const PROTOCOL_PATHS = {
@@ -109,6 +109,13 @@ export const CoursePackageSchema = z.object({
       z.object({ type: z.literal("free") }),
       z.object({ type: z.literal("paid"), amount: z.number().positive(), currency: z.string().length(3) }),
     ]),
+    /**
+     * Which of the host's organizations the course belongs to: the
+     * organization of the editor workspace it was written in (its id from the
+     * launch token's `orgs`). null: a personal workspace; the host uses its
+     * default organization. Since 2.0.
+     */
+    organization: z.object({ host_org_id: z.string().min(1).max(200) }).nullable().default(null),
   }),
   review: z.object({
     status: z.enum(REVIEW_STATUSES),
@@ -170,6 +177,10 @@ export const ManifestSchema = z.object({
     version: z.string().optional(),
     /** Where a person signs in to the editor through the host (it mints a launch token). Since 1.1. */
     launch_url: z.url().optional(),
+    /** Where the editor sends people who sign out, to end their host session too. Since 2.0. */
+    logout_url: z.url().optional(),
+    /** The host's own sign-in page, linked after signing out of both. Since 2.0. */
+    sign_in_url: z.url().optional(),
   }),
   capabilities: z.object({
     /** null: the host can't store files; the editor links images from its own public address. */

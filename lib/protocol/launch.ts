@@ -1,20 +1,25 @@
 // Launch tokens: how a host signs one of its users in to the editor
 // (contract/README.md § Launch). The host decides who may use the editor and
 // with which role; the editor trusts a token only if it carries a valid
-// signature from the shared key, is fresh, and hasn't been used before.
+// signature from one of the HOST's published keys, is fresh, and hasn't been
+// used before.
 //
-//   token = "v1." + b64url(payload JSON) + "." + b64url(HMAC-SHA256(secret, "course-editor-launch.v1." + b64url(payload JSON)))
+//   token = "v2." + b64url(payload JSON) + "." + b64url(Ed25519(host private key, "course-editor-launch.v2." + b64url(payload JSON)))
 //
-// The "course-editor-launch.v1." prefix separates these signatures from
-// request signatures (lib/protocol/signing.ts), which use the same key.
+// The payload's `kid` says which host key signed it; the editor looks the
+// public key up in the host's JWKS (lib/protocol/jwks.ts). The editor never
+// holds the host's private key, so it can check tokens but never make one.
+// The "course-editor-launch.v2." prefix separates these signatures from
+// signed requests and events (lib/protocol/signing.ts).
 //
 // Imports are relative (no "@/") so scripts can load this file directly.
 
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto"
+import { randomUUID } from "node:crypto"
 
-import type { SigningKey } from "./signing"
+import type { KeyResolver } from "./jwks"
+import { signMessage, verifyMessage, type SigningKey } from "./keys"
 
-export const LAUNCH_SIGNING_CONTEXT = "course-editor-launch.v1."
+export const LAUNCH_SIGNING_CONTEXT = "course-editor-launch.v2."
 /** Longest lifetime a token may claim (exp - iat). Hosts should use about 60 seconds. */
 export const MAX_LAUNCH_TOKEN_LIFETIME_SECONDS = 300
 /** How far a token's iat may be ahead of this clock. */
@@ -22,8 +27,14 @@ export const LAUNCH_CLOCK_SKEW_SECONDS = 60
 
 export type LaunchRole = "admin" | "creator"
 
+/** An organization the user belongs to on the host, with their role in it (protocol 1.2). */
+export type LaunchOrg = { id: string; name: string; role: LaunchRole }
+
+/** Most orgs a token may list. */
+export const MAX_LAUNCH_ORGS = 200
+
 export type LaunchClaims = {
-  v: 1
+  v: 2
   kid: string
   /** Which host issued it, e.g. "inara-next". */
   iss: string
@@ -32,7 +43,15 @@ export type LaunchClaims = {
   sub: string
   email: string | null
   name: string | null
+  /**
+   * Admin of any organization (1.1 meaning, kept for older editors). Since 1.2
+   * the editor uses `orgs` and `staff` when the token has them.
+   */
   role: LaunchRole
+  /** 1.2: every organization where the user is an admin or creator. Absent from 1.1 hosts. */
+  orgs?: LaunchOrg[]
+  /** 1.2: a platform admin, who reviews courses in personal workspaces. Absent from 1.1 hosts. */
+  staff?: boolean
   iat: number
   exp: number
   /** Unique per token; the editor refuses one it has seen. */
@@ -40,17 +59,17 @@ export type LaunchClaims = {
 }
 
 const b64url = (data: Buffer | string) => Buffer.from(data).toString("base64url")
-const mac = (secret: string, payload: string) => createHmac("sha256", secret).update(LAUNCH_SIGNING_CONTEXT + payload).digest()
 
 /** Mints a token. Hosts implement the same; the editor uses it in tests and fixtures. */
 export function signLaunchToken(
-  claims: Pick<LaunchClaims, "iss" | "sub" | "email" | "name" | "role"> & Partial<Pick<LaunchClaims, "iat" | "exp" | "jti">>,
+  claims: Pick<LaunchClaims, "iss" | "sub" | "email" | "name" | "role"> &
+    Partial<Pick<LaunchClaims, "orgs" | "staff" | "iat" | "exp" | "jti">>,
   key: SigningKey,
   now = Math.floor(Date.now() / 1000),
 ): string {
   const full: LaunchClaims = {
-    v: 1,
-    kid: key.id,
+    v: 2,
+    kid: key.kid,
     aud: "course-editor",
     iat: now,
     exp: now + 60,
@@ -58,23 +77,20 @@ export function signLaunchToken(
     ...claims,
   }
   const payload = b64url(JSON.stringify(full))
-  return `v1.${payload}.${b64url(mac(key.secret, payload))}`
+  return `v2.${payload}.${signMessage(key, LAUNCH_SIGNING_CONTEXT + payload)}`
 }
 
 export type LaunchVerifyResult = { ok: true; claims: LaunchClaims } | { ok: false; reason: string }
 
 /**
- * Checks a token's form, signature, audience, key and time. Single use is the
- * caller's job (see lib/launch-replay.ts): record `claims.jti` until `claims.exp`.
+ * Checks a token's form, signature (against the host's published keys),
+ * audience and time. Single use is the caller's job (see lib/launch-replay.ts):
+ * record `claims.jti` until `claims.exp`.
  */
-export function verifyLaunchToken(token: string, key: SigningKey, now = Math.floor(Date.now() / 1000)): LaunchVerifyResult {
+export async function verifyLaunchToken(token: string, hostKeys: KeyResolver, now = Math.floor(Date.now() / 1000)): Promise<LaunchVerifyResult> {
   const parts = token.split(".")
-  if (parts.length !== 3 || parts[0] !== "v1" || !parts[1] || !parts[2]) return { ok: false, reason: "malformed token" }
+  if (parts.length !== 3 || parts[0] !== "v2" || !parts[1] || !parts[2]) return { ok: false, reason: "malformed token" }
   const [, payload, signature] = parts
-
-  const given = Buffer.from(signature, "base64url")
-  const expected = mac(key.secret, payload)
-  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return { ok: false, reason: "bad signature" }
 
   let claims: LaunchClaims
   try {
@@ -82,15 +98,42 @@ export function verifyLaunchToken(token: string, key: SigningKey, now = Math.flo
   } catch {
     return { ok: false, reason: "malformed payload" }
   }
-  if (claims.v !== 1 || claims.aud !== "course-editor") return { ok: false, reason: "not a course editor launch token" }
-  if (claims.kid !== key.id) return { ok: false, reason: "signed with another key" }
+  if (typeof claims?.kid !== "string" || !claims.kid) return { ok: false, reason: "missing key id" }
+  // The payload is only trusted once the signature checks out against the key it names.
+  const publicKey = await hostKeys.getKey(claims.kid)
+  if (!publicKey) return { ok: false, reason: "signed with an unknown key" }
+  if (!verifyMessage(publicKey, LAUNCH_SIGNING_CONTEXT + payload, signature)) return { ok: false, reason: "bad signature" }
+
+  if (claims.v !== 2 || claims.aud !== "course-editor") return { ok: false, reason: "not a course editor launch token" }
   if (claims.role !== "admin" && claims.role !== "creator") return { ok: false, reason: "unknown role" }
   if (typeof claims.sub !== "string" || !claims.sub || typeof claims.jti !== "string" || !claims.jti) {
     return { ok: false, reason: "missing subject or id" }
   }
+  if (claims.orgs !== undefined && !validOrgs(claims.orgs)) return { ok: false, reason: "malformed orgs" }
+  if (claims.staff !== undefined && typeof claims.staff !== "boolean") return { ok: false, reason: "malformed staff" }
   if (!Number.isInteger(claims.iat) || !Number.isInteger(claims.exp)) return { ok: false, reason: "malformed times" }
   if (claims.exp - claims.iat > MAX_LAUNCH_TOKEN_LIFETIME_SECONDS || claims.exp <= claims.iat) return { ok: false, reason: "lifetime too long" }
   if (claims.iat > now + LAUNCH_CLOCK_SKEW_SECONDS) return { ok: false, reason: "issued in the future" }
   if (now >= claims.exp) return { ok: false, reason: "expired" }
   return { ok: true, claims }
+}
+
+function validOrgs(orgs: unknown): orgs is LaunchOrg[] {
+  return (
+    Array.isArray(orgs) &&
+    orgs.length <= MAX_LAUNCH_ORGS &&
+    orgs.every(
+      (o) =>
+        typeof o === "object" &&
+        o !== null &&
+        typeof o.id === "string" &&
+        o.id.length > 0 &&
+        o.id.length <= 200 &&
+        typeof o.name === "string" &&
+        o.name.length > 0 &&
+        o.name.length <= 200 &&
+        (o.role === "admin" || o.role === "creator"),
+    ) &&
+    new Set(orgs.map((o) => o.id)).size === orgs.length
+  )
 }

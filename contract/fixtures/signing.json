@@ -1,33 +1,101 @@
 {
-  "description": "Test vectors for X-Editor-Signature. See contract/README.md § Authentication.",
-  "key": {
-    "id": "example-key",
-    "secret": "example-secret-do-not-use-in-production"
+  "description": "Test vectors for X-Signature (Ed25519). See contract/README.md § Authentication. Example keys only: never configure them.",
+  "editor": {
+    "private_jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "kid": "example-editor-key",
+      "x": "JKq7S6lGt34wayEJP3vUFlMwmU6v-JLltqlDItn7iQI",
+      "d": "1M2cjJwLCwULH1TUsAAnoq8DIUQwTTVQwNIbLR7GRfI"
+    },
+    "jwks": {
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "kid": "example-editor-key",
+          "x": "JKq7S6lGt34wayEJP3vUFlMwmU6v-JLltqlDItn7iQI",
+          "alg": "EdDSA",
+          "use": "sig"
+        }
+      ]
+    }
   },
-  "cases": [
+  "host": {
+    "private_jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "kid": "example-host-key",
+      "x": "The0h9XWOIcf9B-V6cco05IfjKdfYw1jopJZUwbNHi0",
+      "d": "Q3OuegVZmAJAld0FapqpLygRSh68XtPROPEkqgI5tak"
+    },
+    "jwks": {
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "kid": "example-host-key",
+          "x": "The0h9XWOIcf9B-V6cco05IfjKdfYw1jopJZUwbNHi0",
+          "alg": "EdDSA",
+          "use": "sig"
+        }
+      ]
+    }
+  },
+  "requests": [
     {
       "method": "GET",
       "path_with_query": "/api/integrations/course-editor/v1/manifest",
       "body": "",
       "timestamp": 1800000000,
-      "string_to_sign": "v1\n1800000000\nGET\n/api/integrations/course-editor/v1/manifest\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "signature": "v1=2a6e44e50a1a7a640b65a5a41df2976a325572ac7a7304928df1298910783f34"
+      "context": "course-editor-request",
+      "string_to_sign": "course-editor-request.v2\n1800000000\nGET\n/api/integrations/course-editor/v1/manifest\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "headers": {
+        "x-signature-key-id": "example-editor-key",
+        "x-signature-timestamp": "1800000000",
+        "x-signature": "v2=xiaVRq8WCPl5lhFPg5IPfDOqLD2U64gmxmWA2hnnnPrtkrnUTT23mR70eog3-vDURUA2CGJrrb35dyVe0EalDw"
+      }
     },
     {
       "method": "PUT",
       "path_with_query": "/api/integrations/course-editor/v1/courses/7f72e600-3425-490c-b530-0179826cb206",
-      "body": "{\"protocol\":\"1.0\"}",
+      "body": "{\"protocol\":\"2.0\"}",
       "timestamp": 1800000123,
-      "string_to_sign": "v1\n1800000123\nPUT\n/api/integrations/course-editor/v1/courses/7f72e600-3425-490c-b530-0179826cb206\nab2170be902452c8f0d2800b9d6d4047368377c2a7576abb741284a9ed211035",
-      "signature": "v1=9581c8fae26811e0180d19662193c5e3038752a7fa20dfa543d63e07f6b5feec"
+      "context": "course-editor-request",
+      "string_to_sign": "course-editor-request.v2\n1800000123\nPUT\n/api/integrations/course-editor/v1/courses/7f72e600-3425-490c-b530-0179826cb206\nef218c0c30adadb779c299a952636ad40072e814c627cb09db5cdc5999e43485",
+      "headers": {
+        "x-signature-key-id": "example-editor-key",
+        "x-signature-timestamp": "1800000123",
+        "x-signature": "v2=smvD_2XRI7lzruIhrgeYGpQvYCarKpyjSc201AovyTHhfybAaHtPJgSEtMTBO_q0_2py8QTx5bce60UnFTUQAw"
+      }
     },
     {
       "method": "DELETE",
       "path_with_query": "/v1/courses/7f72e600-3425-490c-b530-0179826cb206?reason=test",
       "body": "",
       "timestamp": 1800000456,
-      "string_to_sign": "v1\n1800000456\nDELETE\n/v1/courses/7f72e600-3425-490c-b530-0179826cb206?reason=test\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "signature": "v1=66f9893715b89a37338f52c37138c596eee7110d4208d17381c58c3ad686800a"
+      "context": "course-editor-request",
+      "string_to_sign": "course-editor-request.v2\n1800000456\nDELETE\n/v1/courses/7f72e600-3425-490c-b530-0179826cb206?reason=test\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "headers": {
+        "x-signature-key-id": "example-editor-key",
+        "x-signature-timestamp": "1800000456",
+        "x-signature": "v2=Ks9nhHN23iBSBTyhegy8Dpsb6zg4jtHezRGblyYT7DnmG4adFaR3CYBOmpZwl9hw6QvDymgZjIUj3lnyIVPCDQ"
+      }
+    }
+  ],
+  "events": [
+    {
+      "method": "PUT",
+      "path_with_query": "/api/integrations/course-editor/v1/courses/7f72e600-3425-490c-b530-0179826cb206",
+      "body": "{\"protocol\":\"2.0\"}",
+      "timestamp": 1800000123,
+      "context": "course-editor-event",
+      "string_to_sign": "course-editor-event.v2\n1800000123\nPUT\n/api/integrations/course-editor/v1/courses/7f72e600-3425-490c-b530-0179826cb206\nef218c0c30adadb779c299a952636ad40072e814c627cb09db5cdc5999e43485",
+      "headers": {
+        "x-signature-key-id": "example-host-key",
+        "x-signature-timestamp": "1800000123",
+        "x-signature": "v2=XC4I7YmC-hWnzWw_FHm-YGWfHaozR3u3oMZsXOYj7b5MU0mxvPoSfXJTMHcOsSh4c5vEjidGbMbQf7qMYIFWCg"
+      }
     }
   ]
 }

@@ -1,13 +1,12 @@
-import { getCurrentUser } from "@/lib/auth"
+import { courseForRoute } from "@/lib/authz/context"
 import { exportCourses, slugify, today, zipResponse } from "@/lib/course-export"
-import { getAccessibleCourse } from "@/lib/course-store"
 
 /** Download one course (course.json, lessons, images) as a zip. */
 export async function GET(_request: Request, ctx: RouteContext<"/api/courses/[courseId]/export">) {
   const { courseId } = await ctx.params
-  const course = await getAccessibleCourse(courseId, await getCurrentUser())
-  if (!course) return Response.json({ error: "Course not found" }, { status: 404 })
+  const loaded = await courseForRoute(courseId, "course.export")
+  if (!loaded.ok) return loaded.error
 
-  const zip = await exportCourses([course.id])
-  return zipResponse(zip, `inara-${slugify(course.title)}-${today()}.zip`)
+  const zip = await exportCourses(loaded.ctx, [loaded.record.course])
+  return zipResponse(zip, `inara-${slugify(loaded.record.course.title)}-${today()}.zip`)
 }

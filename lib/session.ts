@@ -1,54 +1,123 @@
-// The editor's own sign-in session, started from a host's launch token
-// (app/launch/route.ts). A signed cookie: no session store, so the editor keeps
-// running as a single stateless process.
+import "server-only"
+
+// Signed-in sessions, kept in the database (table `sessions`).
 //
-// The cookie key is derived from PLATFORM_KEY_SECRET with a fixed label, so
-// there's no extra secret to manage and a session cookie can never pass as a
-// launch token or request signature. Rotating the platform key signs everyone
-// out, which is what rotation should do.
+// The browser's `editor_session` cookie holds only a random 32-byte token; the
+// database stores its SHA-256. On every request the session must still be:
+//   - not revoked (sign out; or the host said the user's access changed),
+//   - within SESSION_TTL_SECONDS of its start and SESSION_IDLE_SECONDS of its
+//     last use,
+//   - from a launch signed by a host key the host still publishes. Rotating
+//     the host's key therefore signs everyone out.
+// Unlike a signed cookie, a session can be ended from the server at any time.
 
-import { createHmac, timingSafeEqual } from "node:crypto"
+import { createHash, randomBytes } from "node:crypto"
 
-import type { LaunchRole } from "@/lib/protocol/launch"
+import { and, eq, isNull } from "drizzle-orm"
 
-export const SESSION_COOKIE = "editor_session"
+import { sessions, users } from "@/lib/db/schema"
+import { withoutTenantScope } from "@/lib/db/tenant-db"
+import { notifyAccess } from "@/lib/collab/notify"
+import type { KeyResolver } from "@/lib/protocol/jwks"
+
+export { SESSION_COOKIE } from "@/lib/auth-gate"
+
+/** Longest a session lasts, however active. */
 export const SESSION_TTL_SECONDS = 8 * 60 * 60
+/** A session unused for this long ends. */
+export const SESSION_IDLE_SECONDS = 30 * 60
+/** How often last_seen_at is written (not on every request). */
+const TOUCH_EVERY_SECONDS = 60
 
-export type Session = {
-  /** The user's id on the host (the launch token's sub). */
-  sub: string
-  email: string | null
-  name: string | null
-  role: LaunchRole
-  exp: number
+const hashToken = (token: string) => createHash("sha256").update(token).digest("hex")
+
+/** Starts a session for a user who just signed in; returns the cookie token. */
+export async function createSession(userId: string, launchKid: string, now = new Date()): Promise<string> {
+  const token = randomBytes(32).toString("base64url")
+  await withoutTenantScope((tx) =>
+    tx.insert(sessions).values({
+      id: hashToken(token),
+      userId,
+      launchKid,
+      createdAt: now,
+      lastSeenAt: now,
+      expiresAt: new Date(now.getTime() + SESSION_TTL_SECONDS * 1000),
+    }),
+  )
+  return token
 }
 
-const b64url = (data: Buffer | string) => Buffer.from(data).toString("base64url")
-const sessionKey = (platformSecret: string) => createHmac("sha256", platformSecret).update("course-editor-session-key.v1").digest()
-const mac = (platformSecret: string, payload: string) =>
-  createHmac("sha256", sessionKey(platformSecret)).update(`editor-session.v1.${payload}`).digest()
+export type SessionUser = { id: string; email: string | null; name: string | null }
 
-export function encodeSession(session: Session, platformSecret: string): string {
-  const payload = b64url(JSON.stringify(session))
-  return `${payload}.${b64url(mac(platformSecret, payload))}`
-}
+/** Why a session isn't valid; shown on the signed-out page. */
+export type SessionEndReason = "expired" | "idle" | "signed_out" | "access_changed" | "rotated" | "unknown"
 
-/** The session in a cookie value, or null when it's missing, tampered with or expired. */
-export function decodeSession(value: string | undefined, platformSecret: string, now = Math.floor(Date.now() / 1000)): Session | null {
-  if (!value) return null
-  const [payload, signature, extra] = value.split(".")
-  if (!payload || !signature || extra !== undefined) return null
-  const given = Buffer.from(signature, "base64url")
-  const expected = mac(platformSecret, payload)
-  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null
-  try {
-    const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Session
-    if (typeof session.sub !== "string" || (session.role !== "admin" && session.role !== "creator")) return null
-    if (!Number.isInteger(session.exp) || now >= session.exp) return null
-    return session
-  } catch {
-    return null
+export type SessionCheck = { ok: true; user: SessionUser } | { ok: false; reason: SessionEndReason }
+
+/**
+ * Checks a cookie token. `hostKeys` is the host's published keys: a session
+ * whose launch key is no longer among them has ended (the host rotated it).
+ */
+export async function validateSession(token: string | undefined, hostKeys: KeyResolver, now = new Date()): Promise<SessionCheck> {
+  if (!token) return { ok: false, reason: "unknown" }
+  const id = hashToken(token)
+  const [row] = await withoutTenantScope((tx) =>
+    tx
+      .select({
+        userId: sessions.userId,
+        launchKid: sessions.launchKid,
+        lastSeenAt: sessions.lastSeenAt,
+        expiresAt: sessions.expiresAt,
+        revokedAt: sessions.revokedAt,
+        revokedReason: sessions.revokedReason,
+        email: users.email,
+        name: users.name,
+      })
+      .from(sessions)
+      .innerJoin(users, eq(users.id, sessions.userId))
+      .where(eq(sessions.id, id)),
+  )
+  if (!row) return { ok: false, reason: "unknown" }
+  if (row.revokedAt) return { ok: false, reason: row.revokedReason ?? "signed_out" }
+  if (now >= row.expiresAt) return { ok: false, reason: "expired" }
+  if (now.getTime() - row.lastSeenAt.getTime() > SESSION_IDLE_SECONDS * 1000) return { ok: false, reason: "idle" }
+  if (!(await hostKeys.getKey(row.launchKid))) return { ok: false, reason: "rotated" }
+
+  if (now.getTime() - row.lastSeenAt.getTime() > TOUCH_EVERY_SECONDS * 1000) {
+    await withoutTenantScope((tx) => tx.update(sessions).set({ lastSeenAt: now }).where(eq(sessions.id, id)))
   }
+  return { ok: true, user: { id: row.userId, email: row.email, name: row.name } }
+}
+
+/** Ends one session (sign out). */
+export async function revokeSession(token: string | undefined, now = new Date()): Promise<void> {
+  if (!token) return
+  await withoutTenantScope(async (tx) => {
+    const ended = await tx
+      .update(sessions)
+      .set({ revokedAt: now, revokedReason: "signed_out" })
+      .where(and(eq(sessions.id, hashToken(token)), isNull(sessions.revokedAt)))
+      .returning({ userId: sessions.userId })
+    // Live sockets opened in that session close.
+    for (const { userId } of ended) await notifyAccess(tx, { kind: "session", user: userId })
+  })
+}
+
+/** The session id (stored hash) of a cookie token: what collaboration tickets are bound to. */
+export const sessionIdOf = (token: string) => hashToken(token)
+
+/** Ends every session of a user, e.g. when the host says their role or organizations changed. Returns how many. */
+export async function revokeUserSessions(userId: string, now = new Date()): Promise<number> {
+  const ended = await withoutTenantScope(async (tx) => {
+    const rows = await tx
+      .update(sessions)
+      .set({ revokedAt: now, revokedReason: "access_changed" })
+      .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)))
+      .returning({ id: sessions.id })
+    if (rows.length) await notifyAccess(tx, { kind: "session", user: userId })
+    return rows
+  })
+  return ended.length
 }
 
 /** Cookie attributes. Secure whenever the editor is served over https. */

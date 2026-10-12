@@ -1,20 +1,18 @@
-import { notFound } from "next/navigation"
-
 import { CoursePreview } from "@/components/preview/course-preview"
-import { getCurrentUser } from "@/lib/auth"
+import { coursePaths } from "@/lib/admin-mode"
+import { authorCourseForPage } from "@/lib/authz/context"
 import { readAllLessons } from "@/lib/course-preview"
-import { getAccessibleCourse } from "@/lib/course-store"
 
 export default async function Page({ params, searchParams }: PageProps<"/courses/[courseId]/preview">) {
   const { courseId } = await params
   const { lesson } = await searchParams
-  const course = await getAccessibleCourse(courseId, await getCurrentUser())
-  if (!course) notFound()
+  const { ctx, record } = await authorCourseForPage(courseId, coursePaths(true).preview(courseId))
+  const course = record.course
 
   return (
     <CoursePreview
       course={course}
-      lessons={await readAllLessons(course)}
+      lessons={await readAllLessons(ctx, course)}
       backHref={`/courses/${course.id}`}
       initialLessonId={typeof lesson === "string" ? lesson : undefined}
     />

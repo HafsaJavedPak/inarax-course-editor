@@ -1,14 +1,17 @@
-import { getCurrentUser } from "@/lib/auth"
+import { courseForRoute } from "@/lib/authz/context"
 import { withdraw } from "@/lib/course-status"
-import { getAccessibleCourse, updateCourseWorkflow } from "@/lib/course-store"
-import { publishedWorkflowResponse, workflowResponse } from "@/lib/workflow-response"
+import { withdrawFromReview } from "@/lib/course-store"
+import { publishedWorkflowResponse } from "@/lib/workflow-response"
 
-/** Take a course out of review so it can be edited again. */
+/** Take a course out of review so it can be edited again. Only its author can. */
 export async function POST(_request: Request, ctx: RouteContext<"/api/courses/[courseId]/withdraw">) {
   const { courseId } = await ctx.params
-  const user = await getCurrentUser()
-  const course = await getAccessibleCourse(courseId, user)
-  if (!course || course.owner_id !== user.id) return workflowResponse(null)
+  const loaded = await courseForRoute(courseId, "course.submit")
+  if (!loaded.ok) return loaded.error
+  const { ctx: access } = loaded
 
-  return publishedWorkflowResponse(await updateCourseWorkflow(courseId, (current) => withdraw(current, user.id)), user)
+  return publishedWorkflowResponse(
+    access,
+    await withdrawFromReview(access, courseId, access.userId, (current) => withdraw(current, access.userId)),
+  )
 }

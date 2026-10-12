@@ -87,6 +87,8 @@ function VisualEditor({ markdown, onChange }: { markdown: string; onChange: (mar
   })
 
   const [extensions] = useState(() => createSimpleEditorExtensions({ placeholder: "Write this part of the lesson…" }))
+  // The markdown this editor last produced: a different `markdown` prop is someone else's change.
+  const emitted = useRef(markdown)
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -104,7 +106,14 @@ function VisualEditor({ markdown, onChange }: { markdown: string; onChange: (mar
       },
     },
     onFocus: ({ editor }) => setActiveEditor(editor as Editor),
-    onUpdate: ({ editor }) => onChangeRef.current(getMarkdown(editor as Editor)),
+    // Only real document changes are edits. Tiptap also emits "update" for
+    // other reasons (setEditable() below), and treating those as edits made
+    // merely opening a lesson save it, overwriting anyone else's newer save.
+    onUpdate: ({ editor, transaction }) => {
+      if (!transaction.docChanged) return
+      emitted.current = getMarkdown(editor as Editor)
+      onChangeRef.current(emitted.current)
+    },
   })
 
   useEffect(() => {
@@ -113,8 +122,18 @@ function VisualEditor({ markdown, onChange }: { markdown: string; onChange: (mar
   }, [editor, setActiveEditor])
 
   useEffect(() => {
-    editor?.setEditable(!readOnly)
+    editor?.setEditable(!readOnly, false) // false: don't emit an "update" (it isn't an edit)
   }, [editor, readOnly])
+
+  // Someone else changed this text (live editing): show it, keeping the caret near where it was.
+  useEffect(() => {
+    if (!editor || markdown === emitted.current) return
+    emitted.current = markdown
+    const { from, to } = editor.state.selection
+    editor.commands.setContent(markdown, { emitUpdate: false })
+    const size = editor.state.doc.content.size
+    editor.commands.setTextSelection({ from: Math.min(from, size), to: Math.min(to, size) })
+  }, [editor, markdown])
 
   return <EditorContent editor={editor} role="presentation" className="simple-editor-content" />
 }

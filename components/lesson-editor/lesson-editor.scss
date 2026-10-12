@@ -340,11 +340,36 @@
 }
 
 .le-add-block-menu {
-  width: 18rem;
-  padding: 0.375rem;
-  // 16 block types: scroll rather than run off a short screen.
+  // Block list on the left, a preview of the highlighted block on the right.
+  display: grid;
+  grid-template-columns: 18rem 17rem;
+  padding: 0 !important;
+  // 16 block types: the list scrolls rather than run off a short screen.
   max-height: min(32rem, var(--radix-dropdown-menu-content-available-height, 80vh));
+  overflow: hidden !important;
+
+  // No room beside the list: just the list, as before.
+  @media (max-width: 40rem) {
+    grid-template-columns: 18rem;
+
+    .le-add-block-preview {
+      display: none;
+    }
+  }
+}
+
+.le-add-block-list {
+  min-height: 0;
+  padding: 0.375rem;
   overflow-y: auto;
+}
+
+.le-add-block-preview {
+  min-height: 0;
+  padding: 0.75rem;
+  overflow-y: auto;
+  border-left: 1px solid var(--in-border);
+  background: var(--in-bg);
 }
 
 .le-add-block-label {
@@ -1029,6 +1054,24 @@
   color: var(--in-primary-hover);
 }
 
+.le-banner[data-tone="conflict"] {
+  background: var(--in-danger-bg);
+  color: var(--in-danger);
+}
+
+.le-conflict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.le-conflict-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
 // ---------------------------------------------------------------------------
 // Image hotspot editor
 // ---------------------------------------------------------------------------
@@ -1269,4 +1312,44 @@ button.le-issue-count {
 // Hidden while the lesson is shown in Preview (kept mounted so edits survive).
 .le-layout[hidden] {
   display: none;
+}
+
+
+// Live editing: who else is here, and in which block.
+.le-presence {
+  display: inline-flex;
+  align-items: center;
+}
+
+.le-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-left: -0.375rem;
+  border: 2px solid var(--in-surface);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &:first-child {
+    margin-left: 0;
+  }
+}
+
+.le-avatar-more {
+  background: var(--in-muted);
+}
+
+.le-block[data-peer] {
+  box-shadow: 0 0 0 2px var(--le-peer);
+}
+
+.le-peer {
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.6875rem;
+  line-height: 1.25rem;
 }

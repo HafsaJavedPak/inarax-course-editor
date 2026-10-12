@@ -33,7 +33,7 @@ flowchart LR
             AS["assets.ts<br/>content-addressed images"]
             LO["locate.ts<br/>error paths → words"]
         end
-        PR["lib/protocol/<br/>wire.ts (messages) · signing.ts (HMAC)"]
+        PR["lib/protocol/<br/>wire.ts (messages) · signing.ts · keys.ts · jwks.ts (Ed25519)"]
         H["lib/platform/http-client.ts<br/>signing · timeouts · retries · problems"]
     end
     HOST["Any host<br/>/v1/manifest · /v1/assets · /v1/courses"]
@@ -68,12 +68,15 @@ flowchart LR
 
 ### Authentication
 
-Requests are signed with HMAC-SHA256 over the timestamp, method, path and body hash
-(`X-Editor-Key-Id`, `X-Editor-Timestamp`, `X-Editor-Signature`; details in the contract). The key
-pair is shared with the host. To rotate: add the new key on the host (hosts accept several), switch
-the editor's `PLATFORM_KEY_ID` / `PLATFORM_KEY_SECRET`, then remove the old key from the host.
+Protocol 2.0: **nothing secret is shared.** The editor signs requests with its own Ed25519 private
+key (`EDITOR_PRIVATE_KEYS`) over the timestamp, method, path and body hash (`X-Signature-Key-Id`,
+`X-Signature-Timestamp`, `X-Signature`; details in the contract). The host checks them against the
+editor's public keys at `/.well-known/jwks.json`. The host signs launch tokens and events with its
+own key, which the editor checks against the host's JWKS (`PLATFORM_JWKS_URL`, default
+`<PLATFORM_URL>/v1/jwks`). Each side rotates its own key: new key first, deploy, drop the old one.
+Rotating the host's key signs every editor user out.
 
-The key identifies **the editor installation**. The package's `actor` is the person who pressed Save
+The signature identifies **the editor installation**. The package's `actor` is the person who pressed Save
 or made the decision: their **host** user id, name and email, from the launch token they signed in
 with. Hosts check it on every publish (inara-next: creators and admins may publish, only admins may
 approve, reject or request changes).
@@ -85,28 +88,46 @@ People sign in on the platform and open the editor from there (contract § Launc
 
 1. The platform shows its Course editor link only to people it lets in (inara-next: members an admin
    made **creators**, and **admins**).
-2. Clicking it makes the platform sign a 60-second, single-use launch token and POST it to the
-   editor's `/launch` (`app/launch/route.ts`).
-3. The editor checks it (`lib/protocol/launch.ts`, replay guard `lib/launch-replay.ts`) and starts an
-   8-hour signed session cookie (`lib/session.ts`, key derived from `PLATFORM_KEY_SECRET`).
-   Admins land on `/admin`, creators on `/dashboard`.
+2. Clicking it makes the platform sign (with its own Ed25519 key) a 60-second, single-use launch
+   token and POST it to the editor's `/launch` (`app/launch/route.ts`). The token lists the user's
+   organizations with their role in each (`orgs`), and whether they're platform staff (`staff`:
+   inara-next sets it for admins of the inaraX organization).
+3. The editor checks it (`lib/protocol/launch.ts`, replay guard `lib/launch-replay.ts`), records the
+   user and **mirrors their organizations** as workspaces (`lib/authz/identity.ts`: an organization
+   missing from the token is one they left, and its workspace goes), then starts a **session stored
+   in the database** (`lib/session.ts`): the cookie is a random token. A session ends on sign-out,
+   after 8 hours, after 30 idle minutes, when the platform sends `user.access_changed` (role or
+   organizations changed), or when the platform key that signed its launch is rotated away.
+   Reviewers land on `/admin`, everyone else on `/dashboard`.
 4. `proxy.ts` (with `lib/auth-gate.ts`) turns away requests without a session (pages go to
-   `/signed-out`, APIs get 401) and keeps non-admins out of `/admin`. `lib/auth.ts`
-   (`getCurrentUser`, `requireAdminArea`) checks again inside every page and route.
-5. The role comes only from the session. The old `x-inara-mode: admin` header is ignored in this
-   mode, so nobody can make themselves an admin.
+   `/signed-out`, APIs get 401). Every page and route then loads the user's workspaces and roles from
+   the database (`lib/authz/context.ts`) and asks `lib/authz/policy.ts` whether the action is
+   allowed. A course in a workspace the user isn't in answers 404, never 403.
+5. Course and lesson queries run in transactions scoped to the user's workspaces
+   (`lib/db/tenant-db.ts`), and Postgres row-level security checks the same scope on every row, so a
+   query that forgets its filter still can't reach another workspace.
 
-| Role | Can |
-|---|---|
-| creator | Create courses (owned by their platform user id), edit and publish their own, submit for review, withdraw |
-| admin | Everything a creator can, on every course, plus accept, reject and request changes |
+| Workspace | Role | Can |
+|---|---|---|
+| personal (everyone has one) | owner | Create courses, edit and publish their own, submit for review, withdraw |
+| | platform staff | Read, edit (as reviewer), accept, reject and request changes, in every personal workspace |
+| organization | creator | Create courses there; work on their own (others' courses are invisible) |
+| | admin | Everything on every course in that organization, including review; submit only their own |
 
-A role changed on the platform applies from the person's next launch. Their current session (up to
-8 hours) keeps the old role, but the platform's actor check still refuses publishes they're no longer
-allowed to make. **Sign out** (header) ends the editor session only.
+Reviewers edit from the review area (`/admin`): edits there are allowed during review and don't
+change the status. Someone who wrote a course and also reviews it (an org admin's own course) gets
+creator rules in the creator pages and reviewer rules in `/admin`.
 
-Without a platform (`PLATFORM_ADAPTER=none`, local work), there is no sign-in: one local creator, and
-`/admin` stays open, as before.
+When the platform changes someone's role or organizations it sends a signed `user.access_changed`
+event (`app/api/platform/events/route.ts`); the editor ends all of that person's sessions, so their
+next click asks them to sign in again and the new launch records the new access. The platform's
+actor check still refuses publishes they're no longer allowed to make. **Sign out** (header) ends the
+editor session and then sends the browser to the platform's `logout_url`, which signs them out
+there too, so "Open the platform" doesn't sign them straight back in. Protocol 2.0 needs a 2.x
+platform; 1.x platforms (shared HMAC secret) are no longer supported.
+
+Without a platform (`PLATFORM_ADAPTER=none`, local work), there is no sign-in: one local user who
+owns a personal workspace and also reviews it, so `/admin` works as before.
 
 ---
 
@@ -118,8 +139,8 @@ Put these in `.env.local` (see `.env.example`):
 |---|---|
 | `PLATFORM_ADAPTER` | `protocol` to publish, `none` (default) to only save locally |
 | `PLATFORM_URL` | The host's protocol base URL. inara-next: `<inara-next URL>/api/integrations/course-editor`. Must be https except for localhost |
-| `PLATFORM_KEY_ID` | Id of the signing key |
-| `PLATFORM_KEY_SECRET` | The signing secret, at least 32 characters (`openssl rand -base64 36`) |
+| `EDITOR_PRIVATE_KEYS` | The editor's own Ed25519 private keys, JSON list of JWKs, active first (`npm run keys:generate`) |
+| `PLATFORM_JWKS_URL` | Optional: the host's public keys, if not `<PLATFORM_URL>/v1/jwks` |
 | `EDITOR_PUBLIC_URL` | This editor's public address, for images the host can't store |
 
 Wrong or missing settings make Save answer "publishing isn't set up" with the exact variable at
@@ -134,9 +155,9 @@ inara-next implements the protocol in `app/api/integrations/course-editor/v1/` a
 inara-next side set:
 
 ```
-COURSE_EDITOR_KEYS=<PLATFORM_KEY_ID>:<PLATFORM_KEY_SECRET>   # several pairs, comma-separated, for rotation
-COURSE_EDITOR_URL=<this editor's public address>             # turns on the Course editor tabs and sign-in
-COURSE_EDITOR_ORGANIZATION_ID=<org id>                       # optional; default: the inaraX organization
+COURSE_EDITOR_PRIVATE_KEYS='[…]'                 # inara-next's own Ed25519 key(s): npm run course-editor:keys
+COURSE_EDITOR_URL=<this editor's public address>  # Course editor tabs, sign-in, and where it reads our public keys
+COURSE_EDITOR_ORGANIZATION_ID=<org id>            # optional; personal-workspace courses (default: inaraX)
 ```
 
 How inara-next maps a package (for reference; the editor doesn't depend on it):
@@ -146,23 +167,32 @@ How inara-next maps a package (for reference; the editor doesn't depend on it):
 | course / module / lesson UUID | `courses.uuid` / `modules.uuid` / `lessons.uuid` (same value) |
 | level 1–3 | `levels.level_number` 1–3 |
 | lesson content | the English canonical `generated_lessons.structured_content` |
-| `draft` / `in_review` / `changes_requested` / `approved` / `rejected` | course `DRAFT` / `UNDER_REVIEW` / `CHANGES_REQUESTED` / `APPROVED` / `REJECTED`; lessons `DRAFT` / `PENDING_REVIEW` / `REJECTED` (with comments) / `APPROVED` / `REJECTED` |
-| — | `PUBLISHED` and `RETIRED` are set in inara-next only and never overwritten |
+| `draft` / `in_review` / `changes_requested` / `approved` / `rejected` | course `DRAFT` / `UNDER_REVIEW` / `CHANGES_REQUESTED` / `PUBLISHED` (see below) / `REJECTED`; lessons `DRAFT` / `PENDING_REVIEW` / `REJECTED` (with comments) / `APPROVED` / `REJECTED` |
+| `course.organization.host_org_id` (from the workspace; `null` for personal) | the course's organization link (`null`: `COURSE_EDITOR_ORGANIZATION_ID`, default inaraX) |
+
+**Approval goes live.** An `approved` package from an org admin or staff becomes `PUBLISHED`, so
+learners in that organization see it on `/courses`. Without a cover image it stays `APPROVED` and the
+host returns a warning naming what's missing. While a course is `PUBLISHED`, packages that aren't
+`approved` don't change its content (a warning says the live version stays until re-approval), so
+unreviewed edits never reach learners. `RETIRED` is set in inara-next only.
 
 Moving a lesson or module now **moves** it on inara-next (learner progress stays), instead of the
 old delete-and-recreate.
 
 ### Local testing
 
-1. In inara-next's `.env`, add `COURSE_EDITOR_KEYS=editor-local:<secret>` and
-   `COURSE_EDITOR_URL=http://localhost:3001`, and run it (`npm run dev`, port 3000).
-2. In the editor's `.env.local`:
+1. In inara-next, run `npm run course-editor:keys` and put the printed key in `.env` as
+   `COURSE_EDITOR_PRIVATE_KEYS`, add `COURSE_EDITOR_URL=http://localhost:3001`, and run it
+   (`npm run dev`, port 3000).
+2. In the editor, run `npm run keys:generate`, and in `.env.local`:
    ```
    PLATFORM_ADAPTER=protocol
    PLATFORM_URL=http://localhost:3000/api/integrations/course-editor
-   PLATFORM_KEY_ID=editor-local
-   PLATFORM_KEY_SECRET=<secret>
+   EDITOR_PRIVATE_KEYS='[{"kty":"OKP","crv":"Ed25519",…}]'   # from keys:generate
    ```
+   Each side finds the other's public keys itself (JWKS); no secret is copied between them.
+   Without inara-next, `npm run dev:launch` is a stand-in platform (sign-in, key rotation,
+   access changes).
 3. `npm run dev -- -p 3001`. Opening <http://localhost:3001> now shows "signed out".
 4. In inara-next, as an admin, click **Course editor** in the sidebar (a new tab opens, signed in as
    admin). To try the creator side, make a user a **Creator** on Admin → Team Directory and open the
@@ -173,7 +203,7 @@ old delete-and-recreate.
 
 `npm run verify-host` runs the protocol's conformance checks (auth, manifest, assets, create,
 idempotency, moves, title swaps, removal, validation errors, rollback, actor check, delete) against a
-running host with the same three `PLATFORM_*` variables plus `PLATFORM_ACTOR_ID`: the platform user id
+running host with `PLATFORM_URL` and `EDITOR_PRIVATE_KEYS` plus `PLATFORM_ACTOR_ID`: the platform user id
 of an admin (inara-next: `users.uuid`). Use a development host: it creates and deletes a test course.
 
 ---

@@ -8,7 +8,16 @@ import { isLocked } from "@/lib/course-status"
 import { coursePaths, modeHeaders } from "@/lib/admin-mode"
 
 /** Edits an existing course's info and limits; levels and modules are untouched. */
-export function CourseSettings({ course, isAdmin = false }: { course: Course; isAdmin?: boolean }) {
+export function CourseSettings({
+  course,
+  isAdmin = false,
+  canEdit = true,
+}: {
+  course: Course
+  isAdmin?: boolean
+  /** False for people the course is shared with who may not change its settings. */
+  canEdit?: boolean
+}) {
   const router = useRouter()
 
   const { title, summary, learning_objectives, cover_image_url, audience, length_hours, lesson_size, pricing, limits } =
@@ -39,10 +48,15 @@ export function CourseSettings({ course, isAdmin = false }: { course: Course; is
     router.refresh()
   }
 
-  const locked = isLocked(course.status) && !isAdmin
+  const locked = (isLocked(course.status) && !isAdmin) || !canEdit
   return (
     <>
-      {locked && (
+      {!canEdit && (
+        <p className="cf-summary" role="status">
+          Only the course&apos;s owners can change its settings.
+        </p>
+      )}
+      {locked && canEdit && (
         <p className="cf-form-error" role="status">
           This course is in review, so its settings can&apos;t be changed. Withdraw it from the course page to edit.
         </p>

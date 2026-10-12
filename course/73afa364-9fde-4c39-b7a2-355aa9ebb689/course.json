@@ -1,0 +1,60 @@
+{
+  "title": "hafsa ka course",
+  "summary": "this covers everthhign",
+  "learning_objectives": [
+    "hafsa"
+  ],
+  "cover_image_url": null,
+  "audience": "hafsa",
+  "length_hours": 5,
+  "lesson_size": "medium",
+  "pricing": {
+    "type": "free"
+  },
+  "limits": null,
+  "id": "73afa364-9fde-4c39-b7a2-355aa9ebb689",
+  "version": 1,
+  "owner_id": "c93e4861-9c3e-4f4e-86c4-9822a89e8750",
+  "revision": 2,
+  "levels": [
+    {
+      "id": "associate",
+      "modules": [
+        {
+          "id": "e132d765-114d-4a1f-8d4b-a934b0edfaca",
+          "title": "Module 1",
+          "summary": "lesson",
+          "lessons": [
+            {
+              "id": "f2aba6e6-d45f-46e3-93ca-ed01cc8f8939",
+              "title": "Lesson 1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "intermediate",
+      "modules": []
+    },
+    {
+      "id": "advanced",
+      "modules": []
+    }
+  ],
+  "status": "draft",
+  "review_history": [
+    {
+      "status": "draft",
+      "at": "2026-10-05T07:03:56.932Z",
+      "by": "c93e4861-9c3e-4f4e-86c4-9822a89e8750",
+      "note": "Course created",
+      "changes": []
+    }
+  ],
+  "change_requests": [],
+  "created_at": "2026-10-05T07:03:56.932Z",
+  "updated_at": "2026-10-05T07:38:29.404Z",
+  "published_at": null,
+  "content_updated_at": null
+}

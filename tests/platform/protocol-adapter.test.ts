@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { createProtocolPlatform } from "@/lib/platform/adapters/protocol"
 import { PlatformError } from "@/lib/platform/port"
+import { generateSigningKey } from "@/lib/protocol/keys"
 import { sha256Hex } from "@/lib/protocol/signing"
 import { PROTOCOL_VERSION } from "@/lib/protocol/wire"
 
@@ -93,15 +94,24 @@ describe("protocol adapter: publish", () => {
     expect(error).toMatchObject({ kind: "conflict", issues: ["Course title: Another course is called that"] })
   })
 
-  it("reports wrong credentials as an auth error", async () => {
-    const { platform } = setup({ key: { id: TEST_KEY.id, secret: "a-different-secret-of-enough-length" } })
+  it("reports a key the host doesn't trust as an auth error", async () => {
+    // Same key id, different private key: the signature can't match the published public key.
+    const { platform } = setup({ key: generateSigningKey(TEST_KEY.kid).signingKey })
     const error = await platform.publishCourse(publishInput()).catch((e) => e)
     expect(error).toMatchObject({ kind: "auth" })
-    expect(error.message).toMatch(/PLATFORM_KEY_ID and PLATFORM_KEY_SECRET/)
+    expect(error.message).toMatch(/EDITOR_PRIVATE_KEYS/)
+  })
+
+  it("says when the person publishing isn't allowed to, without blaming the keys", async () => {
+    const { host, platform } = setup()
+    host.state.nextCourseProblem = { title: "Not allowed to publish", status: 403, code: "forbidden", detail: "The person publishing isn't a creator or admin on the platform." }
+    const error = await platform.publishCourse(publishInput()).catch((e) => e)
+    expect(error).toMatchObject({ kind: "auth" })
+    expect(error.message).toBe("The platform didn't allow this: Not allowed to publish: The person publishing isn't a creator or admin on the platform.")
   })
 
   it("refuses a host that speaks another protocol major", async () => {
-    const manifest = { ...defaultManifest(), protocol: "2.0" }
+    const manifest = { ...defaultManifest(), protocol: "3.0" }
     const { platform } = setup({ manifest })
     await expect(platform.publishCourse(publishInput())).rejects.toMatchObject({ kind: "not_configured" })
   })

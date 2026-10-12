@@ -1,6 +1,6 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 
 // --- UI Primitives ---
 import { Button } from "@/components/tiptap-ui-primitive/button"
@@ -42,6 +42,7 @@ import {
   McqBlock,
   SequencingBlock,
 } from "@/components/lesson-editor/blocks/assess-blocks"
+import { BlockPreview } from "@/components/lesson-editor/block-preview"
 
 import {
   BLOCK_CATALOG,
@@ -52,6 +53,7 @@ import {
   type TypedBlock,
 } from "@/lib/lesson"
 import type { LessonIssue } from "@/lib/lesson-validate"
+import { usePeersIn } from "@/components/collab/use-live-lesson"
 
 function BlockBody({
   block,
@@ -119,17 +121,26 @@ export function BlockEditor({
   const meta = isAuthorableBlock(block) ? BLOCK_CATALOG[block.type] : null
   const errors = issues.filter((i) => i.level === "error")
   const warnings = issues.filter((i) => i.level === "warning")
+  // Others editing this block right now (live editing).
+  const here = usePeersIn(block.id)
 
   return (
     <article
       className="le-block"
       data-block-id={block.id}
+      data-peer={here.length > 0 || undefined}
+      style={here.length ? ({ "--le-peer": here[0].user.color } as React.CSSProperties) : undefined}
       data-category={meta?.category ?? "other"}
       data-invalid={errors.length > 0}
     >
       <header className="le-block-header">
         <span className="le-block-type">{meta?.label ?? block.type}</span>
         {meta && <span className="le-block-category">{meta.category}</span>}
+        {here.map((p) => (
+          <span key={p.clientId} className="le-peer" style={{ background: p.user.color }}>
+            {p.user.name}
+          </span>
+        ))}
         <div className="le-block-actions">
           <Button variant="ghost" size="small" tooltip="Move up" aria-label="Move block up" disabled={index === 0} onClick={() => onMove(-1)}>
             <ChevronUpIcon className="tiptap-button-icon" />
@@ -174,8 +185,12 @@ export function AddBlockMenu({
   onAdd: (type: AuthorableBlockType) => void
   label?: string
 }) {
+  // The block the pointer or keyboard is on; Radix focuses the highlighted
+  // item, so onFocus follows both. Cleared when the menu closes.
+  const [previewType, setPreviewType] = useState<AuthorableBlockType | null>(null)
+
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu modal={false} onOpenChange={(open) => !open && setPreviewType(null)}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="le-add-block" showTooltip={false}>
           <span className="tiptap-button-text">+ {label}</span>
@@ -183,27 +198,33 @@ export function AddBlockMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="le-add-block-menu">
-        {BLOCK_CATEGORIES.map((category, i) => (
-          <DropdownMenuGroup key={category.id} className="le-add-block-group">
-            {i > 0 && <DropdownMenuSeparator />}
-            <DropdownMenuLabel className="le-add-block-label">{category.label}</DropdownMenuLabel>
-            {(Object.keys(BLOCK_CATALOG) as AuthorableBlockType[])
-              .filter((type) => BLOCK_CATALOG[type].category === category.id)
-              .map((type) => (
-                // A plain menu row (not a toolbar button), so the name and
-                // description get their own lines.
-                <DropdownMenuItem
-                  key={type}
-                  className="le-add-block-item"
-                  data-category={category.id}
-                  onSelect={() => onAdd(type)}
-                >
-                  <span className="le-add-block-name">{BLOCK_CATALOG[type].label}</span>
-                  <span className="le-add-block-description">{BLOCK_CATALOG[type].description}</span>
-                </DropdownMenuItem>
-              ))}
-          </DropdownMenuGroup>
-        ))}
+        <div className="le-add-block-list">
+          {BLOCK_CATEGORIES.map((category, i) => (
+            <DropdownMenuGroup key={category.id} className="le-add-block-group">
+              {i > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel className="le-add-block-label">{category.label}</DropdownMenuLabel>
+              {(Object.keys(BLOCK_CATALOG) as AuthorableBlockType[])
+                .filter((type) => BLOCK_CATALOG[type].category === category.id)
+                .map((type) => (
+                  // A plain menu row (not a toolbar button), so the name and
+                  // description get their own lines.
+                  <DropdownMenuItem
+                    key={type}
+                    className="le-add-block-item"
+                    data-category={category.id}
+                    onFocus={() => setPreviewType(type)}
+                    onSelect={() => onAdd(type)}
+                  >
+                    <span className="le-add-block-name">{BLOCK_CATALOG[type].label}</span>
+                    <span className="le-add-block-description">{BLOCK_CATALOG[type].description}</span>
+                  </DropdownMenuItem>
+                ))}
+            </DropdownMenuGroup>
+          ))}
+        </div>
+        <aside className="le-add-block-preview">
+          <BlockPreview type={previewType} />
+        </aside>
       </DropdownMenuContent>
     </DropdownMenu>
   )

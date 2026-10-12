@@ -222,6 +222,13 @@
   li[data-level="warning"] {
     color: var(--le-warning);
   }
+
+  .course-issue-link {
+    font-weight: 600;
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -533,6 +540,19 @@
     padding-left: 1.25rem;
     font-size: 0.8125rem;
     color: var(--in-warning);
+  }
+}
+
+.sp-resubmit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: var(--in-text-2);
+
+  textarea {
+    width: 100%;
+    resize: vertical;
   }
 }
 

@@ -1,4 +1,4 @@
-# Course Publishing Protocol, version 1.1
+# Course Publishing Protocol, version 2.0
 
 How the course editor publishes courses to a host platform. The editor owns this
 contract; a host implements it in whatever stack it uses (Next.js, FastAPI, …).
@@ -9,7 +9,7 @@ The editor contains no host-specific code, and a host needs no editor code.
 | `README.md` | This specification |
 | `openapi.yaml` | The same endpoints as OpenAPI 3.1 |
 | `schemas/*.schema.json` | JSON Schema (2020-12) for every message, generated from `lib/protocol/wire.ts` |
-| `fixtures/signing.json` | Test vectors for request signing |
+| `fixtures/signing.json` | Test vectors for request and event signing (example Ed25519 keys) |
 | `fixtures/launch.json` | A launch token and its parts, for checking a host's token code |
 | `fixtures/course-package.json` | An example course package |
 
@@ -18,6 +18,22 @@ The source of truth is `lib/protocol/wire.ts` (messages) and
 generated files and `npm run contract:check` fails when they are stale.
 `npm run verify-host` checks a running host against this document (see
 [Conformance](#conformance)).
+
+**Changes in 2.0 (breaking):** no more shared secret. Each side has its own
+Ed25519 key pair and publishes only its public keys as a JWKS (see
+[Keys](#keys)): the editor at `/.well-known/jwks.json`, the host at
+`GET /v1/jwks`. Request signatures (`X-Signature-*`) and launch tokens (`v2.…`)
+are Ed25519. Rotating a key is done by each side alone, and rotating the
+host's key signs every editor user out. New: host → editor
+[events](#events) (`user.access_changed` ends a user's sessions), the
+package's `course.organization`, and `host.logout_url` / `host.sign_in_url` in
+the manifest (signing out of the editor signs out of the host).
+
+**Changes in 1.2:** launch tokens may list the user's organizations (`orgs`)
+and say whether they're a platform admin (`staff`). The editor gives each
+organization its own workspace, so courses are kept apart per organization.
+Both claims are optional: a 1.1 token still works (see [Launch](#launch-sign-in)).
+The publishing endpoints are unchanged.
 
 **Changes in 1.1:** launch tokens (sign-in through the host), `host.launch_url`
 in the manifest, and hosts checking the publishing `actor`. An editor connected
@@ -60,42 +76,69 @@ endpoints; a host accepts any package with a major it supports and answers
 `422 unsupported_protocol` otherwise. The editor reads the host's version from
 the manifest and refuses to publish to a different major.
 
+## Keys
+
+Nothing secret is shared between the editor and a host. Each has its **own**
+Ed25519 key pair, keeps the private key to itself, and publishes the public
+keys as a JWKS (RFC 7517), unauthenticated:
+
+| Side | Signs | Publishes its public keys at | The other side fetches them from |
+|---|---|---|---|
+| Editor | publish requests | `GET /.well-known/jwks.json` | the host: `<editor URL>/.well-known/jwks.json` |
+| Host | launch tokens, events | `GET /v1/jwks` (under the protocol base URL) | the editor: `PLATFORM_JWKS_URL`, default `<PLATFORM_URL>/v1/jwks` |
+
+```json
+{ "keys": [ { "kty": "OKP", "crv": "Ed25519", "kid": "inara-2026-10", "x": "…", "alg": "EdDSA", "use": "sig" } ] }
+```
+
+- Each signature names its key (`kid`). The receiver looks it up in the
+  sender's JWKS, which it caches for **60 seconds** and refetches early (at most
+  every 10 s) for an unknown `kid`. If the JWKS can't be fetched, a copy up to
+  10 minutes old is still used; after that nothing is trusted.
+- **Rotation** is done by one side alone: put a new private key first (it
+  signs from now on), deploy, then drop the old one. Its public key leaves the
+  JWKS and nothing signed with it is accepted any more, within about a minute.
+  Keep both published while the other side might still hold requests signed
+  with the old key, if that matters.
+- **Rotating the host's key signs every editor user out:** each editor session
+  remembers which host key signed its launch (see [Sessions](#sessions)).
+- Make keys with `npm run keys:generate` (editor) or the host's equivalent.
+
 ## Authentication
 
-Requests are signed with a shared secret (HMAC-SHA256). Each editor
-installation has a key id and a secret; the host is configured with the same
-pair. A host may accept several keys at once, which is how keys are rotated:
-add the new key on the host, switch the editor, remove the old key.
-
-Headers:
+Every request from the editor to the host is signed with the editor's
+private key. Every event from the host to the editor is signed with the
+host's. Same headers either way:
 
 | Header | Value |
 |---|---|
-| `X-Editor-Key-Id` | the key id |
-| `X-Editor-Timestamp` | unix time in seconds when the request was signed |
-| `X-Editor-Signature` | `v1=` + lower-case hex HMAC-SHA256(secret, string-to-sign) |
+| `X-Signature-Key-Id` | the signing key's `kid` |
+| `X-Signature-Timestamp` | unix time in seconds when it was signed |
+| `X-Signature` | `v2=` + base64url Ed25519 signature of string-to-sign |
 
 ```
-string-to-sign = "v1" "\n" timestamp "\n" METHOD "\n" path-and-query "\n" hex(SHA-256(body))
+string-to-sign = context ".v2" "\n" timestamp "\n" METHOD "\n" path-and-query "\n" hex(SHA-256(body))
+context        = "course-editor-request"   editor → host
+               | "course-editor-event"     host → editor
 ```
 
+- The context makes one kind of signature unusable as another.
 - `METHOD` is upper case. `path-and-query` is the request target exactly as
   sent, e.g. `/api/integrations/course-editor/v1/courses/7f72…?x=1`. If a proxy
-  rewrites paths, the host must verify against the path the editor sent.
+  rewrites paths, verify against the path the sender used.
 - `body` is the raw bytes sent (empty for GET and DELETE).
-- The host rejects a timestamp more than **300 seconds** from its clock, an
-  unknown key id, a version other than `v1`, or a mismatch. It compares
-  signatures in constant time. Answer: `401 unauthenticated`.
-- Secrets are at least 32 random characters. Use HTTPS (the editor refuses
-  plain HTTP except to localhost).
+- The receiver rejects a timestamp more than **300 seconds** from its clock, a
+  `kid` not in the sender's JWKS, a version other than `v2`, or a signature
+  that doesn't verify. Answer: `401 unauthenticated`.
+- Use HTTPS (the editor refuses plain HTTP except to localhost).
 
 No nonce store is needed: within the 300 s window a captured request could be
-replayed, but every request is read-only or idempotent, so a replay changes
-nothing.
+replayed, but every request and event is read-only or idempotent, so a replay
+changes nothing.
 
 Check an implementation against `fixtures/signing.json`.
 
-**Who.** The key authenticates the editor installation. The package's `actor`
+**Who.** The signature authenticates the editor installation. The package's `actor`
 is the person who triggered the publish: the `sub` (with name and email) of the
 launch token they signed in with, so it is the host's own user id. Hosts
 **should** check it on every publish, not just trust the editor: the actor must
@@ -106,39 +149,91 @@ in that state isn't a new decision). Refuse with `403 forbidden`.
 ## Launch (sign-in)
 
 The editor has no accounts of its own. People sign in on the host and open the
-editor from there; the host decides **who may use it and with which role**
-(`admin` reviews and decides, `creator` writes and submits).
+editor from there; the host decides **who may use it, in which organizations,
+and with which role** (`admin` reviews and decides, `creator` writes and
+submits). The editor keeps courses in workspaces: one personal workspace per
+person, and one per organization the token lists.
 
 ```
 host (user already signed in)                 editor
   │ checks the user may use the editor
   │ mints a launch token (≤ 60 s, single use)
   │ browser POSTs it ────────────────────────▶ POST /launch  (form field `token`)
-  │                                              verifies, remembers jti,
-  │                                              starts an 8-hour session cookie,
-  │                                              303 → /admin (admin) or /dashboard (creator)
+  │                                              verifies against the host's JWKS,
+  │                                              remembers jti, records the user's
+  │                                              workspaces, starts a session,
+  │                                              303 → /admin (reviewers) or /dashboard
 ```
 
 ```
-token   = "v1." + b64url(payload) + "." + b64url(HMAC-SHA256(secret, "course-editor-launch.v1." + b64url(payload)))
-payload = {"v":1, "kid", "iss", "aud":"course-editor", "sub", "email", "name",
-           "role":"admin"|"creator", "iat", "exp", "jti"}
+token   = "v2." + b64url(payload) + "." + b64url(Ed25519(host private key, "course-editor-launch.v2." + b64url(payload)))
+payload = {"v":2, "kid", "iss", "aud":"course-editor", "sub", "email", "name",
+           "role":"admin"|"creator", "orgs"?, "staff"?, "iat", "exp", "jti"}
+orgs    = [{"id": "<organization id>", "name": "<display name>", "role": "admin"|"creator"}, …]
 ```
 
-- Same key pair as request signing; the `course-editor-launch.v1.` prefix keeps
-  a launch signature from ever passing as a request signature.
+**Organizations (1.2).** `orgs` lists every organization in which the user is
+an `admin` or `creator` (at most 200, ids unique). `staff` is `true` for the
+platform's own admins. With `orgs` present the editor:
+
+- gives each organization a workspace (by `id`; `name` is shown and kept up to
+  date). Creators there write their own courses; its admins see and review all
+  of its courses.
+- **replaces** the user's organizations with the list: an organization missing
+  from it is one they left, and they lose its workspace, and its courses, at
+  this launch.
+- lets `staff` review courses in personal workspaces (what a host's admins did
+  in 1.1).
+
+Without `orgs` (a 1.1 host) the user has only their personal workspace, and
+`role: "admin"` makes them staff. Keep sending `role` (admin of any
+organization) for editors older than 1.2.
+
+- Signed with the **host's** key; `kid` names it and the editor checks it
+  against the host's JWKS. The editor can verify tokens but never make one.
+  The `course-editor-launch.v2.` prefix keeps a launch signature from ever
+  passing as a request or event signature.
 - `sub` is the host's stable user id. It becomes the editor's user id: the
   owner of the courses that person creates, and the `actor` of their publishes.
-- The editor refuses a token with another `kid`, a bad signature, `exp - iat`
+- The editor refuses a token whose `kid` isn't in the host's JWKS, a bad signature, `exp - iat`
   over 300 s, `iat` more than 60 s in the future, an expired one, or a `jti` it
   has seen. Hosts should use a 60-second lifetime.
 - Send it as a form POST (a self-submitting form), never in a URL, so it stays
   out of history, logs and referrers. Don't cache or frame the page.
-- `GET /v1/manifest` may give `host.launch_url`: where a person opens the editor
-  signed in. The editor links there from its signed-out page.
-- Changing someone's role on the host takes effect on their next launch; their
-  current session (up to 8 hours) keeps its role, but the actor check above
-  still stops publishes they're no longer allowed to make.
+- `GET /v1/manifest` may give `host.launch_url` (where a person opens the
+  editor signed in), `host.logout_url` (where the editor sends people who sign
+  out, so the host session ends too) and `host.sign_in_url` (linked after
+  signing out of both).
+- Changing someone's role or organizations on the host: the host sends a
+  `user.access_changed` [event](#events), which ends their editor sessions, so
+  their next click asks them to sign in again and the new launch carries the
+  new access.
+
+## Sessions
+
+After a launch the editor keeps its own session (a random token in an
+`HttpOnly` cookie; only its SHA-256 is stored). A session ends when the user
+signs out, after **8 hours**, after **30 minutes** unused, when the host sends
+`user.access_changed` for the user, or when the host key that signed its launch
+leaves the host's JWKS (rotation). The person then opens the editor from the
+host again.
+
+## Events
+
+The host tells the editor about changes it must act on:
+
+```
+POST <editor URL>/api/platform/events     signed with the HOST's key, context "course-editor-event"
+{ "type": "user.access_changed", "sub": "<the user's id on the host>" }
+```
+
+| Type | When the host sends it | What the editor does |
+|---|---|---|
+| `user.access_changed` | The user's role or organizations changed, or the user was deleted | Ends all of the user's sessions. Answer `200 {"ok":true,"ended":N}` |
+
+Unknown types are answered `200 {"ok":true,"ignored":"<type>"}`, so hosts can
+send new types before editors know them. A bad or missing signature gets
+`401`. Events are idempotent; hosts should retry on 5xx and network errors.
 
 Check an implementation against `fixtures/launch.json`.
 
@@ -188,6 +283,17 @@ puts the returned URL into the package. Hosts never fetch from the editor.
 Schema: `schemas/asset.schema.json`.
 
 ## PUT /v1/courses/{course_id}
+
+**Organization (2.0).** `course.organization` is `{ "host_org_id": "<id>" }`
+when the course was written in an editor workspace for one of the host's
+organizations (the id from the launch token's `orgs`), and `null` for a
+personal workspace. Hosts link the course to that organization (refusing an
+actor who isn't a creator or admin there) or, for `null`, to their default.
+
+**Approval (2.0).** When an admin's package says `review.status = approved`,
+hosts should make the course live for learners (subject to their own publish
+requirements), and while a course is live, not apply content from packages
+that aren't approved, so unreviewed edits never reach learners.
 
 Makes the host's copy of the course match the package. `{course_id}` must equal
 `course.id`.
@@ -310,7 +416,7 @@ lesson, section and block to fix.
 
 ```bash
 PLATFORM_URL=http://localhost:3000/api/integrations/course-editor \
-PLATFORM_KEY_ID=… PLATFORM_KEY_SECRET=… PLATFORM_ACTOR_ID=<a host admin's user id> npm run verify-host
+EDITOR_PRIVATE_KEYS=… PLATFORM_ACTOR_ID=<a host admin's user id> npm run verify-host
 ```
 
 It creates a uniquely named test course, publishes and changes it, checks every
@@ -327,8 +433,9 @@ or staging host, never production. A host's CI can run it too.
    upsert by editor id, move, remove, set statuses; return counts.
 6. `DELETE /v1/courses/{id}`.
 7. Check the package's `actor` (creators publish, admins decide).
-8. Launch: let creators and admins open the editor with a launch token, and
-   give `host.launch_url` in the manifest.
+8. Launch: let creators and admins open the editor with a launch token that
+   lists their organizations (`orgs`, `staff`), and give `host.launch_url` in
+   the manifest.
 9. Answer every error as a problem with a `code`.
 10. Run `npm run verify-host` against it.
 

@@ -14,11 +14,17 @@ export function CourseActions({
   courseId,
   status,
   blockers,
+  needsNote = false,
+  isAuthor = true,
 }: {
   courseId: string
   status: CourseStatus
   /** Why it can't be submitted yet (empty = it can). */
   blockers: string[]
+  /** After a rejection, resubmitting needs a note on what changed: that's done on the course page. */
+  needsNote?: boolean
+  /** Only the course's author submits and withdraws it; others just open it. */
+  isAuthor?: boolean
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
@@ -48,7 +54,12 @@ export function CourseActions({
       <Link href={`/courses/${courseId}`} className="in-btn in-btn-secondary in-btn-sm">
         Open
       </Link>
-      {(status === "draft" || status === "rejected" || status === "changes_requested") && (
+      {isAuthor && needsNote && (status === "draft" || status === "rejected") && blockers.length === 0 && (
+        <Link href={`/courses/${courseId}`} className="in-btn in-btn-primary in-btn-sm">
+          Resubmit…
+        </Link>
+      )}
+      {isAuthor && !needsNote && (status === "draft" || status === "rejected" || status === "changes_requested") && (
         <button
           type="button"
           className="in-btn in-btn-primary in-btn-sm"
@@ -59,7 +70,7 @@ export function CourseActions({
           {busy ? "Submitting…" : submitLabel}
         </button>
       )}
-      {status === "in_review" && (
+      {isAuthor && status === "in_review" && (
         <button
           type="button"
           className="in-btn in-btn-secondary in-btn-sm"
