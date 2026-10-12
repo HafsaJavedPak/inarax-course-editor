@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { authConfig, gate, isCrossSiteWrite, SESSION_COOKIE, WORKSPACE_COOKIE, workspaceInPath } from "@/lib/auth-gate"
 import { redirectTo } from "@/lib/redirect"
+import { TRACE_HEADER, traceIdFrom } from "@/lib/trace"
 
 // Runs before every page and API route (lib/auth-gate.ts). It refuses
 // cross-site API writes and requests without a session cookie; whether the
@@ -19,7 +20,12 @@ export default function proxy(request: NextRequest) {
   if (decision.kind === "redirect") return redirectTo(request, decision.to)
   if (decision.kind === "json") return NextResponse.json({ error: decision.error }, { status: decision.status })
 
-  const response = NextResponse.next()
+  // Every request carries a trace id to routes (audit entries record it) and back to the browser.
+  const traceId = traceIdFrom(request.headers.get(TRACE_HEADER))
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set(TRACE_HEADER, traceId)
+  const response = NextResponse.next({ request: { headers: requestHeaders } })
+  response.headers.set(TRACE_HEADER, traceId)
   const workspace = workspaceInPath(pathname)
   if (workspace && request.cookies.get(WORKSPACE_COOKIE)?.value !== workspace) {
     response.cookies.set(WORKSPACE_COOKIE, workspace, { path: "/", sameSite: "lax", httpOnly: true, maxAge: 60 * 60 * 24 * 365 })

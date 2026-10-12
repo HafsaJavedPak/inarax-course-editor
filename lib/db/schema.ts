@@ -116,6 +116,13 @@ export const lessons = pgTable(
     tenantId: uuid("tenant_id").notNull(),
     data: jsonb("data").$type<Lesson>().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * +1 on every save. A save names the revision it started from and is
+     * refused if someone saved in between (lib/course-store.ts saveLessonContent).
+     */
+    revision: integer("revision").notNull().default(0),
+    /** SHA-256 of the lesson's canonical JSON (lib/revisions/hash.ts); null until first saved with hashing. */
+    hash: text("hash"),
   },
   (t) => [
     primaryKey({ columns: [t.courseId, t.id] }),
@@ -170,8 +177,35 @@ export const auditLog = pgTable(
     actorId: text("actor_id"),
     action: text("action").notNull(),
     tenantId: uuid("tenant_id"),
+    /** The course the action concerns, if any. */
+    courseId: uuid("course_id"),
     target: text("target"),
     detail: jsonb("detail"),
+    /** The request that did it (x-request-id), to follow one action across logs. */
+    traceId: text("trace_id"),
   },
-  (t) => [index("audit_log_tenant_at_idx").on(t.tenantId, t.at)],
+  (t) => [index("audit_log_tenant_at_idx").on(t.tenantId, t.at), index("audit_log_course_at_idx").on(t.courseId, t.at)],
+)
+
+/**
+ * Responses to requests sent with an Idempotency-Key header, kept for a day so
+ * a retried request (after a timeout or a dropped connection) returns the first
+ * answer instead of doing the work twice (lib/http/idempotency.ts).
+ */
+export const idempotencyKeys = pgTable(
+  "idempotency_keys",
+  {
+    userId: text("user_id").notNull(),
+    key: text("key").notNull(),
+    /** Method and path the key was first used with; the same key on another route is refused. */
+    route: text("route").notNull(),
+    /** SHA-256 of the request body; the same key with a different body is refused. */
+    requestHash: text("request_hash").notNull(),
+    /** Null while the first request is still running. */
+    status: integer("status"),
+    responseBody: text("response_body"),
+    responseType: text("response_type"),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.key] }), index("idempotency_keys_created_idx").on(t.createdAt)],
 )

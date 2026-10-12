@@ -71,6 +71,6 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     )
   }
   await deleteCourse(loaded.ctx, courseId)
-  await audit({ actorId: loaded.ctx.userId, action: "course.delete", tenantId: loaded.record.tenantId, target: courseId })
+  await audit({ actorId: loaded.ctx.userId, action: "course.delete", tenantId: loaded.record.tenantId, courseId, target: courseId })
   return new Response(null, { status: 204 })
 }

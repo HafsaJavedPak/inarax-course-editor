@@ -104,7 +104,12 @@ function VisualEditor({ markdown, onChange }: { markdown: string; onChange: (mar
       },
     },
     onFocus: ({ editor }) => setActiveEditor(editor as Editor),
-    onUpdate: ({ editor }) => onChangeRef.current(getMarkdown(editor as Editor)),
+    // Only real document changes are edits. Tiptap also emits "update" for
+    // other reasons (setEditable() below), and treating those as edits made
+    // merely opening a lesson save it, overwriting anyone else's newer save.
+    onUpdate: ({ editor, transaction }) => {
+      if (transaction.docChanged) onChangeRef.current(getMarkdown(editor as Editor))
+    },
   })
 
   useEffect(() => {
@@ -113,7 +118,7 @@ function VisualEditor({ markdown, onChange }: { markdown: string; onChange: (mar
   }, [editor, setActiveEditor])
 
   useEffect(() => {
-    editor?.setEditable(!readOnly)
+    editor?.setEditable(!readOnly, false) // false: don't emit an "update" (it isn't an edit)
   }, [editor, readOnly])
 
   return <EditorContent editor={editor} role="presentation" className="simple-editor-content" />

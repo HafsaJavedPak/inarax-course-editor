@@ -22,6 +22,13 @@
       "when": 1791775041800,
       "tag": "0002_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791792373232,
+      "tag": "0003_change_control_foundations",
+      "breakpoints": true
     }
   ]
 }

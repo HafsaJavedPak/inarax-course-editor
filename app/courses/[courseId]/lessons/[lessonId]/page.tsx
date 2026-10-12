@@ -4,7 +4,7 @@ import { LessonEditor } from "@/components/lesson-editor/lesson-editor"
 import { findLessonRef, getCourseLimits } from "@/lib/course"
 import { coursePaths } from "@/lib/admin-mode"
 import { authorCourseForPage } from "@/lib/authz/context"
-import { readCourseLesson } from "@/lib/course-store"
+import { readLessonRecord } from "@/lib/course-store"
 import { createLesson } from "@/lib/lesson"
 import { publishingEnabled } from "@/lib/platform"
 
@@ -17,7 +17,7 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]/le
   if (!found) notFound()
 
   // A lesson added in the builder has no content until its first save.
-  const saved = await readCourseLesson(ctx, courseId, lessonId)
+  const saved = await readLessonRecord(ctx, courseId, lessonId)
   const limits = getCourseLimits(course)
 
   return (
@@ -26,7 +26,8 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]/le
       courseId={courseId}
       lessonId={lessonId}
       lessonTitle={found.ref.title}
-      initialLesson={saved ?? createLesson()}
+      initialLesson={saved?.lesson ?? createLesson()}
+      initialRevision={saved?.revision ?? 0}
       isNew={saved === null}
       sizeHint={{
         words: [limits.words.min, limits.words.max],

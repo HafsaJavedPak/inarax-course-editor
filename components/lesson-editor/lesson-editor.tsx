@@ -38,12 +38,24 @@ import "@/components/lesson-editor/lesson-editor.scss"
 
 type Range = readonly [number, number]
 
+/** What the server has when a save is refused as stale (409 revision_conflict). */
+type LessonConflict = { revision: number; lesson: Lesson | null }
+
+function downloadJson(value: unknown, fileName: string) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: "application/json" }))
+  const link = Object.assign(document.createElement("a"), { href: url, download: fileName })
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export interface LessonEditorProps {
   courseId: string
   lessonId: string
   /** Lives in course.json; rename lessons from the course builder. */
   lessonTitle: string
   initialLesson: Lesson
+  /** The stored revision of initialLesson (0 if never saved); sent back with each save. */
+  initialRevision: number
   /** True when the lesson file doesn't exist yet (never saved). */
   isNew: boolean
   /** From the course's limits (getCourseLimits). */
@@ -70,6 +82,7 @@ export function LessonEditor({
   lessonId,
   lessonTitle,
   initialLesson,
+  initialRevision,
   isNew,
   sizeHint,
   wordsPerMinute,
@@ -99,6 +112,12 @@ export function LessonEditor({
   // whether anything is left to save.
   const revisionRef = useRef(0)
   const savedRevisionRef = useRef(0)
+  // The lesson's revision on the server. Each save says which revision it
+  // started from; if someone else saved in between, the server refuses (409)
+  // and we show their version instead of overwriting it.
+  const serverRevisionRef = useRef(initialRevision)
+  const [conflict, setConflict] = useState<LessonConflict | null>(null)
+  const conflictRef = useRef<LessonConflict | null>(null)
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savingRef = useRef(false)
   // The in-flight save, so leaving the page can wait for it to land.
@@ -152,6 +171,8 @@ export function LessonEditor({
   const save = useCallback((): Promise<boolean> => {
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
     if (savingRef.current) return savePromiseRef.current ?? Promise.resolve(false)
+    // Saving again would only be refused again; the banner asks what to do.
+    if (conflictRef.current) return Promise.resolve(false)
     savingRef.current = true
     const revision = revisionRef.current
     setStatus("saving")
@@ -161,10 +182,17 @@ export function LessonEditor({
         const response = await fetch(`/api/courses/${courseId}/lessons/${lessonId}`, {
           method: "PUT",
           headers: modeHeaders(isAdmin, { "Content-Type": "application/json" }),
-          body: JSON.stringify(lessonRef.current),
+          body: JSON.stringify({ expected_revision: serverRevisionRef.current, lesson: lessonRef.current }),
         })
         const data = await response.json().catch(() => ({}))
+        if (response.status === 409 && data.code === "revision_conflict") {
+          conflictRef.current = data.current
+          setConflict(data.current)
+          setStatus({ error: "Not saved: changed elsewhere" })
+          return false
+        }
         if (!response.ok) throw new Error(data.error ?? `Save failed (${response.status})`)
+        serverRevisionRef.current = data.revision
         setHasFile(true)
         if (data.courseStatus) setCourseStatus(data.courseStatus)
         setSavedAt(new Date())
@@ -230,6 +258,32 @@ export function LessonEditor({
     window.addEventListener("beforeunload", onBeforeUnload)
     return () => window.removeEventListener("beforeunload", onBeforeUnload)
   }, [isDirty])
+
+  /** Conflict: drop my changes and continue from the version saved elsewhere. */
+  const takeTheirs = () => {
+    const current = conflictRef.current
+    if (!current?.lesson) return
+    if (!window.confirm("Replace your unsaved changes with the version saved elsewhere?")) return
+    serverRevisionRef.current = current.revision
+    conflictRef.current = null
+    setConflict(null)
+    rawDispatch({ type: "replace", lesson: current.lesson })
+    setSelectedId(current.lesson.sections[0]?.id ?? null)
+    setGeneration((g) => g + 1)
+    savedRevisionRef.current = revisionRef.current
+    setStatus("saved")
+  }
+
+  /** Conflict: save my version over the one saved elsewhere. */
+  const keepMine = () => {
+    const current = conflictRef.current
+    if (!current) return
+    if (!window.confirm("Save your version over the one saved elsewhere? Their changes to this lesson will be lost.")) return
+    serverRevisionRef.current = current.revision
+    conflictRef.current = null
+    setConflict(null)
+    void save()
+  }
 
   const removeSection = (id: string) => {
     if (lesson.sections.length <= 1) return
@@ -333,6 +387,29 @@ export function LessonEditor({
             This course is in review, so its lessons are read-only. To make changes, withdraw it from the{" "}
             <a href={coursePaths(isAdmin).course(courseId)}>course page</a>.
           </p>
+        )}
+        {conflict && (
+          <div className="le-banner le-conflict" data-tone="conflict" role="alert">
+            <span>
+              {conflict.lesson
+                ? "Someone else saved this lesson while you were editing it. Your latest changes are not saved."
+                : "This lesson's content was deleted somewhere else while you were editing it. Your latest changes are not saved."}{" "}
+              Download your version first if you want to keep a copy.
+            </span>
+            <span className="le-conflict-actions">
+              <button type="button" className="in-btn in-btn-secondary in-btn-sm" onClick={() => downloadJson(lesson, "my-version.json")}>
+                Download mine
+              </button>
+              {conflict.lesson && (
+                <button type="button" className="in-btn in-btn-secondary in-btn-sm" onClick={takeTheirs}>
+                  Use theirs
+                </button>
+              )}
+              <button type="button" className="in-btn in-btn-primary in-btn-sm" onClick={keepMine}>
+                Keep mine
+              </button>
+            </span>
+          </div>
         )}
         {isAdmin && (
           <p className="le-banner" data-tone="admin" role="status">

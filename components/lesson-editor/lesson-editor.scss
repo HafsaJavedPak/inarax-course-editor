@@ -1054,6 +1054,24 @@
   color: var(--in-primary-hover);
 }
 
+.le-banner[data-tone="conflict"] {
+  background: var(--in-danger-bg);
+  color: var(--in-danger);
+}
+
+.le-conflict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.le-conflict-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
 // ---------------------------------------------------------------------------
 // Image hotspot editor
 // ---------------------------------------------------------------------------

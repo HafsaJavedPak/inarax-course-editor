@@ -176,6 +176,12 @@ sequenceDiagram
     Note over UI,DB: If publishing fails, nothing changes on the platform and the local save still stands. The next Save sends the whole course again.
 ```
 
+**Two people, or two tabs, on one lesson:** every lesson save sends the revision it started from
+(`{ expected_revision, lesson }`). If someone saved in between, the save is refused (409
+`revision_conflict`) and nothing is written. The editor then shows a banner: **Download mine**,
+**Use theirs**, or **Keep mine** (overwrite on purpose). Opening a lesson never saves it.
+Details: [collaboration/phase-0.md](collaboration/phase-0.md).
+
 **When publishing happens:**
 - the **Save** button or Ctrl/⌘+S, in the course builder and the lesson editor
 - **submit**, **withdraw**, and the admin's **accept / reject / request changes**. If publishing fails

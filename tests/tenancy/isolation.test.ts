@@ -75,7 +75,7 @@ async function statusesFor(courseId: string) {
     put: await putCourse(json("PUT", { ...sampleCourse(), id: courseId }), course.params),
     delete: await deleteCourseRoute(new Request("http://editor.test"), course.params),
     lessonGet: await getLesson(new Request("http://editor.test"), lesson),
-    lessonPut: await putLesson(json("PUT", sampleLesson()), lesson),
+    lessonPut: await putLesson(json("PUT", { expected_revision: 1, lesson: sampleLesson() }), lesson),
     lessonDelete: await deleteLesson(new Request("http://editor.test"), lesson),
     submit: await submitRoute(new Request("http://editor.test"), course.params),
     withdraw: await withdrawRoute(new Request("http://editor.test"), course.params),

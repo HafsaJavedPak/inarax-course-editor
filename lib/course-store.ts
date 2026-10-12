@@ -1,6 +1,6 @@
 import "server-only"
 
-import { and, desc, eq } from "drizzle-orm"
+import { and, desc, eq, sql } from "drizzle-orm"
 
 import { CourseSchema, getCourseLimits, type Course } from "@/lib/course"
 import { afterEdit, isLocked, type WorkflowResult } from "@/lib/course-status"
@@ -8,6 +8,7 @@ import { getLessonStats, validateCourse, type LessonStats } from "@/lib/course-v
 import { courses, lessons, tenants, type TenantKind } from "@/lib/db/schema"
 import { tenantFilter, withTenantScope, type Scope, type Tx } from "@/lib/db/tenant-db"
 import { isUuid, parseLesson, type Lesson } from "@/lib/lesson"
+import { lessonHash } from "@/lib/revisions/hash"
 
 // Courses and lessons in the database, always read and written within a
 // Scope (the tenants the request may see; lib/db/tenant-db.ts). Whether the
@@ -25,6 +26,17 @@ export type CourseRecord = {
 }
 
 export class RevisionConflictError extends Error {}
+/**
+ * A lesson save that started from an older revision than the stored one:
+ * someone else saved the lesson in between. Carries what's stored now, so the
+ * editor can show it instead of silently overwriting it.
+ */
+export class LessonConflictError extends Error {
+  constructor(readonly current: { revision: number; lesson: Lesson | null }) {
+    super("This lesson was changed somewhere else since you opened it.")
+  }
+}
+
 export class CourseLockedError extends Error {
   constructor() {
     super("This course is in review and can't be edited. Withdraw it to make changes.")
@@ -207,17 +219,24 @@ export async function deleteCourse(scope: Scope, courseId: string): Promise<void
 // ---------------------------------------------------------------------------
 
 export async function readCourseLesson(scope: Scope, courseId: string, lessonId: string): Promise<Lesson | null> {
+  return (await readLessonRecord(scope, courseId, lessonId))?.lesson ?? null
+}
+
+/** A saved lesson with its revision (what the editor must send back when saving). */
+export type LessonRecord = { lesson: Lesson; revision: number }
+
+export async function readLessonRecord(scope: Scope, courseId: string, lessonId: string): Promise<LessonRecord | null> {
   if (!isUuid(courseId) || !isUuid(lessonId)) return null
   const [row] = await withTenantScope(scope, (tx) =>
     tx
-      .select({ data: lessons.data })
+      .select({ data: lessons.data, revision: lessons.revision })
       .from(lessons)
       .where(and(eq(lessons.courseId, courseId), eq(lessons.id, lessonId), tenantFilter(lessons, scope))),
   )
   if (!row) return null
   const parsed = parseLesson(row.data)
   if ("error" in parsed) throw new Error(parsed.error)
-  return parsed.lesson
+  return { lesson: parsed.lesson, revision: row.revision }
 }
 
 /** Every saved lesson of a course, by lesson id. */
@@ -236,16 +255,80 @@ export async function readCourseLessons(scope: Scope, courseId: string): Promise
   return result
 }
 
-/** Saves a lesson's content, in the same tenant as its course. */
-export async function saveCourseLesson(scope: Scope, courseId: string, lessonId: string, lesson: Lesson) {
+/** Inserts or overwrites a lesson row (same tenant as its course), bumping its revision. Returns the new revision. */
+async function writeLesson(tx: Tx, tenantId: string, courseId: string, lessonId: string, lesson: Lesson): Promise<number> {
+  const hash = lessonHash(lesson)
+  const [row] = await tx
+    .insert(lessons)
+    .values({ courseId, id: lessonId, tenantId, data: lesson, hash, revision: 1 })
+    .onConflictDoUpdate({
+      target: [lessons.courseId, lessons.id],
+      set: { data: lesson, hash, updatedAt: new Date(), revision: sql`${lessons.revision} + 1` },
+    })
+    .returning({ revision: lessons.revision })
+  return row.revision
+}
+
+/**
+ * Saves a lesson's content without checking for concurrent edits: for imports,
+ * scripts and tests. Editors go through saveLessonContent().
+ */
+export async function saveCourseLesson(scope: Scope, courseId: string, lessonId: string, lesson: Lesson): Promise<number> {
   if (!isUuid(lessonId)) throw new Error("Invalid lesson id")
-  await withTenantScope(scope, async (tx) => {
+  return withTenantScope(scope, async (tx) => {
     const course = await selectCourse(tx, scope, courseId)
     if (!course) throw new Error("Course not found")
-    await tx
-      .insert(lessons)
-      .values({ courseId, id: lessonId, tenantId: course.tenantId, data: lesson })
-      .onConflictDoUpdate({ target: [lessons.courseId, lessons.id], set: { data: lesson, updatedAt: new Date() } })
+    return writeLesson(tx, course.tenantId, courseId, lessonId, lesson)
+  })
+}
+
+/**
+ * Saves a lesson from the lesson editor, in one transaction:
+ *
+ * - the course's review rules, as recordLessonEdit() (refused while in review
+ *   unless a reviewer edits; an author's edit moves an accepted course back to draft);
+ * - `expectedRevision` must be the lesson's stored revision (0 for a lesson
+ *   never saved), else LessonConflictError with what's stored now. Without
+ *   this, two people (or two tabs) on one lesson silently overwrote each other.
+ *
+ * Nothing is written when either check fails, so a refused save never changes
+ * the course's status. Returns the course after the edit and the new revision.
+ */
+export async function saveLessonContent(
+  scope: Scope,
+  courseId: string,
+  lessonId: string,
+  lesson: Lesson,
+  expectedRevision: number,
+  editor: Editor,
+): Promise<{ course: Course; revision: number }> {
+  if (!isUuid(lessonId)) throw new Error("Invalid lesson id")
+  return withTenantScope(scope, async (tx) => {
+    // Course first, then lesson: every writer takes the locks in this order.
+    const record = await selectCourse(tx, scope, courseId, true)
+    if (!record) throw new Error("Course not found")
+    if (!editor.asReviewer && isLocked(record.course.status)) throw new CourseLockedError()
+
+    const [stored] = await tx
+      .select({ data: lessons.data, revision: lessons.revision })
+      .from(lessons)
+      .where(and(eq(lessons.courseId, courseId), eq(lessons.id, lessonId), tenantFilter(lessons, scope)))
+      .for("update")
+    if ((stored?.revision ?? 0) !== expectedRevision) {
+      const parsed = stored ? parseLesson(stored.data) : null
+      throw new LessonConflictError({
+        revision: stored?.revision ?? 0,
+        lesson: parsed && !("error" in parsed) ? parsed.lesson : null,
+      })
+    }
+
+    const revision = await writeLesson(tx, record.tenantId, courseId, lessonId, lesson)
+    let course = record.course
+    if (!editor.asReviewer) {
+      course = { ...afterEdit(course, editor.id), updated_at: new Date().toISOString() }
+      await writeCourse(tx, course)
+    }
+    return { course, revision }
   })
 }
 

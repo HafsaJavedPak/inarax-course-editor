@@ -1,9 +1,11 @@
 import "server-only"
 
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm"
+import { headers } from "next/headers"
 
 import { auditLog, memberships, tenants, users } from "@/lib/db/schema"
 import { withoutTenantScope, type Tx } from "@/lib/db/tenant-db"
+import { TRACE_HEADER } from "@/lib/trace"
 
 // Who belongs to which workspace. The host platform is the source of truth for
 // organizations: each sign-in (app/launch) mirrors the user's org memberships
@@ -39,6 +41,7 @@ export async function ensurePersonalTenant(tx: Tx, userId: string, name: string 
 
 /** Records the user and mirrors their memberships, in one transaction. */
 export async function syncIdentity(input: IdentityInput): Promise<void> {
+  const traceId = await currentTraceId()
   await withoutTenantScope(async (tx) => {
     const now = new Date()
     await tx
@@ -80,6 +83,7 @@ export async function syncIdentity(input: IdentityInput): Promise<void> {
       actorId: input.userId,
       action: "sign_in",
       detail: { staff: input.staff, orgs: input.orgs?.map((o) => ({ id: o.id, role: o.role })) ?? null },
+      traceId,
     })
   })
 }
@@ -103,9 +107,31 @@ export async function loadIdentity(userId: string): Promise<{ staff: boolean; wo
   })
 }
 
+export type AuditEntry = {
+  actorId: string
+  action: string
+  tenantId?: string
+  /** The course the action concerns. */
+  courseId?: string
+  target?: string
+  detail?: unknown
+  /** Defaults to the current request's x-request-id (set by proxy.ts). */
+  traceId?: string
+}
+
 /** Appends to the audit log. */
-export async function audit(entry: { actorId: string; action: string; tenantId?: string; target?: string; detail?: unknown }) {
-  await withoutTenantScope((tx) => tx.insert(auditLog).values(entry))
+export async function audit(entry: AuditEntry) {
+  const traceId = entry.traceId ?? (await currentTraceId())
+  await withoutTenantScope((tx) => tx.insert(auditLog).values({ ...entry, traceId }))
+}
+
+/** The request's trace id, or undefined outside a request (scripts, tests without one). */
+async function currentTraceId(): Promise<string | undefined> {
+  try {
+    return (await headers()).get(TRACE_HEADER) ?? undefined
+  } catch {
+    return undefined
+  }
 }
 
 /** A person as the editor knows them, for showing who made or reviewed something. */
