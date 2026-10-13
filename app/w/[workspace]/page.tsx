@@ -13,6 +13,7 @@ import { STATUS_LABELS } from "@/lib/course-status"
 import { latestNote, summarizeCourse, timeAgo } from "@/lib/course-summary"
 import { tenantSharing } from "@/lib/authz/grants"
 import { WorkspaceSharing } from "@/components/dashboard/workspace-sharing"
+import { AddSampleCourse } from "@/components/dashboard/add-sample-course"
 
 function isStatus(value: unknown): value is CourseStatus {
   return typeof value === "string" && (COURSE_STATUSES as readonly string[]).includes(value)
@@ -28,6 +29,9 @@ export default async function Page({ params, searchParams }: PageProps<"/w/[work
   const records = await workspaceCourses(ctx, workspace.tenantId)
   const authored = new Set(records.filter((r) => can(ctx, "course.submit", resourceOf(r))).map((r) => r.course.id))
   const canCreate = canInTenant(ctx, "course.create", workspace.tenantId)
+  const samples = new Set(records.filter((r) => r.sample).map((r) => r.course.id))
+  // Someone who deleted their sample course can add a fresh copy.
+  const offerSample = workspace.kind === "personal" && !records.some((r) => r.sample && r.course.owner_id === ctx.userId)
 
   const rows = await Promise.all(records.map((r) => summarizeCourse(ctx, r.course)))
   const people = await usersByIds(records.filter((r) => !authored.has(r.course.id)).map((r) => r.course.owner_id))
@@ -115,6 +119,8 @@ export default async function Page({ params, searchParams }: PageProps<"/w/[work
           ))}
         </nav>
 
+        {offerSample && <AddSampleCourse />}
+
         {rows.length === 0 ? (
           <p className="in-empty">
             No courses yet. <Link href={`${base}/courses/new`}>Create your first course</Link> to add levels, modules and lessons.
@@ -132,6 +138,7 @@ export default async function Page({ params, searchParams }: PageProps<"/w/[work
                       {course.title}
                     </Link>
                     <span className="db-row-meta">
+                      {samples.has(course.id) && <span className="db-sample-tag">Sample</span>}
                       {!authored.has(course.id) && (
                         <>
                           by <PersonLabel id={course.owner_id} person={people.get(course.owner_id)} /> ·{" "}
@@ -160,7 +167,8 @@ export default async function Page({ params, searchParams }: PageProps<"/w/[work
                   status={course.status}
                   blockers={blockers.map((b) => b.message)}
                   needsNote={needsNote}
-                  isAuthor={authored.has(course.id)}
+                  // The sample course is never submitted: it only opens.
+                  isAuthor={authored.has(course.id) && !samples.has(course.id)}
                 />
               </li>
             ))}

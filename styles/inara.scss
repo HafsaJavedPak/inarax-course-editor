@@ -748,6 +748,31 @@ html body {
   color: var(--in-muted);
 }
 
+.db-sample-tag {
+  display: inline-block;
+  margin-right: 0.375rem;
+  padding: 0 0.375rem;
+  font-weight: 600;
+  color: var(--in-primary-hover);
+  background: var(--in-primary-50);
+  border: 1px solid var(--in-primary-200);
+  border-radius: 999px;
+}
+
+.db-sample-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--in-text-2);
+  background: var(--in-primary-50);
+  border: 1px solid var(--in-primary-100);
+  border-radius: var(--in-radius-lg);
+}
+
 .db-row-progress {
   display: flex;
   flex-direction: column;

@@ -1,5 +1,6 @@
-// Matches the images /api/uploads creates (see app/uploads/[file]/route.ts).
-const UPLOAD_PATH_RE = /^\/uploads\/[0-9a-f-]{36}\.(?:png|jpg|gif|webp|avif)$/i
+// Matches the images /api/uploads creates (see app/uploads/[file]/route.ts),
+// and the sample course's own pictures (public/images/sample-course).
+const UPLOAD_PATH_RE = /^(?:\/uploads\/[0-9a-f-]{36}\.(?:png|jpg|gif|webp|avif)|\/images\/sample-course\/[a-z0-9-]+\.svg)$/i
 
 /**
  * The address to show an image from. Uploads are stored as full URLs with
@@ -16,8 +17,9 @@ export function imageSrc(url: string): string {
   }
 }
 
-// Our uploads anywhere inside a string (image fields, markdown image links).
-const UPLOAD_URL_IN_TEXT_RE = /https?:\/\/[^\s"'()<>]+?(\/uploads\/[0-9a-f-]{36}\.(?:png|jpg|gif|webp|avif))/gi
+// Our uploads (and sample-course pictures) anywhere inside a string (image fields, markdown image links).
+const UPLOAD_URL_IN_TEXT_RE =
+  /https?:\/\/[^\s"'()<>]+?(\/uploads\/[0-9a-f-]{36}\.(?:png|jpg|gif|webp|avif)|\/images\/sample-course\/[a-z0-9-]+\.svg)/gi
 
 /**
  * A copy of `value` (e.g. lesson content) with every one of our uploads

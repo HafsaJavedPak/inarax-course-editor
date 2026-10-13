@@ -11,6 +11,8 @@
 //   organization         admin    everything in the org, including review
 //                        creator  creates courses; works on the ones they own
 //   shared course        co_owner · editor · commenter · viewer (lib/authz/sharing.ts)
+//   sample course        its owner's own copy for learning the editor: nobody
+//                        reviews it, and it's never published
 
 import type { GrantRole, MembershipRole, TenantKind } from "@/lib/db/schema"
 
@@ -22,7 +24,14 @@ export type Subject = {
   grants?: readonly { courseId: string; role: GrantRole }[]
 }
 
-export type CourseResource = { courseId?: string; tenantId: string; tenantKind: TenantKind; ownerId: string }
+export type CourseResource = {
+  courseId?: string
+  tenantId: string
+  tenantKind: TenantKind
+  ownerId: string
+  /** A copy of the sample course (lib/sample-course). */
+  sample?: boolean
+}
 
 export type CourseAction =
   | "course.read"
@@ -48,8 +57,9 @@ export function roleIn(subject: Subject, tenantId: string): MembershipRole | nul
   return subject.memberships.find((m) => m.tenantId === tenantId)?.role ?? null
 }
 
-/** Reviews (and may edit during review) courses in this tenant. */
+/** Reviews (and may edit during review) courses in this tenant. Sample courses are never reviewed. */
 function isReviewer(subject: Subject, course: CourseResource, role: MembershipRole | null) {
+  if (course.sample) return false
   return role === "admin" || (subject.staff && course.tenantKind === "personal")
 }
 
@@ -83,8 +93,9 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
       return author || coOwner || editor
     case "course.settings":
     case "course.export":
-    case "course.publish":
       return author || reviewer || coOwner
+    case "course.publish":
+      return (author || reviewer || coOwner) && !course.sample
     case "course.submit":
       return author || coOwner
     case "course.delete":

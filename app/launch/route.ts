@@ -2,7 +2,8 @@ import { authConfig } from "@/lib/auth-gate"
 import { syncIdentity } from "@/lib/authz/identity"
 import { hostKeys } from "@/lib/keys"
 import { claimTokenId } from "@/lib/launch-replay"
-import { redirectTo } from "@/lib/redirect"
+import { publicOrigin, redirectTo } from "@/lib/redirect"
+import { giveSampleCourse } from "@/lib/sample-course"
 import { verifyLaunchToken, type LaunchClaims } from "@/lib/protocol/launch"
 import { createSession, requestIsHttps, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session"
 
@@ -16,7 +17,9 @@ const seeOther = (request: Request, path: string) => redirectTo(request, path, 3
  * valid, fresh, unused token, signed with one of the platform's published
  * keys, records the user and mirrors the organizations the platform lists for
  * them (each becomes a workspace), then starts a session stored in the
- * database. Reviewers land on the review list, everyone else on their courses.
+ * database. A first sign-in also gives the user their copy of the sample
+ * course (lib/sample-course). Reviewers land on the review list, everyone
+ * else on their courses.
  */
 export async function POST(request: Request) {
   const config = authConfig()
@@ -41,6 +44,8 @@ export async function POST(request: Request) {
 
   const access = accessFrom(claims)
   await syncIdentity({ userId: claims.sub, email: claims.email ?? null, name: claims.name ?? null, ...access })
+  // A nicety: signing in never fails because of it.
+  await giveSampleCourse(claims.sub, publicOrigin(request)).catch((error) => console.error("Couldn't add the sample course:", error))
   // The session remembers which platform key signed this launch: rotating that key ends it.
   const sessionToken = await createSession(claims.sub, claims.kid)
 

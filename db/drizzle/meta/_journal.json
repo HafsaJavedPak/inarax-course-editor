@@ -71,6 +71,13 @@
       "when": 1791797696755,
       "tag": "0009_live_documents_row_level_security",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791872308556,
+      "tag": "0010_sample_course",
+      "breakpoints": true
     }
   ]
 }

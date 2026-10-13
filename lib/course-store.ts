@@ -47,6 +47,8 @@ export type CourseRecord = {
   headHash: string | null
   /** The revision last published to the platform. */
   publishedRevisionId: string | null
+  /** A copy of the sample course (lib/sample-course): never reviewed or published. */
+  sample: boolean
 }
 
 export class RevisionConflictError extends Error {}
@@ -100,6 +102,7 @@ const recordColumns = {
   headRevisionId: courses.headRevisionId,
   headHash: courses.headHash,
   publishedRevisionId: courses.publishedRevisionId,
+  sample: courses.sample,
 }
 
 const toRecord = (row: Omit<CourseRecord, "course"> & { data: Course }): CourseRecord => ({
@@ -111,6 +114,7 @@ const toRecord = (row: Omit<CourseRecord, "course"> & { data: Course }): CourseR
   headRevisionId: row.headRevisionId,
   headHash: row.headHash,
   publishedRevisionId: row.publishedRevisionId,
+  sample: row.sample,
 })
 
 /** The indexed columns kept next to the full course. */
@@ -245,11 +249,25 @@ async function resetLiveDocs(tx: Tx, courseId: string, lessonIds: string[]) {
 
 /** Stores a brand-new course in a tenant, as its first revision. */
 export async function insertCourse(scope: Scope, tenantId: string, course: Course): Promise<Course> {
-  await withTenantScope(scope, async (tx) => {
-    await tx.insert(courses).values({ id: course.id, tenantId, ...columnsOf(course) })
-    await commitContent(tx, scope, tenantId, course, { kind: "initial", actorId: course.owner_id })
-  })
+  await withTenantScope(scope, (tx) => insertCourseTx(tx, scope, tenantId, course))
   return course
+}
+
+/**
+ * Stores a brand-new course with its lessons, all in its first revision, in
+ * the caller's transaction (scoped to `scope`). `sample` marks a copy of the
+ * sample course.
+ */
+export async function insertCourseTx(
+  tx: Tx,
+  scope: Scope,
+  tenantId: string,
+  course: Course,
+  options: { lessons?: ReadonlyMap<string, Lesson>; sample?: boolean } = {},
+): Promise<void> {
+  await tx.insert(courses).values({ id: course.id, tenantId, ...columnsOf(course), sample: options.sample ?? false })
+  for (const [lessonId, lesson] of options.lessons ?? []) await writeLesson(tx, tenantId, course.id, lessonId, lesson)
+  await commitContent(tx, scope, tenantId, course, { kind: "initial", actorId: course.owner_id })
 }
 
 async function writeCourse(tx: Tx, course: Course) {

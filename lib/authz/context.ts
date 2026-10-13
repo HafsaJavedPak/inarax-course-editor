@@ -11,6 +11,7 @@ import { loadIdentity, syncIdentity, type CourseGrant, type Workspace } from "@/
 import { can, canInTenant, reviewsAnything, type CourseAction, type CourseResource, type Subject } from "@/lib/authz/policy"
 import { findCourse, listCourses, listCoursesByIds, type CourseRecord } from "@/lib/course-store"
 import type { Scope } from "@/lib/db/tenant-db"
+import { configuredBaseUrl, giveSampleCourse } from "@/lib/sample-course"
 
 /**
  * Everything a request may do, loaded once per request from the database:
@@ -33,6 +34,7 @@ async function loadContext(): Promise<RequestContext> {
     // Local work: the one local user gets a personal workspace and reviews it
     // (also when the user was first recorded by scripts/import-files-to-db.ts).
     await syncIdentity({ userId: user.id, email: null, name: null, staff: true, orgs: null })
+    await giveSampleCourse(user.id, configuredBaseUrl()).catch((error) => console.error("Couldn't add the sample course:", error))
     identity = await loadIdentity(user.id)
   }
   // A session from before this sign-in was recorded: sign in again.
@@ -54,7 +56,7 @@ async function loadContext(): Promise<RequestContext> {
 export const getRequestContext = cache(loadContext)
 
 export function resourceOf(record: CourseRecord): CourseResource {
-  return { courseId: record.course.id, tenantId: record.tenantId, tenantKind: record.tenantKind, ownerId: record.course.owner_id }
+  return { courseId: record.course.id, tenantId: record.tenantId, tenantKind: record.tenantKind, ownerId: record.course.owner_id, sample: record.sample }
 }
 
 /** Everything the screens need to know about what this person may do with this course. */
@@ -68,6 +70,8 @@ export type CoursePermissions = {
   restore: boolean
   /** Their role through sharing, if that's how they reach the course. */
   role: CourseGrant["role"] | null
+  /** The sample course: for trying the editor out, never submitted or published. */
+  sample: boolean
 }
 
 export function permissionsFor(ctx: RequestContext, record: CourseRecord): CoursePermissions {
@@ -75,12 +79,13 @@ export function permissionsFor(ctx: RequestContext, record: CourseRecord): Cours
   return {
     edit: can(ctx, "course.edit", resource),
     settings: can(ctx, "course.settings", resource),
-    submit: can(ctx, "course.submit", resource),
+    submit: can(ctx, "course.submit", resource) && !record.sample,
     publish: can(ctx, "course.publish", resource),
     share: can(ctx, "course.share", resource),
     history: can(ctx, "course.history", resource),
     restore: can(ctx, "course.restore", resource),
     role: ctx.grants.find((g) => g.courseId === record.course.id)?.role ?? null,
+    sample: record.sample,
   }
 }
 
