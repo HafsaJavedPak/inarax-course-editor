@@ -62,6 +62,8 @@ export const users = pgTable("users", {
   /** A platform (InaraX) admin: reviews courses in personal workspaces. */
   staff: boolean("staff").notNull().default(false),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  /** When they were given their copy of the sample course (lib/sample-course); null until then. */
+  sampleCourseAt: timestamp("sample_course_at", { withTimezone: true }),
   createdAt: createdAt(),
 })
 
@@ -120,6 +122,8 @@ export const courses = pgTable(
     headRevisionId: uuid("head_revision_id"),
     /** The revision last published to the platform. */
     publishedRevisionId: uuid("published_revision_id"),
+    /** A copy of the sample course (lib/sample-course): for learning the editor, never reviewed or published. */
+    sample: boolean("sample").notNull().default(false),
   },
   (t) => [
     // Target of the lessons' composite foreign key.

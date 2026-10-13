@@ -53,6 +53,7 @@ const ALL_PERMISSIONS: CoursePermissions = {
   history: true,
   restore: true,
   role: null,
+  sample: false,
 }
 
 const AUTOSAVE_DELAY_MS = 800
@@ -324,15 +325,29 @@ export function CourseBuilder({
           <img className="course-cover" src={imageSrc(course.cover_image_url)} alt="" />
         )}
 
-        <StatusPanel
-          course={course}
-          workflow={workflow}
-          blockers={blockers}
-          onWorkflowChange={setWorkflow}
-          beforeSubmit={flush}
-          isAdmin={isAdmin}
-          canSubmit={may.submit}
-        />
+        {may.sample ? (
+          <section className="sp sp-sample" aria-labelledby="sp-sample-title">
+            <h2 id="sp-sample-title">Your sample course</h2>
+            <p>
+              A tour of the editor: each lesson uses a few kinds of block and explains when to use them. This copy is yours,
+              so open the lessons, change anything and use <strong>Preview</strong> to see it as learners will.
+            </p>
+            <p>
+              It can&apos;t be submitted for review or published. When you&apos;re ready, start your own course from{" "}
+              <Link href="/dashboard">Your courses</Link>.
+            </p>
+          </section>
+        ) : (
+          <StatusPanel
+            course={course}
+            workflow={workflow}
+            blockers={blockers}
+            onWorkflowChange={setWorkflow}
+            beforeSubmit={flush}
+            isAdmin={isAdmin}
+            canSubmit={may.submit}
+          />
+        )}
         {sharing && <ShareDialog courseId={course.id} onClose={() => setSharing(false)} />}
         {may.role && !isAdmin && (
           <p className="le-banner" data-tone="admin" role="status">

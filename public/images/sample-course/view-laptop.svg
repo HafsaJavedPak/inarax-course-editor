@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="600" viewBox="0 0 960 600" role="img" aria-label="A lesson on a laptop screen">
+  <rect width="960" height="600" fill="#eef2ff"/>
+  <!-- Laptop -->
+  <rect x="150" y="70" width="660" height="410" rx="18" fill="#1e293b"/>
+  <rect x="170" y="90" width="620" height="370" rx="6" fill="#ffffff"/>
+  <path d="M90 488 H870 L840 520 H120 Z" fill="#334155"/>
+  <rect x="420" y="488" width="120" height="8" rx="4" fill="#1e293b"/>
+  <!-- Lesson in one centred column -->
+  <rect x="170" y="90" width="620" height="44" rx="6" fill="#f8fafc"/>
+  <rect x="190" y="106" width="160" height="12" rx="6" fill="#94a3b8"/>
+  <rect x="680" y="102" width="90" height="20" rx="10" fill="#4f46e5"/>
+  <g transform="translate(300 156)">
+    <rect width="360" height="20" rx="10" fill="#334155"/>
+    <rect y="38" width="360" height="9" rx="4.5" fill="#cbd5e1"/>
+    <rect y="56" width="330" height="9" rx="4.5" fill="#cbd5e1"/>
+    <rect y="74" width="345" height="9" rx="4.5" fill="#cbd5e1"/>
+    <rect y="104" width="172" height="90" rx="10" fill="#eef2ff" stroke="#a5b4fc" stroke-width="2"/>
+    <rect x="188" y="104" width="172" height="90" rx="10" fill="#4f46e5"/>
+    <rect y="214" width="360" height="9" rx="4.5" fill="#cbd5e1"/>
+    <rect y="232" width="280" height="9" rx="4.5" fill="#cbd5e1"/>
+    <rect x="270" y="262" width="90" height="26" rx="13" fill="#4f46e5"/>
+  </g>
+</svg>

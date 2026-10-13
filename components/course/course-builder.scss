@@ -621,3 +621,26 @@
   color: var(--in-primary-hover) !important;
   font-size: 0.8125rem !important;
 }
+
+// The sample course (lib/sample-course): a note in place of the review panel.
+.sp-sample {
+  gap: 0.5rem;
+  background: var(--in-primary-50);
+  border-color: var(--in-primary-200);
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--in-text-2);
+  }
+
+  a {
+    color: var(--in-primary);
+    font-weight: 600;
+  }
+}

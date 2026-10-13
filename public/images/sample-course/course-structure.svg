@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="A course split into three levels, each holding modules, each holding lessons">
+  <rect width="960" height="540" fill="#f8fafc"/>
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+    <rect x="330" y="28" width="300" height="64" rx="14" fill="#4f46e5"/>
+    <text x="480" y="69" text-anchor="middle" font-size="24" font-weight="700" fill="#ffffff">Course</text>
+    <g stroke="#a5b4fc" stroke-width="3" fill="none">
+      <path d="M480 92 V112 H170 V132"/>
+      <path d="M480 92 V132"/>
+      <path d="M480 92 V112 H790 V132"/>
+    </g>
+    <g id="level">
+      <rect x="40" y="132" width="260" height="380" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+      <rect x="40" y="132" width="260" height="52" rx="16" fill="#eef2ff"/>
+      <rect x="40" y="166" width="260" height="18" fill="#eef2ff"/>
+      <rect x="64" y="204" width="212" height="134" rx="12" fill="#f8fafc" stroke="#c7d2fe" stroke-width="2"/>
+      <text x="80" y="232" font-size="16" font-weight="700" fill="#334155">Module</text>
+      <rect x="80" y="248" width="180" height="34" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+      <text x="96" y="271" font-size="15" fill="#475569">Lesson</text>
+      <rect x="80" y="292" width="180" height="34" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+      <text x="96" y="315" font-size="15" fill="#475569">Lesson</text>
+      <rect x="64" y="354" width="212" height="90" rx="12" fill="#f8fafc" stroke="#c7d2fe" stroke-width="2"/>
+      <text x="80" y="382" font-size="16" font-weight="700" fill="#334155">Module</text>
+      <rect x="80" y="398" width="180" height="34" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+      <text x="96" y="421" font-size="15" fill="#475569">Lesson</text>
+    </g>
+    <use href="#level" x="310"/>
+    <use href="#level" x="620"/>
+    <text x="170" y="165" text-anchor="middle" font-size="18" font-weight="700" fill="#4338ca">Associate</text>
+    <text x="480" y="165" text-anchor="middle" font-size="18" font-weight="700" fill="#4338ca">Intermediate</text>
+    <text x="790" y="165" text-anchor="middle" font-size="18" font-weight="700" fill="#4338ca">Advanced</text>
+  </g>
+</svg>

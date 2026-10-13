@@ -19,6 +19,12 @@ export async function POST(request: Request, ctx: RouteContext<"/api/courses/[co
   const loaded = await courseForRoute(courseId, "course.submit")
   if (!loaded.ok) return loaded.error
   const { ctx: access, record } = loaded
+  if (record.sample) {
+    return Response.json(
+      { error: "This is the sample course, for trying out the editor. It can't be submitted for review: create a course of your own for that.", code: "sample_course" },
+      { status: 409 },
+    )
+  }
   const parsed = SubmitSchema.safeParse((await request.json().catch(() => null)) ?? {})
   if (!parsed.success) return Response.json({ error: "Invalid submission" }, { status: 400 })
 
