@@ -75,6 +75,14 @@ and `EDITOR_PUBLIC_URL` must be set in the Render dashboard. inara-next needs it
 > (`PLATFORM_ADAPTER=none`, local work) there is no sign-in: one local creator and an open `/admin`.
 > Details: [platform-integration.md § Sign-in and roles](platform-integration.md#sign-in-and-roles).
 
+> **The sample course:** everyone's first sign-in puts a copy of *Start here: a tour of the course
+> editor* in their personal workspace. Its seven lessons use every block the editor has, and each
+> block explains what it's for and how to edit it. The copy is theirs to change or delete, but it
+> can't be submitted, reviewed or published, and reviewers never see it. Deleting it doesn't bring
+> it back at the next sign-in; the personal dashboard then offers **Add the sample course**. The
+> content is in `lib/sample-course/content.ts`, its pictures in `public/images/sample-course/`.
+> Changing the content only affects copies made afterwards.
+
 ---
 
 ## 3. Main flow
@@ -301,6 +309,12 @@ block.
 
 Each row is a scenario and the expected result.
 
+**Sample course**
+- [ ] First sign-in → *Start here: a tour of the course editor* is on the personal dashboard, tagged *Sample*, 7/7 lessons written, no issues, every level on target.
+- [ ] Its course page shows the sample note instead of the review panel (no Submit); its lessons and preview show every block, with all pictures.
+- [ ] Delete it, sign in again → it doesn't come back; **Add the sample course** on the dashboard adds a fresh copy and opens it.
+- [ ] A reviewer (InaraX staff) never sees anyone's sample course in **Course reviews**.
+
 **Course creation and builder**
 - [ ] Create a course with every field valid → lands in the builder with 3 empty levels.
 - [ ] Each form field rejects bad input with the message from section 6 (e.g. title "12345", duplicate objectives, level shares adding up to 90%).
@@ -370,6 +384,7 @@ Set up local inara-next first: [platform-integration.md § 3, Local testing](pla
 | `lib/lesson.ts`, `lib/lesson-validate.ts` | Lesson model, block catalog, lesson validation |
 | `lib/course-validate.ts` | Lesson stats, level budgets, submit blockers |
 | `lib/course-status.ts` | Review state machine |
+| `lib/sample-course/` | The sample course everyone gets at their first sign-in: its content (`content.ts`) and copying it (`index.ts`); pictures in `public/images/sample-course/` |
 | `lib/course-store.ts` | Reads and writes local JSON (atomic writes, writes queued per course, revision check) |
 | `lib/platform/` | Publishing: `PlatformPort` interface (`publishCourse`, `deleteCourse`), signing HTTP client, protocol adapter (`adapters/protocol/`) |
 | `lib/protocol/` | The Course Publishing Protocol: `wire.ts` (messages, zod) and `signing.ts` (Ed25519 request signing), `keys.ts`, `jwks.ts` (fetching the other side's public keys), `launch.ts` (launch tokens) |
@@ -396,6 +411,7 @@ Set up local inara-next first: [platform-integration.md § 3, Local testing](pla
 | `PATCH /api/courses/[id]/changes/[changeId]` | tick off a requested change or add a note |
 | `GET /api/courses/[id]/export`, `GET /api/export` | zip downloads |
 | `POST /api/uploads`, `GET /uploads/[file]` | image upload / serving |
+| `POST /api/sample-course` | a fresh copy of the sample course, after the user deleted theirs |
 
 ### Database migrations (`db/migrations/`)
 

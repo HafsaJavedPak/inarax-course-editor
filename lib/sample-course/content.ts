@@ -88,8 +88,6 @@ function lessonCourseStructure(image: (name: SampleImage) => string): SampleLess
         blocks: [
           text(
             [
-              "## Welcome to your sample course",
-              "",
               "Everything in this course was made with the editor you're using now. Each lesson shows a few of the building blocks you can use in your own courses, and explains what they're for.",
               "",
               "**Change anything you like.** Open a lesson, edit a block, add or delete things. This copy is yours alone, so nothing you do here affects anyone else.",
@@ -454,11 +452,11 @@ function lessonPicturesFormatsRoadmaps(image: (name: SampleImage) => string): Sa
               alt: "The lesson editor, with numbered points to explore",
               caption: "Tap each numbered point.",
               hotspots: [
-                { id: "h1", x: 20, y: 25, title: "Section title", info: "Each section can have a title, shown above it when learners reach it." },
+                { id: "h1", x: 37, y: 25, title: "Section title", info: "Each section can have a title, shown above it when learners reach it." },
                 { id: "h2", x: 61, y: 39, title: "A block", info: "Each block shows its type, with buttons to move it up or down, duplicate it or delete it." },
-                { id: "h3", x: 50, y: 88, title: "Add block", info: "Opens the list of every block type, grouped into Content, Explore and Assess." },
-                { id: "h4", x: 75, y: 8, title: "Preview", info: "Shows the lesson exactly as learners will see it." },
-                { id: "h5", x: 91, y: 8, title: "Save status", info: "Your changes are saved as you type. This shows when they're stored." },
+                { id: "h3", x: 50, y: 96, title: "Add block", info: "Opens the list of every block type, grouped into Content, Explore and Assess." },
+                { id: "h4", x: 75, y: 14, title: "Preview", info: "Shows the lesson exactly as learners will see it." },
+                { id: "h5", x: 91, y: 14, title: "Save status", info: "Your changes are saved as you type. This shows when they're stored." },
               ],
             },
           },
