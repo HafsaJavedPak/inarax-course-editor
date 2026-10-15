@@ -138,6 +138,15 @@ describe("AI job API", () => {
     expect(res.status).toBe(403)
   })
 
+  it("accepts a job for a lesson that has no saved content yet", async () => {
+    // A lesson added in the builder has no content until its first save; asking
+    // for AI help on it must work.
+    const fresh = randomUUID()
+    await insertCourse(aliceScope, orgTenant, { ...sampleCourse({ owner_id: "alice" }), id: fresh })
+    const res = await createRoute(json("POST", { kind: "explanation", lessonId: LESSON_ID, blockId: randomUUID() }), p({ courseId: fresh }))
+    expect(res.status).toBe(201)
+  })
+
   it("answers 503 when AI isn't configured", async () => {
     const previous = process.env.AI_ENABLED
     process.env.AI_ENABLED = ""

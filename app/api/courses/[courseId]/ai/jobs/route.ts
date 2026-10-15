@@ -56,9 +56,9 @@ export async function POST(request: Request, ctx: Ctx) {
 
     let baseLessonHash: string | null = null
     if (parsed.data.lessonId) {
+      // A lesson with no saved content yet is fine: there is nothing to hash.
       const lesson = await readCourseLesson(loaded.ctx, courseId, parsed.data.lessonId)
-      if (!lesson) return Response.json({ error: "Lesson not found" }, { status: 404 })
-      baseLessonHash = lessonHash(lesson)
+      if (lesson) baseLessonHash = lessonHash(lesson)
     }
 
     const { job, created } = await createJob(loaded.ctx, {

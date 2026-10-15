@@ -21,6 +21,7 @@ import { TrashIcon } from "@/components/tiptap-icons/trash-icon"
 // --- Lesson editor ---
 import { ActiveEditorProvider } from "@/components/lesson-editor/active-editor"
 import { AddBlockMenu, BlockEditor } from "@/components/lesson-editor/block-editor"
+import { AssistantPanel } from "@/components/ai/assistant-panel"
 import { JsonPanel } from "@/components/lesson-editor/json-panel"
 import { SaveBar, type SaveStatus } from "@/components/lesson-editor/save-bar"
 import { usePublish } from "@/components/lesson-editor/use-publish"
@@ -28,7 +29,7 @@ import { ReadOnlyContext } from "@/components/lesson-editor/read-only"
 import { LessonPlayer } from "@/components/preview/lesson-player"
 import { lessonReducer, type LessonAction } from "@/components/lesson-editor/lesson-state"
 import { PresenceContext, useLiveLesson, type LiveLesson, type Peer } from "@/components/collab/use-live-lesson"
-import { createSection, type Lesson } from "@/lib/lesson"
+import { createSection, type Lesson, type LessonBlock } from "@/lib/lesson"
 import { validateLesson, type LessonIssue } from "@/lib/lesson-validate"
 import type { CourseStatus } from "@/lib/course"
 import { isLocked } from "@/lib/course-status"
@@ -134,6 +135,8 @@ export interface LessonEditorProps {
   canEdit?: boolean
   /** Edit together, live, through the collaboration gateway (lib/collab/live.ts). */
   live?: boolean
+  /** AI generation is set up and this person may use it (lib/ai/config.ts). */
+  aiEnabled?: boolean
 }
 
 const inRange = (value: number, [min, max]: Range) => value >= min && value <= max
@@ -156,6 +159,7 @@ export function LessonEditor({
   publishingEnabled,
   canEdit = true,
   live: liveEnabled = false,
+  aiEnabled = false,
 }: LessonEditorProps) {
   const [localLesson, rawDispatch] = useReducer(lessonReducer, initialLesson)
   const live = useLiveLesson({ courseId, lessonId, isAdmin, enabled: liveEnabled })
@@ -175,6 +179,8 @@ export function LessonEditor({
   const [showJson, setShowJson] = useState(false)
   // "preview" shows the lesson (including unsaved edits) as learners see it.
   const [mode, setMode] = useState<"edit" | "preview">("edit")
+  // The AI assistant drawer (module 30).
+  const [aiOpen, setAiOpen] = useState(false)
   // Bumped when the whole lesson is replaced, to remount the block editors.
   const [generation, setGeneration] = useState(0)
 
@@ -382,6 +388,22 @@ export function LessonEditor({
     setSelectedId(section.id)
   }
 
+  /** Inserts accepted AI text into a rich-text block, through the editor's own save path. */
+  const applyAiText = useCallback(
+    (blockId: string, text: string, applyMode: "append" | "replace") => {
+      for (const section of lesson.sections) {
+        const block = section.blocks.find((b) => b.id === blockId)
+        if (!block || block.type !== "rich_text") continue
+        const rich = block as { id: string; type: "rich_text"; personalized: boolean; data: { markdown?: string } }
+        const current = (rich.data.markdown ?? "").trimEnd()
+        const markdown = applyMode === "append" ? (current ? `${current}\n\n${text}` : text) : text
+        dispatch({ type: "updateBlock", sectionId: section.id, block: { ...rich, data: { ...rich.data, markdown } } as LessonBlock })
+        return
+      }
+    },
+    [lesson, dispatch],
+  )
+
   return (
     <ActiveEditorProvider>
       <div className="le-app">
@@ -442,6 +464,16 @@ export function LessonEditor({
               onClick={() => setShowJson((open) => !open)}
             >
               <span className="tiptap-button-text">JSON</span>
+            </Button>
+          )}
+          {aiEnabled && mode === "edit" && !readOnly && (
+            <Button
+              variant="ghost"
+              showTooltip={false}
+              data-active-state={aiOpen ? "on" : "off"}
+              onClick={() => setAiOpen((open) => !open)}
+            >
+              <span className="tiptap-button-text">✦ AI</span>
             </Button>
           )}
           {liveEnabled && <PresenceAvatars peers={live.peers} />}
@@ -635,6 +667,17 @@ export function LessonEditor({
           </fieldset>
         </ReadOnlyContext.Provider>
         </PresenceContext.Provider>
+
+        {aiOpen && aiEnabled && (
+          <AssistantPanel
+            courseId={courseId}
+            lessonId={lessonId}
+            lesson={lesson}
+            canEdit={canEdit && !readOnly}
+            onClose={() => setAiOpen(false)}
+            onApply={applyAiText}
+          />
+        )}
       </div>
     </ActiveEditorProvider>
   )

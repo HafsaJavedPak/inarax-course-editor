@@ -7,6 +7,7 @@ import { authorCourseForPage, permissionsFor } from "@/lib/authz/context"
 import { readLessonRecord } from "@/lib/course-store"
 import { createLesson } from "@/lib/lesson"
 import { liveEditing } from "@/lib/collab/live"
+import { aiConfig } from "@/lib/ai/config"
 import { publishingEnabled } from "@/lib/platform"
 
 export default async function Page({ params }: PageProps<"/courses/[courseId]/lessons/[lessonId]">) {
@@ -40,6 +41,7 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]/le
       live={liveEditing() !== null}
       publishingEnabled={publishingEnabled() && permissionsFor(ctx, record).publish}
       canEdit={permissionsFor(ctx, record).edit}
+      aiEnabled={aiConfig().enabled && permissionsFor(ctx, record).ai}
     />
   )
 }
