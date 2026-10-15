@@ -2,8 +2,8 @@ import "server-only"
 
 import { and, desc, eq, inArray, sql } from "drizzle-orm"
 
-import { CourseSchema, getCourseLimits, type Course } from "@/lib/course"
-import { afterEdit, isLocked, type ReviewDecision, type WorkflowResult } from "@/lib/course-status"
+import { CourseSchema, getCourseLimits, type Course, type ReviewStage } from "@/lib/course"
+import { afterEdit, effectiveStatus, isLocked, reviewStage, type ReviewDecision, type WorkflowResult } from "@/lib/course-status"
 import { getLessonStats, validateCourse, type LessonStats } from "@/lib/course-validate"
 import { collabDocuments, collabUpdates, courses, lessons, tenants, type RevisionKind, type TenantKind } from "@/lib/db/schema"
 import { tenantFilter, withTenantScope, type Scope, type Tx } from "@/lib/db/tenant-db"
@@ -21,7 +21,7 @@ import {
   type RevisionChange,
   type RevisionRow,
 } from "@/lib/revisions/store"
-import { closeOpenRound, currentApproval, decideRound, hasRounds, invalidateApprovals, openRound } from "@/lib/review/rounds"
+import { closeOpenRound, currentApproval, decideRound, hasRounds, invalidateApprovals, openRound, revokeAllApprovals } from "@/lib/review/rounds"
 
 // Courses and lessons in the database, always read and written within a
 // Scope (the tenants the request may see; lib/db/tenant-db.ts). Whether the
@@ -53,10 +53,10 @@ export type CourseRecord = {
 
 export class RevisionConflictError extends Error {}
 
-/** A reviewer editing an accepted course: the accepted content is frozen until the acceptance is revoked. */
+/** A reviewer editing an accepted or published course: its content is frozen until the decision is revoked. */
 export class ApprovedLockedError extends Error {
   constructor() {
-    super("This course is accepted, so its content is frozen. Revoke the acceptance (request changes) to edit it.")
+    super("This course is approved, so its content is frozen. Revoke the decision (request changes) to edit it.")
   }
 }
 
@@ -277,7 +277,7 @@ async function writeCourse(tx: Tx, course: Course) {
 /** The edit rules every content change follows (course locked in review; accepted content frozen for reviewers). */
 function assertEditable(course: Course, editor: Editor) {
   if (isLocked(course.status) && !editor.asReviewer) throw new CourseLockedError()
-  if (course.status === "approved" && editor.asReviewer) throw new ApprovedLockedError()
+  if ((course.status === "approved" || course.status === "published") && editor.asReviewer) throw new ApprovedLockedError()
 }
 
 const editKind = (editor: Editor): RevisionKind => (editor.asReviewer ? "reviewer_edit" : "edit")
@@ -383,7 +383,8 @@ export async function submitForReview(
       return result
     },
     async (tx, record) => {
-      await openRound(tx, { tenantId: record.tenantId, courseId, revision: sealed!, by, note: note.trim() })
+      const stage = reviewStage("in_review", record.tenantKind)!
+      await openRound(tx, { tenantId: record.tenantId, courseId, stage, revision: sealed!, by, note: note.trim() })
     },
   )
 }
@@ -403,6 +404,22 @@ export async function withdrawFromReview(
   )
 }
 
+/**
+ * Takes a live course down from the catalogue: revokes every approval (so it
+ * leaves the organization's and the main host's catalogues) and records the
+ * takedown. The next publish sends the course as not live.
+ */
+export async function takeDownCourse(
+  scope: Scope,
+  courseId: string,
+  by: string,
+  change: (course: Course) => WorkflowResult,
+): Promise<WorkflowResult | null> {
+  return workflowTransaction(scope, courseId, async (_tx, record) => change(record.course), async (tx) => {
+    await revokeAllApprovals(tx, courseId, by)
+  })
+}
+
 /** What a reviewer saw when deciding: the head revision and its content hash. */
 export type SeenContent = { revisionId: string; contentHash: string }
 
@@ -415,6 +432,7 @@ export async function decideReview(
   scope: Scope,
   courseId: string,
   by: string,
+  stage: ReviewStage,
   decision: ReviewDecision,
   seen: SeenContent,
   change: (course: Course) => WorkflowResult,
@@ -441,7 +459,7 @@ export async function decideReview(
       return result
     },
     async (tx, record) => {
-      await decideRound(tx, { tenantId: record.tenantId, courseId, decision, by, revision: decided! })
+      await decideRound(tx, { tenantId: record.tenantId, courseId, stage, decision, by, revision: decided! })
     },
   )
 }
@@ -457,11 +475,14 @@ export async function recordPublish(scope: Scope, courseId: string, at: string, 
 }
 
 /**
- * What publishing sends, as one sealed revision. For an accepted course it's
- * exactly the accepted revision, after checking the stored content still has
- * the accepted hash. Otherwise it's the stored content, sealed now so the
- * published revision can't grow afterwards. (Courses accepted before review
- * rounds existed have no approval on record and publish what's stored.)
+ * What publishing sends, as one sealed revision, and the status the host shows.
+ * The strongest decision in force decides both: a platform release sends the
+ * released revision with status `published`; else an organization approval
+ * sends the approved revision with status `approved` (so a platform revoke
+ * leaves the organization's version live). With no approval, the stored
+ * content is sealed now and sent with its workflow status. (Courses accepted
+ * before review rounds existed have no approval on record and publish what's
+ * stored.)
  */
 export async function publishableContent(
   scope: Scope,
@@ -470,22 +491,24 @@ export async function publishableContent(
   return withTenantScope(scope, async (tx) => {
     const record = await selectCourse(tx, scope, courseId, true)
     if (!record) return null
-    if (record.course.status === "approved") {
-      const approval = await currentApproval(tx, courseId)
-      if (approval?.decidedRevisionId) {
-        if (record.headHash !== approval.decidedHash) throw new ApprovalMismatchError()
-        const accepted = await revisionContentTx(tx, courseId, approval.decidedRevisionId)
-        if (!accepted) throw new ApprovalMismatchError()
-        const course = CourseSchema.parse({ ...record.course, ...accepted.course })
-        return { course, lessons: accepted.lessons, revisionId: approval.decidedRevisionId }
-      }
-      if (await hasRounds(tx, courseId)) throw new ApprovalMismatchError()
+    const platform = await currentApproval(tx, courseId, "platform")
+    const org = await currentApproval(tx, courseId, "org")
+    const approval = platform ?? org
+    const status = effectiveStatus(record.course.status, { orgApproved: !!org, platformPublished: !!platform })
+    if (approval?.decidedRevisionId) {
+      if (record.headHash !== approval.decidedHash) throw new ApprovalMismatchError()
+      const accepted = await revisionContentTx(tx, courseId, approval.decidedRevisionId)
+      if (!accepted) throw new ApprovalMismatchError()
+      const course = CourseSchema.parse({ ...record.course, ...accepted.course, status })
+      return { course, lessons: accepted.lessons, revisionId: approval.decidedRevisionId }
     }
+    // A live status with rounds on record but no usable approval is a mismatch.
+    if ((status === "approved" || status === "published") && (await hasRounds(tx, courseId))) throw new ApprovalMismatchError()
     await ensureHistory(tx, scope, record)
     const sealed = await sealLatest(tx, courseId)
     const head = await loadHead(tx, scope, record.course)
     return {
-      course: record.course,
+      course: { ...record.course, status },
       lessons: new Map([...head.lessons].map(([id, l]) => [id, l.data])),
       revisionId: sealed?.id ?? null,
     }

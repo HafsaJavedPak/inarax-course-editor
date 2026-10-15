@@ -4,12 +4,14 @@ import { AllowResubmissionsButton } from "@/components/admin/allow-resubmissions
 import { DecisionPanel } from "@/components/admin/decision-panel"
 import { PersonLabel } from "@/components/admin/person"
 import { DeleteCourseButton } from "@/components/admin/delete-course-button"
+import { TakeDownButton } from "@/components/admin/take-down-button"
 import { AppHeader } from "@/components/course/app-header"
 import { StatusBadge } from "@/components/course/status-badge"
 import { coursePaths } from "@/lib/admin-mode"
 import { describeChangeTarget, getCourseLimits, LEVELS, type ChangeTarget, type Course } from "@/lib/course"
-import { eventAction, eventLabel, resubmissionsAfterRejection } from "@/lib/course-status"
-import { courseForPage } from "@/lib/authz/context"
+import { decisionStage, eventAction, eventLabel, resubmissionsAfterRejection, stageAction } from "@/lib/course-status"
+import { courseForPage, resourceOf } from "@/lib/authz/context"
+import { can } from "@/lib/authz/policy"
 import { ensureHead } from "@/lib/course-store"
 import { usersByIds } from "@/lib/authz/identity"
 import { summarizeCourse, timeAgo } from "@/lib/course-summary"
@@ -29,6 +31,14 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
   const warnings = report.issues.filter((i) => i.level === "warning")
   const people = await usersByIds([course.owner_id, ...course.review_history.map((e) => e.by)])
   const resubmits = resubmissionsAfterRejection(course.review_history)
+  // Which stage this reviewer decides at (an org admin may also revoke an approved course), and whether they may decide it.
+  const resource = resourceOf(record)
+  const stage = decisionStage(course.status, record.tenantKind, {
+    review: can(ctx, "course.review", resource),
+    release: can(ctx, "course.release", resource),
+  })
+  const canDecide = stage !== null && can(ctx, stageAction(stage), resource)
+  const canTakeDown = can(ctx, "course.takedown", resource)
   // The version on screen: a decision is recorded against exactly this content.
   const head = await ensureHead(ctx, course.id)
 
@@ -196,7 +206,10 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
           </div>
 
           <aside className="adm-aside">
-            <DecisionPanel course={course} seen={head} historyHref={coursePaths(true).history(course.id)} />
+            <DecisionPanel course={course} stage={stage} canDecide={canDecide} seen={head} historyHref={coursePaths(true).history(course.id)} />
+            {canTakeDown && (course.status === "approved" || course.status === "published") && (
+              <TakeDownButton courseId={course.id} title={course.title} />
+            )}
             {resubmits.reached && <AllowResubmissionsButton courseId={course.id} limit={resubmits.limit} />}
 
             <section className="adm-card">

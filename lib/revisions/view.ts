@@ -2,6 +2,7 @@ import "server-only"
 
 import { usersByIds, type Person } from "@/lib/authz/identity"
 import type { CourseRecord } from "@/lib/course-store"
+import type { ReviewStage } from "@/lib/course"
 import type { Scope } from "@/lib/db/tenant-db"
 import { describeSummary } from "@/lib/revisions/diff"
 import { listRevisions, type RevisionListItem } from "@/lib/revisions/store"
@@ -11,7 +12,13 @@ import { listRounds, type ReviewRound } from "@/lib/review/rounds"
 // changed in words, and the review events tied to each (submitted, decided,
 // invalidated). Shared by the history API and the history page.
 
-export type ReviewMark = { kind: "submitted" | "approved" | "changes_requested" | "rejected" | "withdrawn" | "invalidated"; at: string; by: string | null }
+export type ReviewMark = {
+  kind: "submitted" | "approved" | "changes_requested" | "rejected" | "withdrawn" | "invalidated"
+  /** Which review stage the event belongs to (null on events saved before stages). */
+  stage: ReviewStage | null
+  at: string
+  by: string | null
+}
 
 export type RevisionView = {
   id: string
@@ -42,11 +49,16 @@ function reviewMarks(rounds: ReviewRound[]): Map<string, ReviewMark[]> {
     marks.set(id, [...(marks.get(id) ?? []), mark])
   }
   for (const r of rounds) {
-    add(r.submittedRevisionId, { kind: "submitted", at: r.submittedAt.toISOString(), by: r.submittedBy })
+    add(r.submittedRevisionId, { kind: "submitted", stage: r.stage, at: r.submittedAt.toISOString(), by: r.submittedBy })
     if (r.decision && r.decidedAt) {
-      add(r.decision === "withdrawn" ? r.submittedRevisionId : r.decidedRevisionId, { kind: r.decision, at: r.decidedAt.toISOString(), by: r.decidedBy })
+      add(r.decision === "withdrawn" ? r.submittedRevisionId : r.decidedRevisionId, {
+        kind: r.decision,
+        stage: r.stage,
+        at: r.decidedAt.toISOString(),
+        by: r.decidedBy,
+      })
     }
-    if (r.invalidatedAt) add(r.invalidatedByRevisionId, { kind: "invalidated", at: r.invalidatedAt.toISOString(), by: null })
+    if (r.invalidatedAt) add(r.invalidatedByRevisionId, { kind: "invalidated", stage: r.stage, at: r.invalidatedAt.toISOString(), by: null })
   }
   return marks
 }

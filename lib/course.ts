@@ -194,8 +194,16 @@ export const CourseInfoSchema = CourseInfoStoredSchema.extend({
 // Review workflow
 // ---------------------------------------------------------------------------
 
-export const COURSE_STATUSES = ["draft", "in_review", "changes_requested", "approved", "rejected"] as const
+export const COURSE_STATUSES = ["draft", "in_review", "changes_requested", "approved", "rejected", "published", "unpublished"] as const
 export type CourseStatus = (typeof COURSE_STATUSES)[number]
+
+/**
+ * Review has two stages. The organization stage (org admin) makes a course
+ * live for its organization; the platform stage (platform staff) publishes it
+ * to the main host. Personal-workspace courses have only the platform stage.
+ */
+export const REVIEW_STAGES = ["org", "platform"] as const
+export type ReviewStage = (typeof REVIEW_STAGES)[number]
 
 /** Where in the course a requested change applies; omitted = the whole course. */
 const ChangeTargetSchema = z.object({
@@ -215,8 +223,9 @@ export type ChangeTarget = z.infer<typeof ChangeTargetSchema>
  *   decided     a reviewer accepted, rejected or requested changes (note: their feedback)
  *   edited      the author edited an accepted course, which reopened it as a draft
  *   unlocked    a reviewer allowed more resubmissions after the limit was reached
+ *   taken_down  a live course was taken down from the catalogue (see takedown() in lib/course-status.ts)
  */
-export const REVIEW_ACTIONS = ["created", "submitted", "withdrawn", "decided", "edited", "unlocked"] as const
+export const REVIEW_ACTIONS = ["created", "submitted", "withdrawn", "decided", "edited", "unlocked", "taken_down"] as const
 export type ReviewAction = (typeof REVIEW_ACTIONS)[number]
 
 /** One entry in a course's review timeline. */

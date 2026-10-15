@@ -52,6 +52,7 @@ const ALL_PERMISSIONS: CoursePermissions = {
   share: false,
   history: true,
   restore: true,
+  takedown: true,
   role: null,
   sample: false,
 }
@@ -346,6 +347,7 @@ export function CourseBuilder({
             beforeSubmit={flush}
             isAdmin={isAdmin}
             canSubmit={may.submit}
+            mayTakeDown={may.takedown}
           />
         )}
         {sharing && <ShareDialog courseId={course.id} onClose={() => setSharing(false)} />}

@@ -51,6 +51,8 @@ export type CourseAction =
   | "course.review"
   /** The platform stage: publish an org-approved course to the main Inara host. */
   | "course.release"
+  /** Take a live course down from the catalogue (its organization's, or the main host). */
+  | "course.takedown"
   /** See the course's history and compare versions. */
   | "course.history"
   /** Restore an earlier version (written forward as a new one). Reviewers request changes instead. */
@@ -127,6 +129,9 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
       return reviewer
     case "course.release":
       return isPublisher(subject, course)
+    case "course.takedown":
+      // The author, a co-owner, an org admin in their org, or platform staff.
+      return (author || coOwner || isOrgAdmin(course, role) || subject.staff) && !course.sample
     case "course.share":
       // The owner, a co-owner, an org admin in their org, or platform staff.
       return author || coOwner || isOrgAdmin(course, role) || subject.staff

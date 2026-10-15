@@ -37,6 +37,7 @@ export function StatusPanel({
   beforeSubmit,
   isAdmin = false,
   canSubmit: maySubmit = true,
+  mayTakeDown = false,
 }: {
   course: Course
   workflow: Workflow
@@ -49,6 +50,8 @@ export function StatusPanel({
   isAdmin?: boolean
   /** False for people the course is shared with who can't submit it (editors, commenters, viewers). */
   canSubmit?: boolean
+  /** The author, co-owner, org admin or staff: may take a live course down from the catalogue. */
+  mayTakeDown?: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,7 +62,7 @@ export function StatusPanel({
   // Feedback always comes from the reviewers' last decision, so withdrawing never hides it.
   const decision = lastDecision(history)
   const lastSubmitted = history.findLast((e) => eventAction(e) === "submitted")
-  const showSubmit = !isAdmin && maySubmit && (status === "draft" || status === "rejected" || status === "changes_requested")
+  const showSubmit = !isAdmin && maySubmit && (status === "draft" || status === "rejected" || status === "changes_requested" || status === "unpublished")
   const askNote = showSubmit && needsResubmitNote(workflow)
   const resubmits = resubmissionsAfterRejection(history)
   const noteOk = !askNote || note.trim().length >= RESUBMIT_NOTE_MIN
@@ -119,6 +122,27 @@ export function StatusPanel({
     apply(data)
   }
 
+  const takeDown = async () => {
+    if (!window.confirm("Take this course down from the catalogue? Learners will no longer see it.")) return
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/courses/${course.id}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision: "takedown" }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(data.error ?? "Something went wrong")
+        return
+      }
+      apply(data)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <section className="sp" data-status={status} aria-labelledby="sp-title">
       <div className="sp-head">
@@ -170,6 +194,11 @@ export function StatusPanel({
               }}
             >
               {busy ? "Withdrawing…" : "Withdraw to edit"}
+            </button>
+          )}
+          {!isAdmin && mayTakeDown && (status === "approved" || status === "published") && (
+            <button type="button" className="in-btn in-btn-secondary" disabled={busy} onClick={() => void takeDown()}>
+              {busy ? "Taking down…" : "Take down"}
             </button>
           )}
         </div>

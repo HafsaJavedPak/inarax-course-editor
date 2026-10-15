@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-import { LEVELS, type ChangeRequest, type Course } from "@/lib/course"
-import { canReview, STATUS_DESCRIPTIONS, STATUS_LABELS, type ReviewDecision } from "@/lib/course-status"
+import { LEVELS, type ChangeRequest, type Course, type ReviewStage } from "@/lib/course"
+import { STATUS_DESCRIPTIONS, STATUS_LABELS, type ReviewDecision } from "@/lib/course-status"
 import { modeHeaders } from "@/lib/admin-mode"
 
 type DraftChange = { key: string; text: string; target: string }
@@ -14,6 +14,12 @@ const DECISIONS: { id: ReviewDecision; label: string; button: string }[] = [
   { id: "changes_requested", label: "Request changes", button: "Send back for changes" },
   { id: "rejected", label: "Reject", button: "Reject course" },
 ]
+
+/** The accept wording differs by stage: the organization stage accepts, the platform stage publishes. */
+const ACCEPT: Record<ReviewStage, { label: string; button: string }> = {
+  org: { label: "Accept", button: "Accept for the organization" },
+  platform: { label: "Publish", button: "Publish to the main host" },
+}
 
 /** "module:<id>" / "lesson:<id>" select values ↔ change request targets. */
 function toTarget(value: string, course: Course): ChangeRequest["target"] {
@@ -34,47 +40,64 @@ const newChange = (): DraftChange => ({ key: crypto.randomUUID(), text: "", targ
 /** The version the reviewer is looking at; the decision is recorded against exactly this content. */
 export type SeenVersion = { revisionId: string; contentHash: string; number: number }
 
-/** Admin decision on a course: accept, request changes (with a checklist), or reject. */
+/**
+ * Reviewer decision on a course: accept/publish, request changes (with a
+ * checklist), or reject. `stage` is the stage the course is waiting on (the
+ * organization stage accepts; the platform stage publishes), and `canDecide`
+ * is whether this reviewer holds that stage's permission.
+ */
 export function DecisionPanel({
   course,
+  stage,
+  canDecide,
   seen,
   historyHref,
 }: {
   course: Course
+  stage: ReviewStage | null
+  canDecide: boolean
   seen: SeenVersion | null
   historyHref: string
 }) {
   const router = useRouter()
   const [changedSince, setChangedSince] = useState(false)
-  const revoking = course.status === "approved"
+  // Reversing a decision this stage already made: a published course for
+  // platform staff (takes it off the main host — the organization keeps its
+  // approved version), or an approved course for an org admin (removes it from
+  // the organization).
+  const revoking = (stage === "platform" && course.status === "published") || (stage === "org" && course.status === "approved")
   const [decision, setDecision] = useState<ReviewDecision>(revoking ? "changes_requested" : "approved")
   const [note, setNote] = useState("")
   const [changes, setChanges] = useState<DraftChange[]>([newChange()])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (!canReview(course.status)) {
+  if (!stage || !canDecide) {
     return (
       <section className="adm-card adm-decision">
         <h2>Decision</h2>
         <p className="adm-muted">
-          No decision needed right now. This course is <strong>{STATUS_LABELS[course.status].toLowerCase()}</strong>:{" "}
+          No decision needed from you right now. This course is <strong>{STATUS_LABELS[course.status].toLowerCase()}</strong>:{" "}
           {STATUS_DESCRIPTIONS[course.status].charAt(0).toLowerCase() + STATUS_DESCRIPTIONS[course.status].slice(1)}
         </p>
       </section>
     )
   }
 
+  const accept = ACCEPT[stage]
+  const decisions = DECISIONS.map((d) => (d.id === "approved" ? { ...d, ...accept } : d))
   const filledChanges = changes.filter((c) => c.text.trim())
-  const options = revoking ? DECISIONS.filter((d) => d.id !== "approved") : DECISIONS
-  const current = DECISIONS.find((d) => d.id === decision)!
+  const options = revoking ? decisions.filter((d) => d.id !== "approved") : decisions
+  const current = decisions.find((d) => d.id === decision)!
   const invalid =
     (decision === "rejected" && !note.trim()) || (decision === "changes_requested" && filledChanges.length === 0)
 
   const submit = async () => {
     const confirmText =
       decision === "approved"
-        ? `Accept “${course.title}”?`
+        ? stage === "org"
+          ? `Accept “${course.title}” for the organization? It becomes available to your organization's learners.`
+          : `Publish “${course.title}” to the main course catalogue?`
         : decision === "rejected"
           ? `Reject “${course.title}”? The creator will see your reason.`
           : `Send “${course.title}” back with ${filledChanges.length} requested change${filledChanges.length === 1 ? "" : "s"}?`
@@ -118,10 +141,12 @@ export function DecisionPanel({
 
   return (
     <section className="adm-card adm-decision" aria-labelledby="decision-title">
-      <h2 id="decision-title">{revoking ? "Revoke acceptance" : "Decision"}</h2>
+      <h2 id="decision-title">
+        {stage === "org" ? "Organization review" : revoking ? "Revoke publication" : "Platform review"}
+      </h2>
       {seen && (
         <p className="adm-muted adm-reviewing">
-          {revoking ? "Accepted" : "Reviewing"} <a href={historyHref}>version {seen.number}</a>. Your decision is recorded
+          {revoking ? "Published" : "Reviewing"} <a href={historyHref}>version {seen.number}</a>. Your decision is recorded
           against exactly this version.
         </p>
       )}
@@ -133,9 +158,16 @@ export function DecisionPanel({
           </button>
         </div>
       )}
-      {revoking && (
+      {stage === "platform" && (
         <p className="adm-muted">
-          This course is accepted. You can still send it back for changes or reject it if you find a problem.
+          {revoking
+            ? "This course is published. Requesting changes or rejecting takes it off the main host; your organization keeps its approved version."
+            : "Publishing makes this course live on the main course catalogue. The course needs a cover image."}
+        </p>
+      )}
+      {stage === "org" && revoking && (
+        <p className="adm-muted">
+          This course is approved for your organization. Requesting changes or rejecting removes it from your organization&rsquo;s catalogue.
         </p>
       )}
 
@@ -189,7 +221,7 @@ export function DecisionPanel({
                         </option>,
                         ...mod.lessons.map((lesson) => (
                           <option key={lesson.id} value={`lesson:${lesson.id}`}>
-                            {"  "}Lesson: {lesson.title}
+                            {"  "}Lesson: {lesson.title}
                           </option>
                         )),
                       ])}

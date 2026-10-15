@@ -381,6 +381,8 @@ export const courseReviews = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     tenantId: uuid("tenant_id").notNull(),
     courseId: uuid("course_id").notNull(),
+    /** Which review stage this round belongs to (organization first, then platform). */
+    stage: text("stage", { enum: ["org", "platform"] }).notNull().default("org"),
     submittedRevisionId: uuid("submitted_revision_id").notNull(),
     submittedHash: text("submitted_hash").notNull(),
     submittedBy: text("submitted_by").notNull(),

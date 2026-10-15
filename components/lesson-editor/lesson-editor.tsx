@@ -73,10 +73,10 @@ function LiveBanner({ live }: { live: LiveLesson }) {
       </p>
     )
   }
-  if (live.mode === "read" && live.readReason === "approved") {
+  if (live.mode === "read" && (live.readReason === "approved" || live.readReason === "published")) {
     return (
       <p className="le-banner" data-tone="approved" role="status">
-        This course is accepted, so its content is frozen. Revoke the acceptance to edit it.
+        This course has been approved, so its content is frozen. Revoke the decision to edit it.
       </p>
     )
   }
@@ -504,9 +504,9 @@ export function LessonEditor({
             {courseStatus === "in_review" ? "in review" : "in its current status"}.
           </p>
         )}
-        {!isAdmin && courseStatus === "approved" && (
+        {!isAdmin && (courseStatus === "approved" || courseStatus === "published") && (
           <p className="le-banner" data-tone="approved" role="status">
-            This course has been accepted. Saving a change here moves it back to Draft, and it will need another review.
+            This course has been approved. Saving a change here moves it back to Draft, and it will need another review.
           </p>
         )}
 
