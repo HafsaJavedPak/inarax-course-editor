@@ -64,6 +64,7 @@ export async function runJob(job: AiJobRow, workerId: string, options: RunJobOpt
       jobId: job.id,
       kind: job.kind,
       locale: job.locale,
+      field: job.field,
       params: (job.params as Record<string, unknown>) ?? {},
       sources: (Array.isArray(job.sources) ? job.sources : []) as SourceRef[],
       baseContent: { course: record.course, lesson },

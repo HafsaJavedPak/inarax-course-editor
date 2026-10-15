@@ -15,6 +15,8 @@ export type GenerateRequest = {
   jobId: string
   kind: AiJobKind
   locale: string
+  /** The target field within the block/lesson (job.field), when the kind targets one. */
+  field?: string | null
   /** Style, count, tone, size … (job.params). */
   params: Record<string, unknown>
   sources: SourceRef[]

@@ -107,6 +107,11 @@ services:
         sync: false
       - key: AI_WORKER_SECRET
         sync: false
+      # Provider keys live on the worker only (never the app or the database).
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
 
 databases:
   - name: inara-course-editor-db
