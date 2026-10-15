@@ -27,40 +27,54 @@ const ALL: CourseAction[] = [
   "course.export",
   "course.submit",
   "course.review",
+  "course.release",
   "course.history",
   "course.restore",
   "course.settings",
   "course.share",
 ]
-/** The author's side only: submitting and restoring versions. */
-const AUTHOR_ONLY: CourseAction[] = ["course.submit", "course.restore"]
+/** The two review stages are separate actions (checked below). */
+const without = (...actions: CourseAction[]) => ALL.filter((a) => !actions.includes(a))
 const allowed = (s: Subject, course: CourseResource) => ALL.filter((a) => can(s, a, course))
 
 describe("course access", () => {
-  it("personal workspace: the owner writes, staff review, nobody else gets anything", () => {
-    expect(allowed(owner, personalCourse)).toEqual(ALL.filter((a) => a !== "course.review"))
-    // Staff review personal courses but don't manage who they're shared with.
-    expect(allowed(staff, personalCourse)).toEqual(ALL.filter((a) => !AUTHOR_ONLY.includes(a) && a !== "course.share"))
+  it("personal workspace: the owner writes, staff review and publish, nobody else gets anything", () => {
+    expect(allowed(owner, personalCourse)).toEqual(without("course.review", "course.release"))
+    // Staff review and publish personal courses; they don't submit or restore them.
+    expect(allowed(staff, personalCourse)).toEqual(without("course.submit", "course.restore"))
     expect(allowed(stranger, personalCourse)).toEqual([])
     expect(allowed(orgAdmin, personalCourse)).toEqual([])
   })
 
-  it("organization: the author writes their course, admins review, other creators see nothing", () => {
-    expect(allowed(author, orgCourse)).toEqual(ALL.filter((a) => a !== "course.review"))
-    expect(allowed(orgAdmin, orgCourse)).toEqual(ALL.filter((a) => !AUTHOR_ONLY.includes(a)))
+  it("organization: the author writes and submits, admins review, other creators see nothing", () => {
+    expect(allowed(author, orgCourse)).toEqual(without("course.review", "course.release"))
+    // An org admin runs everything in the org except the author-only submit/restore and the platform stage.
+    expect(allowed(orgAdmin, orgCourse)).toEqual(without("course.submit", "course.restore", "course.release"))
     expect(allowed(otherCreator, orgCourse)).toEqual([])
   })
 
-  it("platform staff don't review organizations' courses", () => {
-    expect(allowed(staff, orgCourse)).toEqual([])
+  it("platform staff review and publish organizations' courses too", () => {
+    expect(allowed(staff, orgCourse)).toEqual(without("course.submit", "course.restore"))
+  })
+
+  it("only platform staff decide the platform stage (publish to the main host)", () => {
+    expect(can(staff, "course.release", orgCourse)).toBe(true)
+    expect(can(orgAdmin, "course.release", orgCourse)).toBe(false)
+    expect(can(author, "course.release", orgCourse)).toBe(false)
+    expect(can(staff, "course.release", { ...orgCourse, sample: true })).toBe(false)
   })
 
   it("an author who left the org loses access to the courses they wrote there", () => {
     expect(allowed(formerAuthor, orgCourse)).toEqual([])
   })
 
-  it("an org admin's own course: they write it and review it", () => {
-    expect(allowed(orgAdmin, { ...orgCourse, ownerId: "admin" })).toEqual(ALL)
+  it("an org admin's own course: they write, submit and review it, but still not publish to the host", () => {
+    expect(allowed(orgAdmin, { ...orgCourse, ownerId: "admin" })).toEqual(without("course.release"))
+  })
+
+  it("an org admin gets nothing from another organization's course", () => {
+    const elsewhere = { ...orgCourse, tenantId: "org-other" }
+    expect(allowed(orgAdmin, elsewhere)).toEqual([])
   })
 })
 
@@ -102,9 +116,10 @@ describe("shared courses (course grants)", () => {
     expect(allowed(withGrant("viewer", stranger), shared)).toEqual(["course.read"])
   })
 
-  it("never makes anyone a reviewer", () => {
+  it("never makes anyone a reviewer or publisher", () => {
     for (const role of ["co_owner", "editor", "commenter", "viewer"] as const) {
       expect(can(withGrant(role), "course.review", shared)).toBe(false)
+      expect(can(withGrant(role), "course.release", shared)).toBe(false)
       expect(can(withGrant(role), "course.delete", shared)).toBe(false)
     }
   })

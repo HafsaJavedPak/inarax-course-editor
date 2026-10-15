@@ -78,6 +78,13 @@
       "when": 1791872308556,
       "tag": "0010_sample_course",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791960000000,
+      "tag": "0011_platform_staff_scope",
+      "breakpoints": true
     }
   ]
 }
