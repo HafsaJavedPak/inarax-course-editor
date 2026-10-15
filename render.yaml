@@ -45,6 +45,16 @@ services:
         sync: false
       - key: COLLAB_INTERNAL_SECRET
         sync: false
+      # AI generation (the C1 AI job core). Off unless AI_ENABLED is set to 1.
+      # AI_WORKER_URL / AI_WORKER_SECRET connect the app to the worker below.
+      - key: AI_ENABLED
+        sync: false
+      - key: AI_DEFAULT_PROVIDER
+        sync: false
+      - key: AI_WORKER_URL
+        sync: false
+      - key: AI_WORKER_SECRET
+        sync: false
     disk:
       name: inara-data
       mountPath: /var/data
@@ -75,6 +85,27 @@ services:
       - key: COLLAB_TICKET_SECRET
         sync: false
       - key: COLLAB_INTERNAL_SECRET
+        sync: false
+
+  # The AI worker: claims queued AI jobs from the database, generates with the
+  # job's provider and writes the candidate back. A background worker (no
+  # inbound HTTP). Shares the database with the app; only the app migrates.
+  - type: worker
+    name: inara-course-editor-ai
+    runtime: node
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm run ai:worker
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: EDITOR_DATABASE_URL
+        fromDatabase:
+          name: inara-course-editor-db
+          property: connectionString
+      - key: AI_DEFAULT_PROVIDER
+        sync: false
+      - key: AI_WORKER_SECRET
         sync: false
 
 databases:

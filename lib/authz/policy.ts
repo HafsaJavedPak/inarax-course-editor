@@ -61,6 +61,10 @@ export type CourseAction =
   | "course.settings"
   /** Give, change and remove access (grants, invitations). */
   | "course.share"
+  /** Request an AI job for this course (generate text, images …). The output is only a suggestion. */
+  | "course.ai"
+  /** Accept a ready AI job's candidate: the only action that turns AI output into content (C5). */
+  | "course.ai.apply"
 
 export type TenantAction = "tenant.view" | "course.create"
 
@@ -135,6 +139,13 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
     case "course.share":
       // The owner, a co-owner, an org admin in their org, or platform staff.
       return author || coOwner || isOrgAdmin(course, role) || subject.staff
+    case "course.ai":
+      // Whoever may edit may ask the AI; the result is a suggestion, not an edit.
+      // (Whether the course is locked in review is enforced where the job is written.)
+      return author || reviewer || coOwner || editor
+    case "course.ai.apply":
+      // Turning a candidate into content is an edit, and follows the same rules.
+      return author || coOwner || editor
   }
 }
 

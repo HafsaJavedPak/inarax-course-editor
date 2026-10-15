@@ -33,6 +33,8 @@ const ALL: CourseAction[] = [
   "course.restore",
   "course.settings",
   "course.share",
+  "course.ai",
+  "course.ai.apply",
 ]
 /** The two review stages are separate actions (checked below). */
 const without = (...actions: CourseAction[]) => ALL.filter((a) => !actions.includes(a))
@@ -42,7 +44,7 @@ describe("course access", () => {
   it("personal workspace: the owner writes, staff review and publish, nobody else gets anything", () => {
     expect(allowed(owner, personalCourse)).toEqual(without("course.review", "course.release"))
     // Staff review and publish personal courses; they don't submit or restore them.
-    expect(allowed(staff, personalCourse)).toEqual(without("course.submit", "course.restore"))
+    expect(allowed(staff, personalCourse)).toEqual(without("course.submit", "course.restore", "course.ai.apply"))
     expect(allowed(stranger, personalCourse)).toEqual([])
     expect(allowed(orgAdmin, personalCourse)).toEqual([])
   })
@@ -50,12 +52,12 @@ describe("course access", () => {
   it("organization: the author writes and submits, admins review, other creators see nothing", () => {
     expect(allowed(author, orgCourse)).toEqual(without("course.review", "course.release"))
     // An org admin runs everything in the org except the author-only submit/restore and the platform stage.
-    expect(allowed(orgAdmin, orgCourse)).toEqual(without("course.submit", "course.restore", "course.release"))
+    expect(allowed(orgAdmin, orgCourse)).toEqual(without("course.submit", "course.restore", "course.release", "course.ai.apply"))
     expect(allowed(otherCreator, orgCourse)).toEqual([])
   })
 
   it("platform staff review and publish organizations' courses too", () => {
-    expect(allowed(staff, orgCourse)).toEqual(without("course.submit", "course.restore"))
+    expect(allowed(staff, orgCourse)).toEqual(without("course.submit", "course.restore", "course.ai.apply"))
   })
 
   it("only platform staff decide the platform stage (publish to the main host)", () => {
@@ -107,8 +109,10 @@ describe("shared courses (course grants)", () => {
       "course.restore",
       "course.settings",
       "course.share",
+      "course.ai",
+      "course.ai.apply",
     ])
-    expect(allowed(withGrant("editor"), shared)).toEqual(["course.read", "course.edit", "course.history", "course.restore"])
+    expect(allowed(withGrant("editor"), shared)).toEqual(["course.read", "course.edit", "course.history", "course.restore", "course.ai", "course.ai.apply"])
     expect(allowed(withGrant("commenter"), shared)).toEqual(["course.read", "course.history"])
     expect(allowed(withGrant("viewer"), shared)).toEqual(["course.read"])
   })

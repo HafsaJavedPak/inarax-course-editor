@@ -92,6 +92,20 @@
       "when": 1792050000000,
       "tag": "0012_review_stages",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792043805498,
+      "tag": "0013_ai_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792150000000,
+      "tag": "0014_ai_jobs_row_level_security",
+      "breakpoints": true
     }
   ]
 }
