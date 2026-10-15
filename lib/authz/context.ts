@@ -68,6 +68,10 @@ export type CoursePermissions = {
   share: boolean
   history: boolean
   restore: boolean
+  /** Take a live course down from the catalogue (its organization's, or the main host). */
+  takedown: boolean
+  /** May request AI jobs for this course (04 · AI generation). */
+  ai: boolean
   /** Their role through sharing, if that's how they reach the course. */
   role: CourseGrant["role"] | null
   /** The sample course: for trying the editor out, never submitted or published. */
@@ -84,6 +88,8 @@ export function permissionsFor(ctx: RequestContext, record: CourseRecord): Cours
     share: can(ctx, "course.share", resource),
     history: can(ctx, "course.history", resource),
     restore: can(ctx, "course.restore", resource),
+    takedown: can(ctx, "course.takedown", resource),
+    ai: can(ctx, "course.ai", resource),
     role: ctx.grants.find((g) => g.courseId === record.course.id)?.role ?? null,
     sample: record.sample,
   }

@@ -16,12 +16,12 @@ import "server-only"
 import { inArray, or, sql, type SQL } from "drizzle-orm"
 
 import { getDb, type Db } from "./client"
-import { courses, lessons, tenants } from "./schema"
+import { courses, lessons } from "./schema"
 
 /** What a request may see: the tenants its user belongs to, the courses shared with them, and whether they're platform staff. */
 export type Scope = {
   readonly tenantIds: readonly string[]
-  /** Platform admins also see personal workspaces (they review those courses). */
+  /** Platform staff see every workspace (personal and organization). */
   readonly staff: boolean
   /** Courses shared with the user (effective grants only), each visible on its own, without its workspace. */
   readonly courseIds?: readonly string[]
@@ -52,14 +52,13 @@ export async function withoutTenantScope<T>(fn: (tx: Tx) => Promise<T>): Promise
 
 /** The rows of `table` that `scope` may see (the same rule as row-level security, editor_course_visible). */
 export function tenantFilter(table: typeof courses | typeof lessons, scope: Scope): SQL {
+  // Platform staff see every workspace's courses, organizations included.
+  if (scope.staff) return sql`true`
   const conditions: SQL[] = []
   if (scope.tenantIds.length > 0) conditions.push(inArray(table.tenantId, [...scope.tenantIds]))
   if (scope.courseIds?.length) {
     const courseId = table === courses ? courses.id : lessons.courseId
     conditions.push(inArray(courseId, [...scope.courseIds]))
-  }
-  if (scope.staff) {
-    conditions.push(sql`EXISTS (SELECT 1 FROM ${tenants} WHERE ${tenants.id} = ${table.tenantId} AND ${tenants.kind} = 'personal')`)
   }
   return conditions.length === 0 ? sql`false` : conditions.length === 1 ? conditions[0] : or(...conditions)!
 }

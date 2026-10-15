@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "collab": "tsx --conditions=react-server --env-file-if-exists=.env.local collab/main.ts",
+    "ai:worker": "tsx --conditions=react-server --env-file-if-exists=.env.local ai/main.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

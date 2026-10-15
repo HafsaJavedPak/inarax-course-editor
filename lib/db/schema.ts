@@ -22,6 +22,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
   primaryKey,
   text,
@@ -381,6 +382,8 @@ export const courseReviews = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     tenantId: uuid("tenant_id").notNull(),
     courseId: uuid("course_id").notNull(),
+    /** Which review stage this round belongs to (organization first, then platform). */
+    stage: text("stage", { enum: ["org", "platform"] }).notNull().default("org"),
     submittedRevisionId: uuid("submitted_revision_id").notNull(),
     submittedHash: text("submitted_hash").notNull(),
     submittedBy: text("submitted_by").notNull(),
@@ -476,4 +479,149 @@ export const idempotencyKeys = pgTable(
     createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.key] }), index("idempotency_keys_created_idx").on(t.createdAt)],
+)
+
+// ---------------------------------------------------------------------------
+// AI jobs (04 · AI and media generation, C1)
+// ---------------------------------------------------------------------------
+
+/**
+ * What an AI job produces. Text and image first (C1/C3); animation, video and
+ * audio arrive later as new kinds with their own provider adapters, so this
+ * list grows without a schema change.
+ */
+export const AI_JOB_KINDS = ["explanation", "questions", "outline", "image"] as const
+export type AiJobKind = (typeof AI_JOB_KINDS)[number]
+
+/**
+ * A job's life: queued → running → validating → ready → accepted / rejected.
+ * Failures and cancellation are terminal unless explicitly retried.
+ * `ready` means reviewable, not applied — nothing changes a course content
+ * until a creator accepts (and that apply path is C5).
+ */
+export const AI_JOB_STATES = ["queued", "running", "validating", "ready", "accepted", "rejected", "failed", "cancelled"] as const
+export type AiJobState = (typeof AI_JOB_STATES)[number]
+
+export const AI_BUDGET_STATUS = ["none", "reserved", "reconciled", "released"] as const
+export type AiBudgetStatus = (typeof AI_BUDGET_STATUS)[number]
+
+/** An attempt's outcome, for the per-try history (ai_job_attempts). */
+export const AI_ATTEMPT_OUTCOMES = ["ready", "retryable", "failed", "lost_lease", "cancelled"] as const
+export type AiAttemptOutcome = (typeof AI_ATTEMPT_OUTCOMES)[number]
+
+/**
+ * The durable record of one creator request (module 26). The row *is* the queue
+ * item: it is written (with its budget reservation) in one transaction, then a
+ * worker claims it with FOR UPDATE SKIP LOCKED. Everything about the request
+ * and its outcome lives here, so a crash loses nothing and a stale result can
+ * never silently overwrite newer content (base_revision_id / base_content_hash).
+ */
+export const aiJobs = pgTable(
+  "ai_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+
+    // Target within the course (the kind decides what is required).
+    lessonId: uuid("lesson_id"),
+    blockId: uuid("block_id"),
+    field: text("field"),
+
+    kind: text("kind", { enum: AI_JOB_KINDS }).notNull(),
+    locale: text("locale").notNull().default("en"),
+    /** Style, count, tone, size … */
+    params: jsonb("params").notNull().default({}),
+    /** Selected approved sources (ids/hashes only, never content). */
+    sources: jsonb("sources").notNull().default([]),
+
+    // What the draft looked like when the creator asked (staleness / rebase anchor).
+    baseRevisionId: uuid("base_revision_id").notNull(),
+    baseContentHash: text("base_content_hash").notNull(),
+    baseLessonHash: text("base_lesson_hash"),
+
+    // Routing, resolved at enqueue by policy (C3).
+    provider: text("provider").notNull(),
+    model: text("model"),
+    promptVersion: text("prompt_version").notNull(),
+
+    // Budget (C2 fills the numbers; C1 owns the columns).
+    estimatedCost: numeric("estimated_cost", { precision: 12, scale: 4 }),
+    reservedCost: numeric("reserved_cost", { precision: 12, scale: 4 }),
+    actualCost: numeric("actual_cost", { precision: 12, scale: 4 }),
+    currency: text("currency").notNull().default("USD"),
+    budgetStatus: text("budget_status", { enum: AI_BUDGET_STATUS }).notNull().default("none"),
+
+    // Lifecycle.
+    state: text("state", { enum: AI_JOB_STATES }).notNull().default("queued"),
+    attempt: integer("attempt").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    /** { code, message, retryable } */
+    error: jsonb("error"),
+    /** Set by the creator while a job runs; the worker stops at the next boundary. */
+    cancelRequested: boolean("cancel_requested").notNull().default(false),
+
+    // Result (staged candidate; asset ids filled by C4).
+    result: jsonb("result"),
+    /** provider, model, prompt hash, source hashes, timings. */
+    provenance: jsonb("provenance"),
+
+    // Lease (worker ownership).
+    claimedBy: text("claimed_by"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    heartbeatAt: timestamp("heartbeat_at", { withTimezone: true }),
+
+    // Outcome links.
+    acceptedRevisionId: uuid("accepted_revision_id"),
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    rejectReason: text("reject_reason"),
+
+    // Bookkeeping.
+    createdBy: text("created_by").notNull(),
+    traceId: text("trace_id"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    // The claim query's index; partial keeps it small as history grows.
+    index("ai_jobs_claimable_idx").on(t.createdAt).where(sql`${t.state} = 'queued'`),
+    index("ai_jobs_course_idx").on(t.courseId, t.createdAt),
+    index("ai_jobs_target_idx").on(t.courseId, t.blockId),
+    // Suppresses accidental double-submits for the same target and base revision.
+    uniqueIndex("ai_jobs_one_live_per_target_idx")
+      .on(t.courseId, t.kind, t.baseRevisionId, sql`coalesce(${t.lessonId}::text, '')`, sql`coalesce(${t.blockId}::text, '')`)
+      .where(sql`${t.state} in ('queued', 'running', 'validating', 'ready')`),
+    // A job can never reference another tenant's course.
+    foreignKey({ name: "ai_jobs_course_fk", columns: [t.tenantId, t.courseId], foreignColumns: [courses.tenantId, courses.id] }).onDelete("cascade"),
+  ],
+)
+
+/**
+ * One row per attempt: bounded retries and per-try cost made visible, which the
+ * budget reconciliation and the tracing both read.
+ */
+export const aiJobAttempts = pgTable(
+  "ai_job_attempts",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => aiJobs.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+    attempt: integer("attempt").notNull(),
+    worker: text("worker").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    outcome: text("outcome", { enum: AI_ATTEMPT_OUTCOMES }),
+    error: jsonb("error"),
+    cost: numeric("cost", { precision: 12, scale: 4 }),
+  },
+  (t) => [
+    index("ai_job_attempts_job_idx").on(t.jobId, t.attempt),
+    foreignKey({ name: "ai_job_attempts_course_fk", columns: [t.tenantId, t.courseId], foreignColumns: [courses.tenantId, courses.id] }).onDelete("cascade"),
+  ],
 )

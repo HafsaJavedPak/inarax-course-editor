@@ -369,6 +369,10 @@
     border-color: var(--in-success-ring);
   }
 
+  &[data-status="published"] {
+    border-color: var(--in-success);
+  }
+
   h3 {
     margin: 0;
     font-size: 0.8125rem;

@@ -3,16 +3,22 @@
 //
 // Access = membership ∩ role ∩ resource, or a course grant. Without a
 // membership in the course's tenant there is no access unless the course was
-// shared with the user (a grant reaches that one course only), with one more
-// exception: platform staff (InaraX admins) review courses in personal
-// workspaces.
+// shared with the user (a grant reaches that one course only). Platform staff
+// (InaraX admins of the inaraX organization) are the exception: they read and
+// manage courses in every workspace, personal and organization alike, so they
+// can review and publish them.
 //
 //   personal workspace   owner    writes their courses; staff review them
-//   organization         admin    everything in the org, including review
+//   organization         admin    everything in the org, including review; sees nothing of other orgs
 //                        creator  creates courses; works on the ones they own
 //   shared course        co_owner · editor · commenter · viewer (lib/authz/sharing.ts)
 //   sample course        its owner's own copy for learning the editor: nobody
 //                        reviews it, and it's never published
+//
+// Review has two stages (lib/review/rounds.ts): the organization stage,
+// decided by an org admin (or platform staff), which makes the course live for
+// the organization; then the platform stage, which publishes it to the main
+// Inara host and is decided by platform staff only.
 
 import type { GrantRole, MembershipRole, TenantKind } from "@/lib/db/schema"
 
@@ -41,7 +47,12 @@ export type CourseAction =
   | "course.export"
   /** Submit, withdraw, tick off requested changes: the author's side of review. */
   | "course.submit"
+  /** The organization stage of review: approve, reject or request changes. */
   | "course.review"
+  /** The platform stage: publish an org-approved course to the main Inara host. */
+  | "course.release"
+  /** Take a live course down from the catalogue (its organization's, or the main host). */
+  | "course.takedown"
   /** See the course's history and compare versions. */
   | "course.history"
   /** Restore an earlier version (written forward as a new one). Reviewers request changes instead. */
@@ -50,6 +61,10 @@ export type CourseAction =
   | "course.settings"
   /** Give, change and remove access (grants, invitations). */
   | "course.share"
+  /** Request an AI job for this course (generate text, images …). The output is only a suggestion. */
+  | "course.ai"
+  /** Accept a ready AI job's candidate: the only action that turns AI output into content (C5). */
+  | "course.ai.apply"
 
 export type TenantAction = "tenant.view" | "course.create"
 
@@ -57,10 +72,24 @@ export function roleIn(subject: Subject, tenantId: string): MembershipRole | nul
   return subject.memberships.find((m) => m.tenantId === tenantId)?.role ?? null
 }
 
-/** Reviews (and may edit during review) courses in this tenant. Sample courses are never reviewed. */
+/** An admin of the course's organization (never a personal workspace). */
+function isOrgAdmin(course: CourseResource, role: MembershipRole | null) {
+  return role === "admin" && course.tenantKind === "org"
+}
+
+/**
+ * Decides the organization stage of review (approve, reject, request changes):
+ * an org admin in their org, or platform staff anywhere. Org admins get
+ * nothing from another organization. Sample courses are never reviewed.
+ */
 function isReviewer(subject: Subject, course: CourseResource, role: MembershipRole | null) {
   if (course.sample) return false
-  return role === "admin" || (subject.staff && course.tenantKind === "personal")
+  return isOrgAdmin(course, role) || subject.staff
+}
+
+/** Decides the platform stage: publishes an org-approved course to the main Inara host. Platform staff only. */
+function isPublisher(subject: Subject, course: CourseResource) {
+  return !course.sample && subject.staff
 }
 
 /** The course's author, still a member of its tenant. */
@@ -102,9 +131,21 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
       return author || reviewer
     case "course.review":
       return reviewer
+    case "course.release":
+      return isPublisher(subject, course)
+    case "course.takedown":
+      // The author, a co-owner, an org admin in their org, or platform staff.
+      return (author || coOwner || isOrgAdmin(course, role) || subject.staff) && !course.sample
     case "course.share":
-      // Org admins manage sharing in their org; platform staff don't manage personal workspaces' sharing.
-      return author || coOwner || (role === "admin" && course.tenantKind === "org")
+      // The owner, a co-owner, an org admin in their org, or platform staff.
+      return author || coOwner || isOrgAdmin(course, role) || subject.staff
+    case "course.ai":
+      // Whoever may edit may ask the AI; the result is a suggestion, not an edit.
+      // (Whether the course is locked in review is enforced where the job is written.)
+      return author || reviewer || coOwner || editor
+    case "course.ai.apply":
+      // Turning a candidate into content is an edit, and follows the same rules.
+      return author || coOwner || editor
   }
 }
 
@@ -113,7 +154,7 @@ export function sharingPower(subject: Subject, course: CourseResource) {
   const role = roleIn(subject, course.tenantId)
   return {
     isOwner: isAuthor(subject, course, role),
-    isAdmin: role === "admin" && course.tenantKind === "org",
+    isAdmin: isOrgAdmin(course, role),
     role: grantRole(subject, course),
   }
 }
@@ -127,7 +168,7 @@ export function canInTenant(subject: Subject, action: TenantAction, tenantId: st
   }
 }
 
-/** Whether the subject reviews anything at all (opens the review area). */
+/** Whether the subject reviews anything at all (opens the review area): platform staff, or an org admin. */
 export function reviewsAnything(subject: Subject): boolean {
   return subject.staff || subject.memberships.some((m) => m.role === "admin")
 }

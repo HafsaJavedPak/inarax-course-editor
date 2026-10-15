@@ -151,9 +151,10 @@ describe("another tenant's course", () => {
     expect(statuses).toEqual(allNotFound(statuses))
   })
 
-  it("an organization's courses are invisible to platform staff, personal ones aren't", async () => {
+  it("platform staff read courses in every workspace, organizations included", async () => {
     await signInAs("sam", { fromReviewArea: true })
-    expect((await getCourse(new Request("http://editor.test"), params({ courseId: ids.aliceOrg }))).status).toBe(404)
+    expect((await getCourse(new Request("http://editor.test"), params({ courseId: ids.aliceOrg }))).status).toBe(200)
+    expect((await getCourse(new Request("http://editor.test"), params({ courseId: ids.carolOrgY }))).status).toBe(200)
     expect((await getCourse(new Request("http://editor.test"), params({ courseId: ids.bobPersonal }))).status).toBe(200)
   })
 
@@ -207,6 +208,16 @@ describe("the database itself", () => {
     const titles = (await listCourses(await scopeOf("bob"))).map((r) => r.course.id)
     expect(titles).not.toContain(ids.aliceOrg)
     expect(titles).not.toContain(ids.carolOrgY)
+  })
+
+  it("a platform staff scope reaches every tenant; a non-member's does not", async () => {
+    const tenantsSeen = async (userId: string) =>
+      new Set((await withTenantScope(await scopeOf(userId), (tx) => tx.select({ tenant: courses.tenantId }).from(courses))).map((r) => r.tenant))
+    const asStaff = await tenantsSeen("sam")
+    expect(asStaff.has(tenant.orgX)).toBe(true)
+    expect(asStaff.has(tenant.orgY)).toBe(true)
+    const asCarol = await tenantsSeen("carol")
+    expect(asCarol.has(tenant.orgX)).toBe(false)
   })
 
   it("hides other tenants' rows even from a query with no tenant filter (row-level security)", async () => {

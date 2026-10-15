@@ -25,11 +25,11 @@ const KIND_LABELS: Record<RevisionView["kind"], string> = {
 
 const REVIEW_LABELS: Record<RevisionView["reviews"][number]["kind"], string> = {
   submitted: "Submitted for review",
-  approved: "Accepted",
+  approved: "Approved",
   changes_requested: "Changes requested",
   rejected: "Rejected",
   withdrawn: "Withdrawn from review",
-  invalidated: "Acceptance withdrawn by this edit",
+  invalidated: "Approval withdrawn by this edit",
 }
 
 type Compare = "parent" | "head"
@@ -207,7 +207,7 @@ export function HistoryScreen({
                     <strong>Version {r.number}</strong>
                     {r.label && <span className="hx-label">“{r.label}”</span>}
                     {r.is_head && <span className="hx-badge" data-tone="current">Current</span>}
-                    {r.id === history.approved_revision_id && <span className="hx-badge" data-tone="approved">Accepted</span>}
+                    {r.id === history.approved_revision_id && <span className="hx-badge" data-tone="approved">Approved</span>}
                     {r.is_published && <span className="hx-badge">Published</span>}
                     {!r.sealed && <span className="hx-badge" data-tone="open">Being edited</span>}
                   </span>
