@@ -2,6 +2,7 @@ import "server-only"
 
 import { and, desc, eq, inArray, sql } from "drizzle-orm"
 
+import { jobStaleness } from "@/lib/ai/staleness"
 import { CourseSchema, getCourseLimits, type Course, type ReviewStage } from "@/lib/course"
 import { afterEdit, effectiveStatus, isLocked, reviewStage, type ReviewDecision, type WorkflowResult } from "@/lib/course-status"
 import { getLessonStats, validateCourse, type LessonStats } from "@/lib/course-validate"
@@ -730,6 +731,83 @@ export async function saveLessonContent(
     await commitContent(tx, scope, record.tenantId, course, { kind: editKind(editor), actorId: editor.id })
     return { course, revision }
   })
+}
+
+/** The result of applying an accepted AI candidate through the single write path. */
+export type ApplyAiEditResult =
+  | { ok: true; course: Course; revision: number; revisionId: string }
+  | { ok: false; code: "not_found" | "lesson_gone" | "locked" | "stale" | "apply_failed"; error: string; headRevisionId?: string | null; headContentHash?: string | null }
+
+/**
+ * Applies an accepted AI edit to one lesson, inside the caller's transaction
+ * (04 · C1, C5). This is the AI accept path's share of the single write path:
+ * it locks the course and the lesson, re-checks the base revision the job was
+ * requested against (so stale output can never silently overwrite a newer
+ * draft), mutates the stored lesson, writes it with `commitContent` (the same
+ * history + approval invalidation as a human edit), and drops the lesson's live
+ * document so the accepted edit is authoritative. The job row itself is updated
+ * by the caller (lib/ai/jobs.ts acceptJob) in the same transaction.
+ */
+export async function applyAiEditTx(
+  tx: Tx,
+  scope: Scope,
+  args: {
+    courseId: string
+    lessonId: string
+    editor: Editor
+    base: { baseRevisionId: string; baseContentHash: string; baseLessonHash: string | null }
+    mutate: (lesson: Lesson) => { ok: true; lesson: Lesson } | { ok: false; error: string }
+  },
+): Promise<ApplyAiEditResult> {
+  const record = await selectCourse(tx, scope, args.courseId, true)
+  if (!record) return { ok: false, code: "not_found", error: "Course not found" }
+  try {
+    assertEditable(record.course, args.editor)
+  } catch (error) {
+    if (error instanceof CourseLockedError || error instanceof ApprovedLockedError) {
+      return { ok: false, code: "locked", error: error.message }
+    }
+    throw error
+  }
+
+  const head = await loadHead(tx, scope, record.course)
+  const lessonHashNow = head.lessons.get(args.lessonId)?.hash ?? null
+  const staleness = jobStaleness(args.base, {
+    revisionId: record.headRevisionId,
+    contentHash: head.contentHash,
+    lessonHash: lessonHashNow,
+  })
+  if (staleness.state === "stale") {
+    return {
+      ok: false,
+      code: "stale",
+      error: "This content changed while the AI was working, so its suggestion can't be applied as-is.",
+      headRevisionId: staleness.headRevisionId,
+      headContentHash: staleness.headContentHash,
+    }
+  }
+
+  const [stored] = await tx
+    .select({ data: lessons.data })
+    .from(lessons)
+    .where(and(eq(lessons.courseId, args.courseId), eq(lessons.id, args.lessonId), tenantFilter(lessons, scope)))
+    .for("update")
+  const parsed = stored ? parseLesson(stored.data) : null
+  if (!parsed || "error" in parsed) return { ok: false, code: "lesson_gone", error: "This lesson has no saved content yet." }
+
+  const mutated = args.mutate(parsed.lesson)
+  if (!mutated.ok) return { ok: false, code: "apply_failed", error: mutated.error }
+
+  await ensureHistory(tx, scope, record)
+  const revision = await writeLesson(tx, record.tenantId, args.courseId, args.lessonId, mutated.lesson)
+  let course = record.course
+  if (!args.editor.asReviewer) {
+    course = { ...afterEdit(course, args.editor.id), updated_at: new Date().toISOString() }
+    await writeCourse(tx, course)
+  }
+  const committed = await commitContent(tx, scope, record.tenantId, course, { kind: editKind(args.editor), actorId: args.editor.id })
+  await resetLiveDocs(tx, args.courseId, [args.lessonId])
+  return { ok: true, course, revision, revisionId: committed.id }
 }
 
 /** Who edited a live lesson since its last checkpoint. */

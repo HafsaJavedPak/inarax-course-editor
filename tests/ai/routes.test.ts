@@ -6,10 +6,12 @@ import { randomUUID } from "crypto"
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { runJob } from "@/ai/worker"
 import { loadIdentity, syncIdentity } from "@/lib/authz/identity"
-import { createJob } from "@/lib/ai/jobs"
+import { claimNext, createJob } from "@/lib/ai/jobs"
 import { ensureHead, insertCourse, saveCourseLesson } from "@/lib/course-store"
 import { aiJobs, courseGrants } from "@/lib/db/schema"
+import { lessonHash } from "@/lib/revisions/hash"
 import { withTenantScope, type Scope } from "@/lib/db/tenant-db"
 import { __setHostKeysForTests } from "@/lib/keys"
 import { staticKeyResolver } from "@/lib/protocol/jwks"
@@ -37,6 +39,10 @@ vi.mock("next/navigation", () => ({
 
 const { GET: listRoute, POST: createRoute } = await import("@/app/api/courses/[courseId]/ai/jobs/route")
 const { GET: getRoute } = await import("@/app/api/courses/[courseId]/ai/jobs/[jobId]/route")
+const { POST: acceptRoute } = await import("@/app/api/courses/[courseId]/ai/jobs/[jobId]/accept/route")
+const { POST: rejectRoute } = await import("@/app/api/courses/[courseId]/ai/jobs/[jobId]/reject/route")
+
+const RICH_TEXT_BLOCK = "55555555-5555-4555-8555-555555555555"
 
 const json = (method: string, body?: unknown) =>
   new Request("http://editor.test/api", { method, body: body === undefined ? undefined : JSON.stringify(body), headers: { "Content-Type": "application/json" } })
@@ -71,6 +77,28 @@ async function seedJob(): Promise<string> {
     promptVersion: "v1",
     createdBy: "alice",
   })
+  return job.id
+}
+
+/** Seeds a job run to `ready` against the sample lesson's rich_text block. */
+async function seedReadyJob(): Promise<string> {
+  const head = (await ensureHead(aliceScope, courseId))!
+  const { job } = await createJob(aliceScope, {
+    tenantId: orgTenant,
+    courseId,
+    kind: "explanation",
+    lessonId: LESSON_ID,
+    blockId: RICH_TEXT_BLOCK,
+    field: "markdown",
+    baseRevisionId: head.revisionId,
+    baseContentHash: head.contentHash,
+    baseLessonHash: lessonHash(sampleLesson()),
+    provider: "fake",
+    promptVersion: "v1",
+    createdBy: "alice",
+  })
+  const claimed = await claimNext("worker-1")
+  await runJob(claimed!, "worker-1")
   return job.id
 }
 
@@ -156,5 +184,29 @@ describe("AI job API", () => {
     } finally {
       process.env.AI_ENABLED = previous
     }
+  })
+
+  it("accepts a ready job and applies its text through the route", async () => {
+    const jobId = await seedReadyJob()
+    const res = await acceptRoute(json("POST", { mode: "replace" }), p({ courseId, jobId }))
+    expect(res.status).toBe(200)
+    const { job } = (await res.json()) as { job: { state: string; acceptedRevisionId: string | null } }
+    expect(job.state).toBe("accepted")
+    expect(job.acceptedRevisionId).toBeTruthy()
+  })
+
+  it("rejects a ready job through the route", async () => {
+    const jobId = await seedReadyJob()
+    const res = await rejectRoute(json("POST", { reason: "wrong tone" }), p({ courseId, jobId }))
+    expect(res.status).toBe(200)
+    const { job } = (await res.json()) as { job: { state: string } }
+    expect(job.state).toBe("rejected")
+  })
+
+  it("a viewer may read but not accept (403)", async () => {
+    const jobId = await seedReadyJob()
+    await signInAs("dave")
+    expect((await acceptRoute(json("POST"), p({ courseId, jobId }))).status).toBe(403)
+    expect((await rejectRoute(json("POST"), p({ courseId, jobId }))).status).toBe(403)
   })
 })

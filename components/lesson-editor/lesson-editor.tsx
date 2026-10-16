@@ -29,7 +29,7 @@ import { ReadOnlyContext } from "@/components/lesson-editor/read-only"
 import { LessonPlayer } from "@/components/preview/lesson-player"
 import { lessonReducer, type LessonAction } from "@/components/lesson-editor/lesson-state"
 import { PresenceContext, useLiveLesson, type LiveLesson, type Peer } from "@/components/collab/use-live-lesson"
-import { createSection, type Lesson, type LessonBlock } from "@/lib/lesson"
+import { createSection, type Lesson } from "@/lib/lesson"
 import { validateLesson, type LessonIssue } from "@/lib/lesson-validate"
 import type { CourseStatus } from "@/lib/course"
 import { isLocked } from "@/lib/course-status"
@@ -388,20 +388,25 @@ export function LessonEditor({
     setSelectedId(section.id)
   }
 
-  /** Inserts accepted AI text into a rich-text block, through the editor's own save path. */
-  const applyAiText = useCallback(
-    (blockId: string, text: string, applyMode: "append" | "replace") => {
-      for (const section of lesson.sections) {
-        const block = section.blocks.find((b) => b.id === blockId)
-        if (!block || block.type !== "rich_text") continue
-        const rich = block as { id: string; type: "rich_text"; personalized: boolean; data: { markdown?: string } }
-        const current = (rich.data.markdown ?? "").trimEnd()
-        const markdown = applyMode === "append" ? (current ? `${current}\n\n${text}` : text) : text
-        dispatch({ type: "updateBlock", sectionId: section.id, block: { ...rich, data: { ...rich.data, markdown } } as LessonBlock })
-        return
-      }
+  /**
+   * Reloads the lesson after the AI accepted a candidate server-side: the
+   * server wrote the block through the single write path, so this client
+   * re-reads it instead of editing locally (the AI never edits the document).
+   */
+  const reloadAfterAiApply = useCallback(
+    async () => {
+      const res = await fetch(`/api/courses/${courseId}/lessons/${lessonId}`, { cache: "no-store" })
+      if (!res.ok) return
+      const fetched = (await res.json()) as Lesson
+      const revision = Number(res.headers.get("X-Lesson-Revision") ?? "0")
+      rawDispatch({ type: "replace", lesson: fetched })
+      serverRevisionRef.current = revision
+      savedRevisionRef.current = revisionRef.current
+      setHasFile(true)
+      setGeneration((g) => g + 1)
+      setStatus("saved")
     },
-    [lesson, dispatch],
+    [courseId, lessonId],
   )
 
   return (
@@ -675,7 +680,7 @@ export function LessonEditor({
             lesson={lesson}
             canEdit={canEdit && !readOnly}
             onClose={() => setAiOpen(false)}
-            onApply={applyAiText}
+            onApplied={reloadAfterAiApply}
           />
         )}
       </div>

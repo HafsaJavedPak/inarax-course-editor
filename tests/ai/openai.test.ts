@@ -68,6 +68,9 @@ describe("the OpenAI adapter", () => {
     const body = JSON.parse(String(calls[0].init.body)) as { model: string; messages: { role: string; content: string }[] }
     expect(body.model).toBe("gpt-4o-mini")
     expect(body.messages[0].role).toBe("system")
+    // The assistant is given a role and a reference to the course's components.
+    expect(body.messages[0].content).toContain("technical content writer")
+    expect(body.messages[0].content).toContain("Multiple choice")
     expect(body.messages[1].content).toContain("explain compound interest")
   })
 
