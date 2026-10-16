@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 
 import type { AiJobKind } from "@/lib/db/schema"
 import type { Course } from "@/lib/course"
-import type { Lesson } from "@/lib/lesson"
+import { BLOCK_CATALOG, BLOCK_CATEGORIES, type Lesson } from "@/lib/lesson"
 import { ProviderError, type Candidate, type Estimate, type GenerateRequest, type ProviderErrorKind, type ProviderPort } from "@/lib/ai/providers/port"
 
 // A real text provider (04 · C1/C3, module 28). Text only for now —
@@ -13,7 +13,7 @@ import { ProviderError, type Candidate, type Estimate, type GenerateRequest, typ
 /** The text kinds this adapter supports. */
 export const OPENAI_KINDS: readonly AiJobKind[] = ["explanation", "questions", "outline"]
 
-const PROMPT_VERSION = "openai-v1"
+const PROMPT_VERSION = "openai-v2"
 const DEFAULT_BASE_URL = "https://api.openai.com/v1"
 const DEFAULT_MODEL = "gpt-4o-mini"
 // Per 1,000 tokens (gpt-4o-mini ballpark; override per deployment).
@@ -30,13 +30,34 @@ export type OpenAiOptions = {
   pricing?: { inputPer1k: number; outputPer1k: number }
 }
 
-const SYSTEM: Record<AiJobKind, string> = {
+/** Who the assistant is (04 · C3): a technical content writer, adaptable across topics. */
+const ROLE =
+  "You are an expert technical content writer with broad, adaptable knowledge across technology and engineering. " +
+  "You write clear, accurate, engaging course material for adult learners, adapting tone and depth to the requested audience."
+
+/** A compact reference to every course component the editor can host, from lib/lesson.ts's block catalog. */
+function componentsContext(): string {
+  const lines = ["The course is built from these components; the text you produce must fit them (plain text or markdown)."]
+  for (const category of BLOCK_CATEGORIES) {
+    const items = Object.entries(BLOCK_CATALOG).filter(([, spec]) => spec.category === category.id)
+    if (items.length === 0) continue
+    lines.push(`${category.label}: ${items.map(([, spec]) => `${spec.label} — ${spec.description}`).join(" · ")}`)
+  }
+  return lines.join("\n")
+}
+
+/** Per-kind instructions, layered on top of the shared role and components context. */
+const KIND_INSTRUCTIONS: Record<AiJobKind, string> = {
   explanation:
-    "You are an instructional designer. Write clear, accurate lesson prose for the requested audience. Plain text or markdown; do not add headings unless asked.",
+    "Write clear, accurate lesson prose for the requested audience. Plain text or markdown; do not add headings unless asked.",
   questions:
-    "You are an assessment author. Write multiple-choice questions, each with four options and a one-sentence explanation of the correct answer. Plain text.",
-  outline: "You are an instructional designer. Write a concise outline as a short markdown list.",
+    "Write multiple-choice questions, each with four options and a one-sentence explanation of the correct answer. Plain text.",
+  outline: "Write a concise outline as a short markdown list.",
   image: "Unsupported: this adapter only produces text.",
+}
+
+function systemPrompt(kind: AiJobKind): string {
+  return [ROLE, componentsContext(), KIND_INSTRUCTIONS[kind]].join("\n\n")
 }
 
 /** The draft's text, for context: the course title/summary and the lesson's text blocks. */
@@ -107,7 +128,7 @@ export function createOpenAiProvider(options: OpenAiOptions): ProviderPort {
           body: JSON.stringify({
             model,
             messages: [
-              { role: "system", content: SYSTEM[input.kind] },
+              { role: "system", content: systemPrompt(input.kind) },
               { role: "user", content: prompt },
             ],
             max_tokens: maxTokens,

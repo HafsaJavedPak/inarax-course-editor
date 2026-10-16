@@ -2,9 +2,11 @@ import "server-only"
 
 import { and, desc, eq, inArray, isNull, lt, lte, or, sql } from "drizzle-orm"
 
+import { applyTextToLesson } from "@/lib/ai/apply"
 import { notifyAi } from "@/lib/ai/notify"
 import { backoffMs } from "@/lib/ai/retry"
-import { aiJobAttempts, aiJobs, type AiAttemptOutcome, type AiBudgetStatus, type AiJobKind, type AiJobState } from "@/lib/db/schema"
+import { applyAiEditTx } from "@/lib/course-store"
+import { aiJobAttempts, aiJobs, auditLog, type AiAttemptOutcome, type AiBudgetStatus, type AiJobKind, type AiJobState } from "@/lib/db/schema"
 import { withTenantScope, type Scope, type Tx } from "@/lib/db/tenant-db"
 
 // The AI job's life (04 · AI and media generation, C1, module 26). The row is
@@ -202,6 +204,109 @@ export async function retryJob(scope: Scope, jobId: string, now = new Date()): P
       .returning()
     await notifyAi(tx, { kind: "job", job: jobId, tenant: job.tenantId, course: job.courseId, state: "queued" })
     return { ok: true, job: requeued }
+  })
+}
+
+/** The text kinds the accept path can write into a rich_text block (C1/C6a). */
+const TEXT_KINDS: readonly AiJobKind[] = ["explanation", "questions", "outline"]
+
+export type AcceptJobMode = "replace" | "append"
+
+export type AcceptJobResult =
+  | { ok: true; job: AiJobRow }
+  | {
+      ok: false
+      code: "not_found" | "bad_state" | "invalid_result" | "unsupported_kind" | "invalid_target" | "stale" | "lesson_gone" | "locked" | "apply_failed"
+      error: string
+      /** Present when `code === "stale"`: what the head is now, for the compare view. */
+      diff?: { headRevisionId: string | null; headContentHash: string | null }
+    }
+
+/**
+ * Accepts a ready job's candidate (04 · C1, C5): re-checks the grant and the
+ * base revision/hash, applies the candidate through the single write path
+ * (commitContent), and marks the job accepted with the new revision. This is
+ * the only place AI output turns into content, and it never overwrites a newer
+ * draft — a stale job is refused with the diff.
+ */
+export async function acceptJob(scope: Scope, jobId: string, userId: string, options: { mode?: AcceptJobMode } = {}): Promise<AcceptJobResult> {
+  const mode = options.mode ?? "replace"
+  return withTenantScope(scope, async (tx) => {
+    const [job] = await tx.select().from(aiJobs).where(eq(aiJobs.id, jobId)).limit(1).for("update")
+    if (!job) return { ok: false, code: "not_found", error: "Job not found" }
+    if (job.state !== "ready") return { ok: false, code: "bad_state", error: `Only a ready job can be accepted (this one is ${job.state}).` }
+    if (!TEXT_KINDS.includes(job.kind)) return { ok: false, code: "unsupported_kind", error: `${job.kind} candidates aren't supported yet.` }
+    if (!job.lessonId || !job.blockId) return { ok: false, code: "invalid_target", error: "This job has no block to write into." }
+    const text = (job.result as { text?: string } | null)?.text?.trim()
+    if (!text) return { ok: false, code: "invalid_result", error: "This job produced no text to apply." }
+
+    const applied = await applyAiEditTx(tx, scope, {
+      courseId: job.courseId,
+      lessonId: job.lessonId,
+      editor: { id: userId, asReviewer: false },
+      base: { baseRevisionId: job.baseRevisionId, baseContentHash: job.baseContentHash, baseLessonHash: job.baseLessonHash },
+      mutate: (lesson) => applyTextToLesson(lesson, job.blockId!, text, mode),
+    })
+    if (!applied.ok) {
+      return {
+        ok: false,
+        code: applied.code,
+        error: applied.error,
+        ...(applied.code === "stale" ? { diff: { headRevisionId: applied.headRevisionId ?? null, headContentHash: applied.headContentHash ?? null } } : {}),
+      }
+    }
+
+    const now = new Date()
+    const [updated] = await tx
+      .update(aiJobs)
+      .set({
+        state: "accepted",
+        acceptedRevisionId: applied.revisionId,
+        decidedBy: userId,
+        decidedAt: now,
+        cancelRequested: false,
+        updatedAt: now,
+      })
+      .where(eq(aiJobs.id, jobId))
+      .returning()
+    await tx.insert(auditLog).values({
+      actorId: userId,
+      action: "ai.accept",
+      tenantId: job.tenantId,
+      courseId: job.courseId,
+      target: job.id,
+      detail: { revisionId: applied.revisionId, blockId: job.blockId, mode, kind: job.kind, provider: job.provider },
+    })
+    await notifyAi(tx, { kind: "job", job: jobId, tenant: job.tenantId, course: job.courseId, state: "accepted" })
+    return { ok: true, job: updated }
+  })
+}
+
+/**
+ * Rejects a ready job's candidate (04 · C1, C5). The draft is left untouched:
+ * the job moves to `rejected`, terminal unless the creator retries it.
+ */
+export async function rejectJob(scope: Scope, jobId: string, userId: string, reason?: string | null): Promise<JobActionResult> {
+  return withTenantScope(scope, async (tx) => {
+    const [job] = await tx.select().from(aiJobs).where(eq(aiJobs.id, jobId)).limit(1).for("update")
+    if (!job) return { ok: false, error: "Job not found" }
+    if (job.state !== "ready") return { ok: false, error: `Only a ready job can be rejected (this one is ${job.state}).` }
+    const now = new Date()
+    const [updated] = await tx
+      .update(aiJobs)
+      .set({ state: "rejected", decidedBy: userId, decidedAt: now, rejectReason: reason ?? null, updatedAt: now })
+      .where(eq(aiJobs.id, jobId))
+      .returning()
+    await tx.insert(auditLog).values({
+      actorId: userId,
+      action: "ai.reject",
+      tenantId: job.tenantId,
+      courseId: job.courseId,
+      target: job.id,
+      detail: { reason: reason ?? null },
+    })
+    await notifyAi(tx, { kind: "job", job: jobId, tenant: job.tenantId, course: job.courseId, state: "rejected" })
+    return { ok: true, job: updated }
   })
 }
 

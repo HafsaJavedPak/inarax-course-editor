@@ -31,8 +31,8 @@ export type AssistantPanelProps = {
   lesson: Lesson
   canEdit: boolean
   onClose: () => void
-  /** Inserts accepted text into a block (append or replace). Goes through the editor's own save path. */
-  onApply: (blockId: string, text: string, mode: "append" | "replace") => void
+  /** The candidate was accepted server-side: reload the lesson to show the applied text. */
+  onApplied: () => void
 }
 
 /** The blocks this panel can write into today: rich text (markdown). */
@@ -56,7 +56,7 @@ function richTextTargets(lesson: Lesson) {
 
 const RUNNING = new Set(["queued", "running", "validating"])
 
-export function AssistantPanel({ courseId, lessonId, lesson, canEdit, onClose, onApply }: AssistantPanelProps) {
+export function AssistantPanel({ courseId, lessonId, lesson, canEdit, onClose, onApplied }: AssistantPanelProps) {
   const targets = useMemo(() => richTextTargets(lesson), [lesson])
   const [blockId, setBlockId] = useState<string>("")
   const [prompt, setPrompt] = useState("")
@@ -126,14 +126,53 @@ export function AssistantPanel({ courseId, lessonId, lesson, canEdit, onClose, o
     }
   }
 
-  function insert(mode: "append" | "replace") {
-    const text = job?.result?.text
-    const target = job?.blockId ?? effectiveBlockId
-    if (!text || !target) return
-    onApply(target, text, mode)
-    setJob(null)
-    setPrompt("")
-    setMessage(mode === "replace" ? "Inserted (replaced the block's text)." : "Inserted below the block's text.")
+  /** Accepts the staged candidate: the server applies it (staleness re-checked) and marks the job accepted. */
+  async function accept(mode: "append" | "replace") {
+    if (!job) return
+    setBusy(true)
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/courses/${courseId}/ai/jobs/${job.id}/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { job?: AiJobView; error?: string; code?: string }
+      if (!res.ok) {
+        setMessage(data.code === "stale" ? "This lesson changed since you asked — review it and generate again." : data.error ?? `Couldn't apply (${res.status}).`)
+        if (data.code === "stale") setJob(null)
+        return
+      }
+      setJob(null)
+      setPrompt("")
+      onApplied()
+      setMessage(mode === "replace" ? "Applied (replaced the block's text)." : "Applied below the block's text.")
+    } catch (error) {
+      setMessage((error as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Rejects the staged candidate: the draft is left untouched and the job is marked rejected. */
+  async function discard() {
+    if (!job) return
+    setBusy(true)
+    setMessage(null)
+    try {
+      const res = await fetch(`/api/courses/${courseId}/ai/jobs/${job.id}/reject`, { method: "POST" })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        setMessage(data.error ?? "Couldn't discard.")
+        return
+      }
+      setJob(null)
+      setPrompt("")
+    } catch (error) {
+      setMessage((error as Error).message)
+    } finally {
+      setBusy(false)
+    }
   }
 
   const running = job ? RUNNING.has(job.state) : false
@@ -201,13 +240,13 @@ export function AssistantPanel({ courseId, lessonId, lesson, canEdit, onClose, o
               <div className="ai-job-actions">
                 {job.state === "ready" && (
                   <>
-                    <button type="button" className="ai-btn ai-btn-primary" onClick={() => insert("append")}>
+                    <button type="button" className="ai-btn ai-btn-primary" disabled={busy} onClick={() => void accept("append")}>
                       Insert below
                     </button>
-                    <button type="button" className="ai-btn" onClick={() => insert("replace")}>
+                    <button type="button" className="ai-btn" disabled={busy} onClick={() => void accept("replace")}>
                       Replace block
                     </button>
-                    <button type="button" className="ai-btn" onClick={() => setJob(null)}>
+                    <button type="button" className="ai-btn" disabled={busy} onClick={() => void discard()}>
                       Discard
                     </button>
                   </>
