@@ -679,6 +679,7 @@ export function LessonEditor({
             lessonId={lessonId}
             lesson={lesson}
             canEdit={canEdit && !readOnly}
+            selectedSectionId={selected?.id ?? null}
             onClose={() => setAiOpen(false)}
             onApplied={reloadAfterAiApply}
           />

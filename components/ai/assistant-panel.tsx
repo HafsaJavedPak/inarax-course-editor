@@ -30,6 +30,8 @@ export type AssistantPanelProps = {
   lessonId: string
   lesson: Lesson
   canEdit: boolean
+  /** The section the creator is currently in; new jobs default to its first rich-text block. */
+  selectedSectionId: string | null
   onClose: () => void
   /** The candidate was accepted server-side: reload the lesson to show the applied text. */
   onApplied: () => void
@@ -56,7 +58,7 @@ function richTextTargets(lesson: Lesson) {
 
 const RUNNING = new Set(["queued", "running", "validating"])
 
-export function AssistantPanel({ courseId, lessonId, lesson, canEdit, onClose, onApplied }: AssistantPanelProps) {
+export function AssistantPanel({ courseId, lessonId, lesson, canEdit, selectedSectionId, onClose, onApplied }: AssistantPanelProps) {
   const targets = useMemo(() => richTextTargets(lesson), [lesson])
   const [blockId, setBlockId] = useState<string>("")
   const [prompt, setPrompt] = useState("")
@@ -64,8 +66,11 @@ export function AssistantPanel({ courseId, lessonId, lesson, canEdit, onClose, o
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  // The chosen block, kept valid as the lesson changes (no effect needed).
-  const effectiveBlockId = targets.some((t) => t.blockId === blockId) ? blockId : (targets[0]?.blockId ?? "")
+  // The chosen block, kept valid as the lesson changes; defaults to the first
+  // rich-text block of the section the creator is in (so Generate writes into
+  // the section they're looking at, not always section 1).
+  const defaultTarget = targets.find((t) => t.sectionId === selectedSectionId) ?? targets[0]
+  const effectiveBlockId = targets.some((t) => t.blockId === blockId) ? blockId : (defaultTarget?.blockId ?? "")
 
   // Poll while the job is running (a job can take seconds; the panel never blocks editing).
   useEffect(() => {
