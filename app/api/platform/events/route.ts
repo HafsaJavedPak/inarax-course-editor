@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { applyAiLimits } from "@/lib/ai/budget"
 import { audit } from "@/lib/authz/identity"
 import { hostKeys } from "@/lib/keys"
 import { verifyRequest } from "@/lib/protocol/signing"
@@ -9,10 +10,17 @@ const MAX_EVENT_BYTES = 16 * 1024
 
 // Events the platform sends (contract/README.md § Events). Unknown types are
 // accepted and ignored, so the platform can add types before the editor knows them.
+const AiLimitsSchema = z.object({
+  monthly_budget: z.number().nonnegative().nullable().optional(),
+  concurrency: z.number().int().positive().nullable().optional(),
+})
+
 const EventSchema = z.object({
   type: z.string().min(1),
   /** The user, as the launch token's `sub` (the platform's user id). */
   sub: z.string().min(1).optional(),
+  /** Limits for `user.ai_limits_changed`. */
+  ai: AiLimitsSchema.optional(),
 })
 
 /**
@@ -54,6 +62,12 @@ export async function POST(request: Request) {
     const ended = await revokeUserSessions(event.data.sub)
     await audit({ actorId: event.data.sub, action: "sessions_revoked", detail: { reason: "access_changed", ended, key: verified.keyId } })
     return Response.json({ ok: true, ended })
+  }
+  if (event.data.type === "user.ai_limits_changed") {
+    if (!event.data.sub || !event.data.ai) return Response.json({ error: "user.ai_limits_changed needs `sub` and `ai`." }, { status: 400 })
+    const applied = await applyAiLimits(event.data.sub, event.data.ai)
+    await audit({ actorId: event.data.sub, action: "ai_limits_set", detail: { ai: event.data.ai, applied, key: verified.keyId } })
+    return Response.json({ ok: true, applied })
   }
   return Response.json({ ok: true, ignored: event.data.type })
 }

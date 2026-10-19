@@ -1,7 +1,9 @@
 import { z } from "zod"
 
 import { courseForRoute } from "@/lib/authz/context"
+import { aiBudgetLimits, AiBudgetExceededError } from "@/lib/ai/budget"
 import { aiEnabled, PROMPT_VERSION, providerForKind } from "@/lib/ai/config"
+import { estimateCost } from "@/lib/ai/estimate"
 import { createJob, listJobs } from "@/lib/ai/jobs"
 import { jobView } from "@/lib/ai/view"
 import { ensureHead, readCourseLesson } from "@/lib/course-store"
@@ -61,24 +63,41 @@ export async function POST(request: Request, ctx: Ctx) {
       if (lesson) baseLessonHash = lessonHash(lesson)
     }
 
-    const { job, created } = await createJob(loaded.ctx, {
-      tenantId: loaded.record.tenantId,
-      courseId,
-      kind: parsed.data.kind,
-      lessonId: parsed.data.lessonId ?? null,
-      blockId: parsed.data.blockId ?? null,
-      field: parsed.data.field ?? null,
-      locale: parsed.data.locale,
-      params: parsed.data.params,
-      sources: parsed.data.sources,
-      baseRevisionId: head.revisionId,
-      baseContentHash: head.contentHash,
-      baseLessonHash,
-      provider: providerForKind(parsed.data.kind),
-      promptVersion: PROMPT_VERSION,
-      createdBy: loaded.ctx.userId,
-      traceId: request.headers.get(TRACE_HEADER),
-    })
-    return Response.json({ job: jobView(job) }, { status: created ? 201 : 200 })
+    const provider = providerForKind(parsed.data.kind)
+    const estimate = estimateCost(provider, parsed.data.kind)
+
+    let created: Awaited<ReturnType<typeof createJob>>
+    try {
+      created = await createJob(loaded.ctx, {
+        tenantId: loaded.record.tenantId,
+        courseId,
+        kind: parsed.data.kind,
+        lessonId: parsed.data.lessonId ?? null,
+        blockId: parsed.data.blockId ?? null,
+        field: parsed.data.field ?? null,
+        locale: parsed.data.locale,
+        params: parsed.data.params,
+        sources: parsed.data.sources,
+        baseRevisionId: head.revisionId,
+        baseContentHash: head.contentHash,
+        baseLessonHash,
+        provider,
+        promptVersion: PROMPT_VERSION,
+        estimatedCost: estimate.cost,
+        reservedCost: estimate.cost,
+        currency: estimate.currency,
+        budget: aiBudgetLimits(loaded.record.settings),
+        createdBy: loaded.ctx.userId,
+        traceId: request.headers.get(TRACE_HEADER),
+      })
+    } catch (error) {
+      if (error instanceof AiBudgetExceededError) {
+        const status = error.code === "concurrency_exceeded" ? 429 : 402
+        return Response.json({ error: error.message, code: error.code, detail: error.detail }, { status })
+      }
+      throw error
+    }
+
+    return Response.json({ job: jobView(created.job) }, { status: created.created ? 201 : 200 })
   })
 }

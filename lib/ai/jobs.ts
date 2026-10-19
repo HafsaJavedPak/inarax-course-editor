@@ -3,10 +3,11 @@ import "server-only"
 import { and, desc, eq, inArray, isNull, lt, lte, or, sql } from "drizzle-orm"
 
 import { applyTextToLesson } from "@/lib/ai/apply"
+import { assertWithinBudget, countLiveJobs, incrementReserved, lockBudget, releaseBudget, reconcileBudget, AiBudgetExceededError, type AiBudgetLimits } from "@/lib/ai/budget"
 import { notifyAi } from "@/lib/ai/notify"
 import { backoffMs } from "@/lib/ai/retry"
 import { applyAiEditTx } from "@/lib/course-store"
-import { aiJobAttempts, aiJobs, auditLog, type AiAttemptOutcome, type AiBudgetStatus, type AiJobKind, type AiJobState } from "@/lib/db/schema"
+import { AI_LIVE_STATES, aiJobAttempts, aiJobs, auditLog, type AiAttemptOutcome, type AiBudgetStatus, type AiJobKind, type AiJobState } from "@/lib/db/schema"
 import { withTenantScope, type Scope, type Tx } from "@/lib/db/tenant-db"
 
 // The AI job's life (04 · AI and media generation, C1, module 26). The row is
@@ -27,7 +28,7 @@ export type AiJobRow = typeof aiJobs.$inferSelect
 export type AiJobRef = { id: string; tenantId: string; courseId: string }
 
 /** States that hold the "one live job per target" slot. */
-export const LIVE_STATES: readonly AiJobState[] = ["queued", "running", "validating", "ready"]
+export const LIVE_STATES: readonly AiJobState[] = AI_LIVE_STATES
 
 export const DEFAULT_LEASE_SECONDS = 120
 export const DEFAULT_MAX_ATTEMPTS = 3
@@ -59,6 +60,8 @@ export type CreateJobInput = {
   estimatedCost?: number | null
   reservedCost?: number | null
   currency?: string
+  /** Per-workspace limits to enforce at enqueue (04 · C2). Unset = no reservation, no caps. */
+  budget?: AiBudgetLimits
   createdBy: string
   traceId?: string | null
 }
@@ -67,6 +70,12 @@ export type CreateJobInput = {
  * Writes a job and hands it back. If a live job already exists for the same
  * target and base revision (a double click, a retry with a fresh idempotency
  * key), that one is returned instead — one job, one provider call.
+ *
+ * When `reservedCost` is set (the route estimates it), the reservation is taken
+ * in this same transaction under the workspace's budget lock (04 · C2): the
+ * concurrency cap and the monthly spend cap are checked and the reservation is
+ * added to the ledger. A refused reservation throws AiBudgetExceededError and
+ * rolls the whole insert back.
  */
 export async function createJob(
   scope: Scope,
@@ -74,6 +83,46 @@ export async function createJob(
 ): Promise<{ job: AiJobRow; created: boolean }> {
   return withTenantScope(scope, async (tx) => {
     const reserved = input.reservedCost ?? null
+    const limits = input.budget ?? null
+    const now = new Date()
+
+    const findLive = () =>
+      tx
+        .select()
+        .from(aiJobs)
+        .where(
+          and(
+            eq(aiJobs.courseId, input.courseId),
+            eq(aiJobs.kind, input.kind),
+            eq(aiJobs.baseRevisionId, input.baseRevisionId),
+            input.lessonId ? eq(aiJobs.lessonId, input.lessonId) : isNull(aiJobs.lessonId),
+            input.blockId ? eq(aiJobs.blockId, input.blockId) : isNull(aiJobs.blockId),
+            inArray(aiJobs.state, [...LIVE_STATES]),
+          ),
+        )
+        .limit(1)
+
+    // Fast path: a live job for this target already exists — one job, one call.
+    let existing = (await findLive())[0]
+    if (existing) return { job: existing, created: false }
+
+    if (reserved != null) {
+      // Serialize budget decisions for this workspace, then re-check the dedup
+      // under the lock so a concurrent duplicate can't double-reserve.
+      const ledger = await lockBudget(tx, input.tenantId, now)
+      existing = (await findLive())[0]
+      if (existing) return { job: existing, created: false }
+
+      if (limits?.concurrency != null) {
+        const live = await countLiveJobs(tx, input.tenantId)
+        if (live >= limits.concurrency) {
+          throw new AiBudgetExceededError("concurrency_exceeded", `This workspace already has ${live} AI jobs in progress.`, { live, limit: limits.concurrency })
+        }
+      }
+      assertWithinBudget(ledger, reserved, limits?.monthlyLimit ?? null)
+      await incrementReserved(tx, input.tenantId, reserved, now)
+    }
+
     const [inserted] = await tx
       .insert(aiJobs)
       .values({
@@ -105,20 +154,10 @@ export async function createJob(
       await notifyAi(tx, { kind: "job", job: inserted.id, tenant: inserted.tenantId, course: inserted.courseId, state: inserted.state })
       return { job: inserted, created: true }
     }
-    const [existing] = await tx
-      .select()
-      .from(aiJobs)
-      .where(
-        and(
-          eq(aiJobs.courseId, input.courseId),
-          eq(aiJobs.kind, input.kind),
-          eq(aiJobs.baseRevisionId, input.baseRevisionId),
-          input.lessonId ? eq(aiJobs.lessonId, input.lessonId) : isNull(aiJobs.lessonId),
-          input.blockId ? eq(aiJobs.blockId, input.blockId) : isNull(aiJobs.blockId),
-          inArray(aiJobs.state, [...LIVE_STATES]),
-        ),
-      )
-      .limit(1)
+
+    // Lost a race to a concurrent duplicate: undo the reservation and return the winner.
+    if (reserved != null) await releaseBudget(tx, input.tenantId, reserved, now)
+    existing = (await findLive())[0]
     if (!existing) throw new Error("Couldn't create the AI job.")
     return { job: existing, created: false }
   })
@@ -162,9 +201,10 @@ export async function requestCancel(scope: Scope, jobId: string, now = new Date(
     const [job] = await tx.select().from(aiJobs).where(eq(aiJobs.id, jobId)).limit(1).for("update")
     if (!job) return { ok: false, error: "Job not found" }
     if (job.state === "queued") {
+      await releaseReservation(tx, job, now)
       const cancelled = await tx
         .update(aiJobs)
-        .set({ state: "cancelled", finishedAt: now, updatedAt: now, budgetStatus: releaseBudget(job.budgetStatus, job.reservedCost) })
+        .set({ state: "cancelled", finishedAt: now, updatedAt: now, budgetStatus: releasedStatus(job.budgetStatus, job.reservedCost) })
         .where(eq(aiJobs.id, jobId))
         .returning()
       await endAttempt(tx, jobId, "cancelled", null, null)
@@ -185,6 +225,8 @@ export async function retryJob(scope: Scope, jobId: string, now = new Date()): P
     const [job] = await tx.select().from(aiJobs).where(eq(aiJobs.id, jobId)).limit(1).for("update")
     if (!job) return { ok: false, error: "Job not found" }
     if (job.state !== "failed" && job.state !== "cancelled") return { ok: false, error: `Only a failed or cancelled job can be retried (this one is ${job.state}).` }
+    // Re-reserve the job's cost: it was released when the job went terminal.
+    if (job.reservedCost != null) await incrementReserved(tx, job.tenantId, Number(job.reservedCost), now)
     const [requeued] = await tx
       .update(aiJobs)
       .set({
@@ -393,6 +435,10 @@ export async function markReady(job: AiJobRef, workerId: string, input: ReadyInp
   return withTenantScope(jobScope(job), async (tx) => {
     const [current] = await tx.select().from(aiJobs).where(eq(aiJobs.id, job.id)).limit(1).for("update")
     if (!current || current.claimedBy !== workerId || (current.state !== "running" && current.state !== "validating")) return null
+    // Reconcile the reservation into actual spend (04 · C2): reserved moves to spent.
+    if (current.reservedCost != null) {
+      await reconcileBudget(tx, job.tenantId, Number(current.reservedCost), input.actualCost ?? 0, now)
+    }
     const [row] = await tx
       .update(aiJobs)
       .set({
@@ -428,6 +474,7 @@ export async function markFailed(job: AiJobRef, workerId: string, input: FailInp
     if (!current || (current.state !== "running" && current.state !== "validating")) return null
     const error = { code: input.code, message: input.message, retryable: input.retryable }
     const willRetry = input.retryable && current.attempt < current.maxAttempts
+    if (!willRetry) await releaseReservation(tx, current, now)
     const [row] = await tx
       .update(aiJobs)
       .set(
@@ -442,7 +489,7 @@ export async function markFailed(job: AiJobRef, workerId: string, input: FailInp
               finishedAt: now,
               updatedAt: now,
               actualCost: input.actualCost != null ? String(input.actualCost) : null,
-              budgetStatus: releaseBudget(current.budgetStatus, current.reservedCost),
+              budgetStatus: releasedStatus(current.budgetStatus, current.reservedCost),
             },
       )
       .where(eq(aiJobs.id, job.id))
@@ -458,6 +505,7 @@ export async function markCancelled(job: AiJobRef, workerId: string, now = new D
   return withTenantScope(jobScope(job), async (tx) => {
     const [current] = await tx.select().from(aiJobs).where(eq(aiJobs.id, job.id)).limit(1).for("update")
     if (!current || current.claimedBy !== workerId || (current.state !== "running" && current.state !== "validating")) return null
+    await releaseReservation(tx, current, now)
     const [row] = await tx
       .update(aiJobs)
       .set({
@@ -468,7 +516,7 @@ export async function markCancelled(job: AiJobRef, workerId: string, now = new D
         heartbeatAt: null,
         finishedAt: now,
         updatedAt: now,
-        budgetStatus: releaseBudget(current.budgetStatus, current.reservedCost),
+        budgetStatus: releasedStatus(current.budgetStatus, current.reservedCost),
       })
       .where(eq(aiJobs.id, job.id))
       .returning()
@@ -493,12 +541,13 @@ export async function reclaimExpiredJobs(now = new Date()): Promise<number> {
     for (const job of expired) {
       const willRetry = job.attempt < job.maxAttempts
       const error = { code: "lost_lease", message: "The worker stopped before finishing.", retryable: willRetry }
+      if (!willRetry) await releaseReservation(tx, job, now)
       await tx
         .update(aiJobs)
         .set(
           willRetry
             ? { state: "queued", error, claimedBy: null, leaseExpiresAt: null, heartbeatAt: null, updatedAt: now }
-            : { state: "failed", error, claimedBy: null, leaseExpiresAt: null, heartbeatAt: null, finishedAt: now, updatedAt: now, budgetStatus: releaseBudget(job.budgetStatus, job.reservedCost) },
+            : { state: "failed", error, claimedBy: null, leaseExpiresAt: null, heartbeatAt: null, finishedAt: now, updatedAt: now, budgetStatus: releasedStatus(job.budgetStatus, job.reservedCost) },
         )
         .where(eq(aiJobs.id, job.id))
       await endAttempt(tx, job.id, "lost_lease", error, null)
@@ -529,9 +578,16 @@ async function endAttempt(tx: Tx, jobId: string, outcome: AiAttemptOutcome, erro
 }
 
 /** What a budget becomes when a job ends: reconciled if it produced something, otherwise released. */
-function releaseBudget(current: AiBudgetStatus, reservedCost: string | null): AiBudgetStatus {
+function releasedStatus(current: AiBudgetStatus, reservedCost: string | null): AiBudgetStatus {
   if (current === "reconciled") return "reconciled"
   return reservedCost != null ? "released" : "none"
+}
+
+/** Returns a job's reservation to the ledger, if it still holds one. */
+async function releaseReservation(tx: Tx, job: Pick<AiJobRow, "tenantId" | "reservedCost" | "budgetStatus">, now: Date): Promise<void> {
+  if (job.reservedCost != null && job.budgetStatus === "reserved") {
+    await releaseBudget(tx, job.tenantId, Number(job.reservedCost), now)
+  }
 }
 
 /** For tests and ops: how many jobs are in a state (optionally one course's). */

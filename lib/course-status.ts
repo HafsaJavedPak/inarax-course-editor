@@ -28,9 +28,8 @@
 // Reviewers decide on courses in review, or revoke their stage's earlier
 // decision. Reviewer edits never change the status.
 
-import type { ChangeRequest, ChangeTarget, Course, CourseStatus, ReviewAction, ReviewEvent, ReviewStage } from "@/lib/course"
+import type { ChangeRequest, ChangeTarget, Course, CourseStatus, ReviewAction, ReviewEvent } from "@/lib/course"
 import type { CourseReport } from "@/lib/course-validate"
-import type { TenantKind } from "@/lib/db/schema"
 
 /** Resubmissions allowed after a course's first rejection, until a reviewer allows more. */
 export const MAX_RESUBMISSIONS_AFTER_REJECTION = 5
@@ -41,7 +40,6 @@ export const STATUS_LABELS: Record<CourseStatus, string> = {
   changes_requested: "Changes requested",
   approved: "Approved",
   rejected: "Rejected",
-  published: "Published",
   unpublished: "Unpublished",
 }
 
@@ -50,9 +48,8 @@ export const STATUS_DESCRIPTIONS: Record<CourseStatus, string> = {
   draft: "Not submitted yet. Submit it for review when it's ready.",
   in_review: "Waiting for review. It's read-only until then; withdraw it to make changes.",
   changes_requested: "The reviewers want changes before this can go further. Tick each one off, then resubmit.",
-  approved: "Approved by your organization. Platform staff can now publish it to the main course catalogue.",
+  approved: "Approved and live in the course catalogue. Editing it moves it back to Draft, and it will need another review.",
   rejected: "Not accepted. Read the feedback, update the course, then resubmit with a note on what you changed.",
-  published: "Published to the main course catalogue. Editing it moves it back to Draft, and it will need another review.",
   unpublished: "Taken down from the catalogue. Edit it and resubmit for review when it's ready.",
 }
 
@@ -123,49 +120,6 @@ const SUBMITTABLE: CourseStatus[] = ["draft", "changes_requested", "rejected", "
 export type SubmitBlocker = { message: string; target?: ChangeTarget }
 
 export const isLocked = (status: CourseStatus) => status === "in_review"
-
-/** The stage a course's current status awaits a decision from, or null when nothing is pending. */
-export function reviewStage(status: CourseStatus, tenantKind: TenantKind): ReviewStage | null {
-  if (status === "in_review") return tenantKind === "org" ? "org" : "platform"
-  if (status === "approved" || status === "published") return "platform"
-  return null
-}
-
-/** The policy action a decision at `stage` requires (lib/authz/policy.ts). */
-export function stageAction(stage: ReviewStage): "course.review" | "course.release" {
-  return stage === "platform" ? "course.release" : "course.review"
-}
-
-/**
- * The stage an actor with these permissions decides at. Normally the pipeline
- * stage (`reviewStage`). One exception: an organization admin may still revoke
- * the organization's approval of an approved course, before it is published —
- * that is an organization-stage decision, so the reviewer can take the course
- * back or reject it.
- */
-export function decisionStage(
-  status: CourseStatus,
-  tenantKind: TenantKind,
-  abilities: { review: boolean; release: boolean },
-): ReviewStage | null {
-  const pipeline = reviewStage(status, tenantKind)
-  if (pipeline === "platform" && status === "approved" && abilities.review && !abilities.release) return "org"
-  return pipeline
-}
-
-/**
- * The status a host sees. A valid platform release or organization approval
- * overrides the workflow status, so a platform revoke leaves the course
- * approved for its organization (lib/review/visibility.ts).
- */
-export function effectiveStatus(
-  status: CourseStatus,
-  visibility: { orgApproved: boolean; platformPublished: boolean },
-): CourseStatus {
-  if (visibility.platformPublished) return "published"
-  if (visibility.orgApproved) return "approved"
-  return status
-}
 
 export type ReviewDecision = "approved" | "rejected" | "changes_requested"
 
@@ -258,7 +212,7 @@ export function withdraw(course: Course, by: string): Result {
 }
 
 /** The statuses a live course can be taken down from. */
-const TAKEDOWN_FROM: CourseStatus[] = ["approved", "published"]
+const TAKEDOWN_FROM: CourseStatus[] = ["approved"]
 
 /**
  * Takes a live course down from the catalogue (an organization's, or the main
@@ -285,23 +239,19 @@ export function allowMoreResubmissions(course: Course, by: string): Result {
 
 export function review(
   course: Course,
-  stage: ReviewStage,
   decision: ReviewDecision,
   note: string,
   changes: Pick<ChangeRequest, "text" | "target">[],
   by: string
 ): Result {
   // A first-pass decision on a course in review, or revoking an earlier
-  // decision this stage already made (org: `approved`; platform: `approved`
-  // or `published`).
-  const revoking =
-    (stage === "org" && course.status === "approved") ||
-    (stage === "platform" && (course.status === "approved" || course.status === "published"))
+  // acceptance.
+  const revoking = course.status === "approved"
   if (course.status !== "in_review" && !revoking) {
     return { error: "Only a course in review (or one whose earlier decision is being revoked) can be reviewed.", status: 409 }
   }
-  if (stage === "platform" && decision === "approved" && !course.cover_image_url) {
-    return { error: "Add a cover image before publishing to the main course catalogue.", status: 409, code: "cover_required" }
+  if (decision === "approved" && !course.cover_image_url) {
+    return { error: "Add a cover image before publishing to the course catalogue.", status: 409, code: "cover_required" }
   }
   if (decision === "rejected" && !note.trim()) {
     return { error: "Explain why the course is rejected.", status: 400 }
@@ -310,9 +260,9 @@ export function review(
     return { error: "List at least one change.", status: 400 }
   }
 
-  // The org stage accepts (`approved`, live for the organization); the platform
-  // stage publishes (`published`, live on the main host).
-  const nextStatus: CourseStatus = decision === "approved" ? (stage === "org" ? "approved" : "published") : decision
+  // Approving makes the course live (published); rejecting or requesting
+  // changes sends it back to the author.
+  const nextStatus: CourseStatus = decision
   const requested = decision === "changes_requested" ? changes.map((c) => ({ text: c.text, target: c.target })) : []
   const next = withEvent(course, nextStatus, "decided", by, note.trim(), requested)
   return {
@@ -328,9 +278,9 @@ export function review(
   }
 }
 
-/** Statuses an admin can act on: the course is in review, or an earlier decision of a stage can be revoked. */
+/** Statuses an admin can act on: the course is in review, or an earlier acceptance can be revoked. */
 export function canReview(status: CourseStatus) {
-  return status === "in_review" || status === "approved" || status === "published"
+  return status === "in_review" || status === "approved"
 }
 
 /**
@@ -340,7 +290,7 @@ export function canReview(status: CourseStatus) {
  */
 export function afterEdit(course: Course, by: string): Course {
   const edited = { ...course, content_updated_at: new Date().toISOString() }
-  return course.status === "approved" || course.status === "published"
+  return course.status === "approved"
     ? withEvent(edited, "draft", "edited", by, "Edited after acceptance")
     : edited
 }

@@ -182,8 +182,8 @@ describe("inside an organization", () => {
     expect((await getLesson(new Request("http://editor.test"), params({ courseId: ids.aliceOrg, lessonId: LESSON_ID }))).status).toBe(200)
   })
 
-  it("the org admin reads and reviews it, but only its author submits it", async () => {
-    await signInAs("dave", { fromReviewArea: true })
+  it("platform staff reads and reviews it, but only its author submits it", async () => {
+    await signInAs("sam", { fromReviewArea: true })
     expect((await getCourse(new Request("http://editor.test"), params({ courseId: ids.aliceOrg }))).status).toBe(200)
     expect((await submitRoute(new Request("http://editor.test"), params({ courseId: ids.aliceOrg }))).status).toBe(403)
     // Not in review yet: the review itself is refused by the workflow, not by access rules.

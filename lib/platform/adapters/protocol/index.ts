@@ -17,6 +17,8 @@ import { PlatformError, type PlatformPort, type PublishSummary } from "@/lib/pla
 import type { SigningKey } from "@/lib/protocol/keys"
 import { signRequest } from "@/lib/protocol/signing"
 import {
+  AiSpendReportSchema,
+  AiSpendResultSchema,
   CoursePackageSchema,
   DeleteResultSchema,
   majorOf,
@@ -189,6 +191,16 @@ export function createProtocolPlatform(config: ProtocolPlatformConfig): Platform
       } catch {
         return {}
       }
+    },
+
+    async reportAiSpend(input) {
+      const report = AiSpendReportSchema.parse({
+        sub: input.sub,
+        period_start: input.periodStart.toISOString(),
+        spent: input.spent,
+        reserved: input.reserved,
+      })
+      await http.put(PROTOCOL_PATHS.aiSpend, { json: report }, AiSpendResultSchema)
     },
 
     deleteCourse(courseId) {

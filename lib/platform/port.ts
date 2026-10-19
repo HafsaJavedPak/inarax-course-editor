@@ -38,6 +38,18 @@ export type DeleteSummary = {
   keptOnPlatform: boolean
 }
 
+/** A personal workspace's current-month AI spend, reported to the platform (04 · C2). */
+export type AiSpendReportInput = {
+  /** The creator the report is for (the workspace's personal owner, the launch token's `sub`). */
+  sub: string
+  /** The start of the calendar month the spend belongs to. */
+  periodStart: Date
+  /** Actual spend this month, USD. */
+  spent: number
+  /** Outstanding reservations, USD. */
+  reserved: number
+}
+
 export interface PlatformPort {
   /** Short name, used in messages. */
   readonly name: string
@@ -51,6 +63,12 @@ export interface PlatformPort {
    * when the platform never had it.
    */
   deleteCourse(courseId: string): Promise<DeleteSummary>
+  /**
+   * Reports a personal workspace's current-month AI spend to the platform so
+   * the host's admin can show how much of a creator's budget is used. Safe to
+   * call repeatedly (idempotent); the last report wins.
+   */
+  reportAiSpend(input: AiSpendReportInput): Promise<void>
   /**
    * The platform's sign-in and sign-out addresses, as far as it says (all
    * optional; empty when it can't be reached): for the sign-out flow and the

@@ -196,7 +196,7 @@ export function StatusPanel({
               {busy ? "Withdrawing…" : "Withdraw to edit"}
             </button>
           )}
-          {!isAdmin && mayTakeDown && (status === "approved" || status === "published") && (
+          {!isAdmin && mayTakeDown && status === "approved" && (
             <button type="button" className="in-btn in-btn-secondary" disabled={busy} onClick={() => void takeDown()}>
               {busy ? "Taking down…" : "Take down"}
             </button>

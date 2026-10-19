@@ -47,6 +47,13 @@ export type TenantSettings = {
   allow_guests?: boolean
   /** The highest role an outside guest may have. */
   guest_max_role?: GrantRole
+  /** Per-workspace AI budget and concurrency limits (lib/ai/budget.ts). */
+  ai?: {
+    /** The monthly spend cap in USD; null means the env default (which is unlimited). */
+    monthly_budget?: number | null
+    /** The most live (queued→ready) AI jobs this workspace may hold at once; null means the env default. */
+    concurrency?: number | null
+  }
 }
 
 /** owner: a personal workspace's owner. admin / creator: org roles, from the host. */
@@ -502,6 +509,9 @@ export type AiJobKind = (typeof AI_JOB_KINDS)[number]
 export const AI_JOB_STATES = ["queued", "running", "validating", "ready", "accepted", "rejected", "failed", "cancelled"] as const
 export type AiJobState = (typeof AI_JOB_STATES)[number]
 
+/** States that hold the "one live job per target" slot — and the per-tenant concurrency cap. */
+export const AI_LIVE_STATES = ["queued", "running", "validating", "ready"] as const
+
 export const AI_BUDGET_STATUS = ["none", "reserved", "reconciled", "released"] as const
 export type AiBudgetStatus = (typeof AI_BUDGET_STATUS)[number]
 
@@ -624,4 +634,27 @@ export const aiJobAttempts = pgTable(
     index("ai_job_attempts_job_idx").on(t.jobId, t.attempt),
     foreignKey({ name: "ai_job_attempts_course_fk", columns: [t.tenantId, t.courseId], foreignColumns: [courses.tenantId, courses.id] }).onDelete("cascade"),
   ],
+)
+
+/**
+ * One row per workspace: the AI spend ledger (04 · AI and media generation,
+ * C2). `reserved` is the sum of outstanding job reservations; `spent` is actual
+ * spend in the current calendar-month period (rolled forward lazily). Enqueue
+ * reserves under a FOR UPDATE lock so concurrent requests in one workspace can't
+ * oversubscribe the budget; the worker reconciles/releases on terminal states.
+ * The limits themselves live in env + tenants.settings.ai, not here — this
+ * table only tracks the money.
+ */
+export const tenantAiBudgets = pgTable(
+  "tenant_ai_budgets",
+  {
+    tenantId: uuid("tenant_id")
+      .primaryKey()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    currency: text("currency").notNull().default("USD"),
+    reserved: numeric("reserved", { precision: 12, scale: 4 }).notNull().default("0"),
+    spent: numeric("spent", { precision: 12, scale: 4 }).notNull().default("0"),
+    periodStart: timestamp("period_start", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
 )

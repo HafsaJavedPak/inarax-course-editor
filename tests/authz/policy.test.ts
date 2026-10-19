@@ -27,7 +27,6 @@ const ALL: CourseAction[] = [
   "course.export",
   "course.submit",
   "course.review",
-  "course.release",
   "course.takedown",
   "course.history",
   "course.restore",
@@ -36,13 +35,13 @@ const ALL: CourseAction[] = [
   "course.ai",
   "course.ai.apply",
 ]
-/** The two review stages are separate actions (checked below). */
+/** Helper: ALL minus the given actions. */
 const without = (...actions: CourseAction[]) => ALL.filter((a) => !actions.includes(a))
 const allowed = (s: Subject, course: CourseResource) => ALL.filter((a) => can(s, a, course))
 
 describe("course access", () => {
   it("personal workspace: the owner writes, staff review and publish, nobody else gets anything", () => {
-    expect(allowed(owner, personalCourse)).toEqual(without("course.review", "course.release"))
+    expect(allowed(owner, personalCourse)).toEqual(without("course.review"))
     // Staff review and publish personal courses; they don't submit or restore them.
     expect(allowed(staff, personalCourse)).toEqual(without("course.submit", "course.restore", "course.ai.apply"))
     expect(allowed(stranger, personalCourse)).toEqual([])
@@ -50,9 +49,9 @@ describe("course access", () => {
   })
 
   it("organization: the author writes and submits, admins review, other creators see nothing", () => {
-    expect(allowed(author, orgCourse)).toEqual(without("course.review", "course.release"))
-    // An org admin runs everything in the org except the author-only submit/restore and the platform stage.
-    expect(allowed(orgAdmin, orgCourse)).toEqual(without("course.submit", "course.restore", "course.release", "course.ai.apply"))
+    expect(allowed(author, orgCourse)).toEqual(without("course.review"))
+    // An org admin oversees and shares, but does not approve (staff only).
+    expect(allowed(orgAdmin, orgCourse)).toEqual(["course.read", "course.takedown", "course.history", "course.share"])
     expect(allowed(otherCreator, orgCourse)).toEqual([])
   })
 
@@ -60,19 +59,19 @@ describe("course access", () => {
     expect(allowed(staff, orgCourse)).toEqual(without("course.submit", "course.restore", "course.ai.apply"))
   })
 
-  it("only platform staff decide the platform stage (publish to the main host)", () => {
-    expect(can(staff, "course.release", orgCourse)).toBe(true)
-    expect(can(orgAdmin, "course.release", orgCourse)).toBe(false)
-    expect(can(author, "course.release", orgCourse)).toBe(false)
-    expect(can(staff, "course.release", { ...orgCourse, sample: true })).toBe(false)
+  it("only platform staff review (approve, reject, request changes)", () => {
+    expect(can(staff, "course.review", orgCourse)).toBe(true)
+    expect(can(orgAdmin, "course.review", orgCourse)).toBe(false)
+    expect(can(author, "course.review", orgCourse)).toBe(false)
+    expect(can(staff, "course.review", { ...orgCourse, sample: true })).toBe(false)
   })
 
   it("an author who left the org loses access to the courses they wrote there", () => {
     expect(allowed(formerAuthor, orgCourse)).toEqual([])
   })
 
-  it("an org admin's own course: they write, submit and review it, but still not publish to the host", () => {
-    expect(allowed(orgAdmin, { ...orgCourse, ownerId: "admin" })).toEqual(without("course.release"))
+  it("an org admin's own course: they write and submit it, but still can't review (staff only)", () => {
+    expect(allowed(orgAdmin, { ...orgCourse, ownerId: "admin" })).toEqual(without("course.review"))
   })
 
   it("an org admin gets nothing from another organization's course", () => {
@@ -88,8 +87,8 @@ describe("workspace access", () => {
     expect(canInTenant(staff, "course.create", PERSONAL)).toBe(false)
   })
 
-  it("the review area is for staff and org admins", () => {
-    expect([owner, author, orgAdmin, staff].map(reviewsAnything)).toEqual([false, false, true, true])
+  it("the review area is for platform staff only", () => {
+    expect([owner, author, orgAdmin, staff].map(reviewsAnything)).toEqual([false, false, false, true])
   })
 })
 
@@ -122,10 +121,9 @@ describe("shared courses (course grants)", () => {
     expect(allowed(withGrant("viewer", stranger), shared)).toEqual(["course.read"])
   })
 
-  it("never makes anyone a reviewer or publisher", () => {
+  it("never makes anyone a reviewer", () => {
     for (const role of ["co_owner", "editor", "commenter", "viewer"] as const) {
       expect(can(withGrant(role), "course.review", shared)).toBe(false)
-      expect(can(withGrant(role), "course.release", shared)).toBe(false)
       expect(can(withGrant(role), "course.delete", shared)).toBe(false)
     }
   })

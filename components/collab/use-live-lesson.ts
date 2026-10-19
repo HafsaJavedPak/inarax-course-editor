@@ -34,7 +34,7 @@ export type LiveLesson = {
   /** Edits not yet acknowledged (stored) by the gateway. */
   unsynced: number
   mode: "edit" | "read"
-  readReason: "in_review" | "approved" | "published" | "role" | null
+  readReason: "in_review" | "approved" | "role" | null
   closed: string | null
   /** The document couldn't be saved as a valid lesson (the last good one is kept). */
   attention: string | null

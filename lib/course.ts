@@ -194,7 +194,7 @@ export const CourseInfoSchema = CourseInfoStoredSchema.extend({
 // Review workflow
 // ---------------------------------------------------------------------------
 
-export const COURSE_STATUSES = ["draft", "in_review", "changes_requested", "approved", "rejected", "published", "unpublished"] as const
+export const COURSE_STATUSES = ["draft", "in_review", "changes_requested", "approved", "rejected", "unpublished"] as const
 export type CourseStatus = (typeof COURSE_STATUSES)[number]
 
 /**

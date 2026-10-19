@@ -63,8 +63,7 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
   const tabHref = (status: Filter) => `/admin?status=${status}${query ? `&q=${encodeURIComponent(query)}` : ""}`
   const tabs: { id: Filter; label: string; count: number }[] = [
     { id: "in_review", label: "Waiting for review", count: counts.in_review },
-    { id: "approved", label: "Awaiting platform", count: counts.approved },
-    { id: "published", label: STATUS_LABELS.published, count: counts.published },
+    { id: "approved", label: "Approved", count: counts.approved },
     { id: "changes_requested", label: STATUS_LABELS.changes_requested, count: counts.changes_requested },
     { id: "rejected", label: STATUS_LABELS.rejected, count: counts.rejected },
     { id: "draft", label: STATUS_LABELS.draft, count: counts.draft },
