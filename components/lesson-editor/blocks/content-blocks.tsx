@@ -66,6 +66,7 @@ export function ImageUrlField({
             onChange={(e) => onChange(e.target.value)}
           />
           <Button
+            type="button"
             variant="ghost"
             tooltip="Upload image"
             disabled={progress !== null}
