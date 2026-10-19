@@ -15,6 +15,7 @@ import {
 import { providerFor } from "@/lib/ai/providers"
 import type { ProviderPort, SourceRef } from "@/lib/ai/providers/port"
 import { classifyError } from "@/lib/ai/retry"
+import { reportAiSpendForTenant } from "@/lib/ai/spend-report"
 import { findCourse, readCourseLesson } from "@/lib/course-store"
 import type { Scope } from "@/lib/db/tenant-db"
 
@@ -82,6 +83,8 @@ export async function runJob(job: AiJobRow, workerId: string, options: RunJobOpt
       return
     }
     await markReady(job, workerId, { result: candidate.result, provenance: candidate.provenance, actualCost: candidate.usage?.cost ?? null })
+    // Spend changed: tell the platform (fire-and-forget; personal workspaces only).
+    void reportAiSpendForTenant(job.tenantId)
   } catch (error) {
     const { retryable, code, message } = classifyError(error)
     await markFailed(job, workerId, { code, message, retryable })

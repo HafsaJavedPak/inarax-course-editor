@@ -55,6 +55,11 @@ services:
         sync: false
       - key: AI_WORKER_SECRET
         sync: false
+      # AI budgets & quotas (C2): per-workspace monthly cap and live-job cap.
+      - key: AI_MONTHLY_BUDGET
+        sync: false
+      - key: AI_CONCURRENCY
+        sync: false
     disk:
       name: inara-data
       mountPath: /var/data

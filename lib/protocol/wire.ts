@@ -19,6 +19,7 @@ export const PROTOCOL_PATHS = {
   manifest: "/v1/manifest",
   course: (courseId: string) => `/v1/courses/${courseId}`,
   asset: (assetId: string) => `/v1/assets/${assetId}`,
+  aiSpend: "/v1/ai-spend",
 } as const
 
 export const majorOf = (version: string) => Number.parseInt(version.split(".")[0] ?? "", 10)
@@ -169,6 +170,28 @@ export const AssetSchema = z.object({
   url: z.url(),
 })
 export type Asset = z.infer<typeof AssetSchema>
+
+// ---------------------------------------------------------------------------
+// AI budget spend report: PUT /v1/ai-spend (04 · AI and media generation, C2)
+// ---------------------------------------------------------------------------
+// The editor reports a personal workspace's current-month spend to the host, so
+// the host's admin can see how much of a creator's budget has been used. The
+// report carries the whole month (not a delta), so the last one received wins
+// and a missed report heals on the next. Idempotent.
+
+export const AiSpendReportSchema = z.object({
+  /** The creator the report is for, as the launch token's `sub` (their platform user id). */
+  sub: z.string().min(1),
+  /** The start of the calendar month this spend belongs to. */
+  period_start: z.iso.datetime(),
+  /** Actual spend in that month, USD. */
+  spent: z.number().nonnegative(),
+  /** Outstanding reservations, USD. */
+  reserved: z.number().nonnegative(),
+})
+export type AiSpendReport = z.infer<typeof AiSpendReportSchema>
+
+export const AiSpendResultSchema = z.object({ ok: z.literal(true) })
 
 export const ManifestSchema = z.object({
   protocol: z.string().regex(/^\d+\.\d+$/),

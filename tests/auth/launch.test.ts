@@ -11,9 +11,9 @@ import { POST as launch } from "@/app/launch/route"
 import { POST as signOut } from "@/app/sign-out/route"
 import proxy from "@/proxy"
 import { authConfig, gate, isCrossSiteWrite, SESSION_COOKIE, WORKSPACE_COOKIE } from "@/lib/auth-gate"
-import { loadIdentity } from "@/lib/authz/identity"
+import { loadIdentity, syncIdentity } from "@/lib/authz/identity"
 import type { Db } from "@/lib/db/client"
-import { auditLog, sessions } from "@/lib/db/schema"
+import { auditLog, sessions, tenants } from "@/lib/db/schema"
 import { __setHostKeysForTests } from "@/lib/keys"
 import { claimTokenId } from "@/lib/launch-replay"
 import { staticKeyResolver } from "@/lib/protocol/jwks"
@@ -304,6 +304,15 @@ describe("POST /api/platform/events (the host says a user's access changed)", ()
   it("accepts and ignores event types it doesn't know yet", async () => {
     const res = await send({ type: "something.new" })
     expect(await res.json()).toEqual({ ok: true, ignored: "something.new" })
+  })
+
+  it("applies the host's AI limits to the creator's personal workspace", async () => {
+    await syncIdentity({ userId: "ev-limits", email: "ev-limits@x.test", name: "Eva", staff: false, orgs: [] })
+    const res = await send({ type: "user.ai_limits_changed", sub: "ev-limits", ai: { monthly_budget: 42, concurrency: 3 } })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true, applied: true })
+    const [tenant] = await db.select({ settings: tenants.settings }).from(tenants).where(eq(tenants.personalOwnerId, "ev-limits"))
+    expect(tenant!.settings).toMatchObject({ ai: { monthly_budget: 42, concurrency: 3 } })
   })
 })
 

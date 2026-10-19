@@ -6,7 +6,7 @@ import { jobStaleness } from "@/lib/ai/staleness"
 import { CourseSchema, getCourseLimits, type Course } from "@/lib/course"
 import { afterEdit, isLocked, type ReviewDecision, type WorkflowResult } from "@/lib/course-status"
 import { getLessonStats, validateCourse, type LessonStats } from "@/lib/course-validate"
-import { collabDocuments, collabUpdates, courses, lessons, tenants, type RevisionKind, type TenantKind } from "@/lib/db/schema"
+import { collabDocuments, collabUpdates, courses, lessons, tenants, type RevisionKind, type TenantKind, type TenantSettings } from "@/lib/db/schema"
 import { tenantFilter, withTenantScope, type Scope, type Tx } from "@/lib/db/tenant-db"
 import { findLessonRef } from "@/lib/course"
 import { notifyAccess } from "@/lib/collab/notify"
@@ -43,6 +43,8 @@ export type CourseRecord = {
   tenantName: string
   /** For an org workspace, the organization's id on the host (what publishing sends). */
   tenantHostOrgId: string | null
+  /** The workspace's settings (sharing, AI budget …); null until set. */
+  settings: TenantSettings | null
   /** The newest revision, which always holds exactly the stored content; null until the course's first revision. */
   headRevisionId: string | null
   headHash: string | null
@@ -100,6 +102,7 @@ const recordColumns = {
   tenantKind: tenants.kind,
   tenantName: tenants.name,
   tenantHostOrgId: tenants.hostOrgId,
+  settings: tenants.settings,
   headRevisionId: courses.headRevisionId,
   headHash: courses.headHash,
   publishedRevisionId: courses.publishedRevisionId,
@@ -112,6 +115,7 @@ const toRecord = (row: Omit<CourseRecord, "course"> & { data: Course }): CourseR
   tenantKind: row.tenantKind,
   tenantName: row.tenantName,
   tenantHostOrgId: row.tenantHostOrgId,
+  settings: row.settings,
   headRevisionId: row.headRevisionId,
   headHash: row.headHash,
   publishedRevisionId: row.publishedRevisionId,
