@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
   const name = `${crypto.randomUUID()}.${ext}`
   await fs.mkdir(UPLOAD_DIR, { recursive: true })
-  await fs.writeFile(path.join(UPLOAD_DIR, name), Buffer.from(await file.arrayBuffer()))
+  await fs.writeFile(path.join(/* turbopackIgnore: true */ UPLOAD_DIR, name), Buffer.from(await file.arrayBuffer()))
 
   // Absolute URL: lesson image_url fields must be full URLs. request.url holds
   // the server's own address (localhost:<port>), so use the host the browser

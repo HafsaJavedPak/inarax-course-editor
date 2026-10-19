@@ -47,16 +47,19 @@ export async function runJob(job: AiJobRow, workerId: string, options: RunJobOpt
   const scope: Scope = { tenantIds: [job.tenantId], staff: false }
   if (await isCancelRequested(job)) {
     await markCancelled(job, workerId)
+    console.log(`[ai] ${job.id} cancelled (requested)`)
     return
   }
 
   const record = await findCourse(scope, job.courseId)
   if (!record) {
     await markFailed(job, workerId, { code: "course_gone", message: "The course no longer exists.", retryable: false })
+    console.error(`[ai] ${job.id} failed: course_gone`)
     return
   }
   const lesson = job.lessonId ? ((await readCourseLesson(scope, job.courseId, job.lessonId)) ?? undefined) : undefined
   const provider = options.provider ?? providerFor(job.provider)
+  console.log(`[ai] ${job.id} ${job.kind} attempt ${job.attempt} → ${provider.name}`)
 
   // Renew the lease while generating (a video can take minutes).
   const beat = setInterval(() => void heartbeat(job, workerId, leaseSeconds).catch(() => {}), Math.max(1000, (leaseSeconds * 1000) / 3))
@@ -73,6 +76,7 @@ export async function runJob(job: AiJobRow, workerId: string, options: RunJobOpt
 
     if (await isCancelRequested(job)) {
       await markCancelled(job, workerId)
+      console.log(`[ai] ${job.id} cancelled`)
       return
     }
 
@@ -80,13 +84,16 @@ export async function runJob(job: AiJobRow, workerId: string, options: RunJobOpt
     const usable = Boolean(candidate.result.text) || Boolean(candidate.result.assetIds?.length)
     if (!usable) {
       await markFailed(job, workerId, { code: "invalid_output", message: "The provider returned nothing usable.", retryable: false })
+      console.error(`[ai] ${job.id} failed: invalid_output (nothing usable)`)
       return
     }
     await markReady(job, workerId, { result: candidate.result, provenance: candidate.provenance, actualCost: candidate.usage?.cost ?? null })
+    console.log(`[ai] ${job.id} ready (${provider.name}, cost ${candidate.usage?.cost ?? "?"})`)
     // Spend changed: tell the platform (fire-and-forget; personal workspaces only).
     void reportAiSpendForTenant(job.tenantId)
   } catch (error) {
     const { retryable, code, message } = classifyError(error)
+    console.error(`[ai] ${job.id} failed: ${code} (${message})${retryable ? " — retrying" : ""}`)
     await markFailed(job, workerId, { code, message, retryable })
   } finally {
     clearInterval(beat)
