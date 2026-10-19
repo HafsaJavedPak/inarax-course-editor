@@ -15,10 +15,8 @@
 //   sample course        its owner's own copy for learning the editor: nobody
 //                        reviews it, and it's never published
 //
-// Review has two stages (lib/review/rounds.ts): the organization stage,
-// decided by an org admin (or platform staff), which makes the course live for
-// the organization; then the platform stage, which publishes it to the main
-// Inara host and is decided by platform staff only.
+// Review is a single stage, decided by platform staff only: approving makes the
+// course live (published). Organization admins submit but do not approve.
 
 import type { GrantRole, MembershipRole, TenantKind } from "@/lib/db/schema"
 
@@ -47,11 +45,9 @@ export type CourseAction =
   | "course.export"
   /** Submit, withdraw, tick off requested changes: the author's side of review. */
   | "course.submit"
-  /** The organization stage of review: approve, reject or request changes. */
+  /** Approve, reject or request changes: platform staff only. */
   | "course.review"
-  /** The platform stage: publish an org-approved course to the main Inara host. */
-  | "course.release"
-  /** Take a live course down from the catalogue (its organization's, or the main host). */
+  /** Take a live course down from the catalogue. */
   | "course.takedown"
   /** See the course's history and compare versions. */
   | "course.history"
@@ -77,18 +73,8 @@ function isOrgAdmin(course: CourseResource, role: MembershipRole | null) {
   return role === "admin" && course.tenantKind === "org"
 }
 
-/**
- * Decides the organization stage of review (approve, reject, request changes):
- * an org admin in their org, or platform staff anywhere. Org admins get
- * nothing from another organization. Sample courses are never reviewed.
- */
-function isReviewer(subject: Subject, course: CourseResource, role: MembershipRole | null) {
-  if (course.sample) return false
-  return isOrgAdmin(course, role) || subject.staff
-}
-
-/** Decides the platform stage: publishes an org-approved course to the main Inara host. Platform staff only. */
-function isPublisher(subject: Subject, course: CourseResource) {
+/** Reviewers (approve, reject, request changes): platform staff only. Sample courses are never reviewed. */
+function isReviewer(subject: Subject, course: CourseResource) {
   return !course.sample && subject.staff
 }
 
@@ -106,16 +92,16 @@ export function grantRole(subject: Subject, course: CourseResource): GrantRole |
 export function can(subject: Subject, action: CourseAction, course: CourseResource): boolean {
   const role = roleIn(subject, course.tenantId)
   const author = isAuthor(subject, course, role)
-  const reviewer = isReviewer(subject, course, role)
+  const reviewer = isReviewer(subject, course)
   const grant = grantRole(subject, course)
   const coOwner = grant === "co_owner"
   const editor = grant === "editor"
 
   switch (action) {
     case "course.read":
-      return author || reviewer || grant !== null
+      return author || isOrgAdmin(course, role) || reviewer || grant !== null
     case "course.history":
-      return author || reviewer || (grant !== null && grant !== "viewer")
+      return author || isOrgAdmin(course, role) || reviewer || (grant !== null && grant !== "viewer")
     case "course.edit":
       return author || reviewer || coOwner || editor
     case "course.restore":
@@ -131,8 +117,6 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
       return author || reviewer
     case "course.review":
       return reviewer
-    case "course.release":
-      return isPublisher(subject, course)
     case "course.takedown":
       // The author, a co-owner, an org admin in their org, or platform staff.
       return (author || coOwner || isOrgAdmin(course, role) || subject.staff) && !course.sample
@@ -168,7 +152,7 @@ export function canInTenant(subject: Subject, action: TenantAction, tenantId: st
   }
 }
 
-/** Whether the subject reviews anything at all (opens the review area): platform staff, or an org admin. */
+/** Whether the subject reviews anything at all (opens the review area): platform staff. */
 export function reviewsAnything(subject: Subject): boolean {
-  return subject.staff || subject.memberships.some((m) => m.role === "admin")
+  return subject.staff
 }

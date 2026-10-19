@@ -61,7 +61,7 @@ export function CourseSettings({
           This course is in review, so its settings can&apos;t be changed. Withdraw it from the course page to edit.
         </p>
       )}
-      {!isAdmin && (course.status === "approved" || course.status === "published") && (
+      {!isAdmin && course.status === "approved" && (
         <p className="cf-summary" role="status">
           This course has been approved. Saving changes here moves it back to Draft, and it will need another review.
         </p>

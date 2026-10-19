@@ -88,6 +88,7 @@ beforeAll(async () => {
   const org = { id: "org-x", name: "Org X" }
   await syncIdentity({ userId: "alice", email: null, name: "Alice", staff: false, orgs: [{ ...org, role: "creator" }] })
   await syncIdentity({ userId: "dave", email: null, name: "Dave", staff: false, orgs: [{ ...org, role: "admin" }] })
+  await syncIdentity({ userId: "sam", email: null, name: "Sam", staff: true, orgs: [] })
   const identity = (await loadIdentity("alice"))!
   aliceScope = { tenantIds: identity.workspaces.map((w) => w.tenantId), staff: false }
   const orgTenant = identity.workspaces.find((w) => w.kind === "org")!.tenantId
@@ -217,7 +218,7 @@ describe("revision checks and the review workflow", () => {
     expect(locked.status).toBe(409)
     expect((await locked.json()).code).toBe("course_locked")
 
-    await signInAs("dave", { fromReviewArea: true })
+    await signInAs("sam", { fromReviewArea: true })
     expect((await put(LESSON_ID, { expected_revision: start - 1, lesson: lessonSaying("reviewer stale") })).status).toBe(409)
     expect((await put(LESSON_ID, { expected_revision: start, lesson: lessonSaying("reviewer") })).status).toBe(200)
     expect((await findCourse(aliceScope, courseId))!.course.status).toBe("in_review")

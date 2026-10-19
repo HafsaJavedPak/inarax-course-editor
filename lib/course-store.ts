@@ -3,8 +3,8 @@ import "server-only"
 import { and, desc, eq, inArray, sql } from "drizzle-orm"
 
 import { jobStaleness } from "@/lib/ai/staleness"
-import { CourseSchema, getCourseLimits, type Course, type ReviewStage } from "@/lib/course"
-import { afterEdit, effectiveStatus, isLocked, reviewStage, type ReviewDecision, type WorkflowResult } from "@/lib/course-status"
+import { CourseSchema, getCourseLimits, type Course } from "@/lib/course"
+import { afterEdit, isLocked, type ReviewDecision, type WorkflowResult } from "@/lib/course-status"
 import { getLessonStats, validateCourse, type LessonStats } from "@/lib/course-validate"
 import { collabDocuments, collabUpdates, courses, lessons, tenants, type RevisionKind, type TenantKind } from "@/lib/db/schema"
 import { tenantFilter, withTenantScope, type Scope, type Tx } from "@/lib/db/tenant-db"
@@ -278,7 +278,7 @@ async function writeCourse(tx: Tx, course: Course) {
 /** The edit rules every content change follows (course locked in review; accepted content frozen for reviewers). */
 function assertEditable(course: Course, editor: Editor) {
   if (isLocked(course.status) && !editor.asReviewer) throw new CourseLockedError()
-  if ((course.status === "approved" || course.status === "published") && editor.asReviewer) throw new ApprovedLockedError()
+  if (course.status === "approved" && editor.asReviewer) throw new ApprovedLockedError()
 }
 
 const editKind = (editor: Editor): RevisionKind => (editor.asReviewer ? "reviewer_edit" : "edit")
@@ -384,8 +384,7 @@ export async function submitForReview(
       return result
     },
     async (tx, record) => {
-      const stage = reviewStage("in_review", record.tenantKind)!
-      await openRound(tx, { tenantId: record.tenantId, courseId, stage, revision: sealed!, by, note: note.trim() })
+      await openRound(tx, { tenantId: record.tenantId, courseId, stage: "platform", revision: sealed!, by, note: note.trim() })
     },
   )
 }
@@ -433,7 +432,6 @@ export async function decideReview(
   scope: Scope,
   courseId: string,
   by: string,
-  stage: ReviewStage,
   decision: ReviewDecision,
   seen: SeenContent,
   change: (course: Course) => WorkflowResult,
@@ -460,7 +458,7 @@ export async function decideReview(
       return result
     },
     async (tx, record) => {
-      await decideRound(tx, { tenantId: record.tenantId, courseId, stage, decision, by, revision: decided! })
+      await decideRound(tx, { tenantId: record.tenantId, courseId, stage: "platform", decision, by, revision: decided! })
     },
   )
 }
@@ -492,10 +490,8 @@ export async function publishableContent(
   return withTenantScope(scope, async (tx) => {
     const record = await selectCourse(tx, scope, courseId, true)
     if (!record) return null
-    const platform = await currentApproval(tx, courseId, "platform")
-    const org = await currentApproval(tx, courseId, "org")
-    const approval = platform ?? org
-    const status = effectiveStatus(record.course.status, { orgApproved: !!org, platformPublished: !!platform })
+    const approval = await currentApproval(tx, courseId)
+    const status = approval ? "approved" : record.course.status
     if (approval?.decidedRevisionId) {
       if (record.headHash !== approval.decidedHash) throw new ApprovalMismatchError()
       const accepted = await revisionContentTx(tx, courseId, approval.decidedRevisionId)
@@ -503,8 +499,8 @@ export async function publishableContent(
       const course = CourseSchema.parse({ ...record.course, ...accepted.course, status })
       return { course, lessons: accepted.lessons, revisionId: approval.decidedRevisionId }
     }
-    // A live status with rounds on record but no usable approval is a mismatch.
-    if ((status === "approved" || status === "published") && (await hasRounds(tx, courseId))) throw new ApprovalMismatchError()
+    // An approved status with rounds on record but no usable approval is a mismatch.
+    if (status === "approved" && (await hasRounds(tx, courseId))) throw new ApprovalMismatchError()
     await ensureHistory(tx, scope, record)
     const sealed = await sealLatest(tx, courseId)
     const head = await loadHead(tx, scope, record.course)

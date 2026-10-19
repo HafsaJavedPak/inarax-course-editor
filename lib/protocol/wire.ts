@@ -57,7 +57,7 @@ export type LessonContent = z.infer<typeof LessonContentSchema>
 // Course package: PUT /v1/courses/{course.id}
 // ---------------------------------------------------------------------------
 
-export const REVIEW_STATUSES = ["draft", "in_review", "changes_requested", "approved", "rejected", "published", "unpublished"] as const
+export const REVIEW_STATUSES = ["draft", "in_review", "changes_requested", "approved", "rejected", "unpublished"] as const
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number]
 
 export const PackageLessonSchema = z.object({

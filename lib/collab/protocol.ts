@@ -33,7 +33,7 @@ export type CloseReason = (typeof CLOSE_REASONS)[keyof typeof CLOSE_REASONS]
 /** Stateless messages from the gateway (JSON). */
 export type GatewayMessage =
   /** What this connection may do now (e.g. read-only once the course is in review). */
-  | { t: "mode"; mode: "edit" | "read"; reason?: "in_review" | "approved" | "published" | "role" }
+  | { t: "mode"; mode: "edit" | "read"; reason?: "in_review" | "approved" | "role" }
   /** The document's content couldn't be saved as a valid lesson; the last good version is kept. */
   | { t: "attention"; error: string | null }
   /** Everything up to now is in the lesson's stored content (after a flush). */

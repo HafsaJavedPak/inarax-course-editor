@@ -154,6 +154,7 @@ beforeAll(async () => {
   await syncIdentity({ userId: "alice", email: "alice@x.test", name: "Alice", staff: false, orgs: [{ ...org, role: "creator" }] })
   await syncIdentity({ userId: "dave", email: "dave@x.test", name: "Dave", staff: false, orgs: [{ ...org, role: "admin" }] })
   await syncIdentity({ userId: "bob", email: null, name: "Bob", staff: false, orgs: [] })
+  await syncIdentity({ userId: "sam", email: "sam@x.test", name: "Sam", staff: true, orgs: [] })
   const identity = (await loadIdentity("alice"))!
   aliceScope = { tenantIds: identity.workspaces.map((w) => w.tenantId), staff: false }
   orgTenant = identity.workspaces.find((w) => w.kind === "org")!.tenantId
@@ -339,7 +340,7 @@ describe("restoring", () => {
     const id = await newCourse()
     const first = (await revisions(id))[0]
     const shown = await head(id)
-    await signInAs("dave", { fromReviewArea: true })
+    await signInAs("sam", { fromReviewArea: true })
     expect((await restoreRoute(json("POST", { expected_head: shown.revision_id }), p({ courseId: id, revisionId: first.id }))).status).toBe(403)
 
     await signInAs("alice")
@@ -378,7 +379,7 @@ describe("review decisions are bound to the content seen", () => {
   it("a decision must name what was reviewed, and is refused if the course changed since (409 content_changed)", async () => {
     const id = await submitted()
     const seen = await head(id)
-    await signInAs("dave", { fromReviewArea: true })
+    await signInAs("sam", { fromReviewArea: true })
     expect((await reviewRoute(json("POST", { decision: "approved" }), p({ courseId: id }))).status).toBe(400)
 
     // A second reviewer edits during review.
@@ -392,14 +393,14 @@ describe("review decisions are bound to the content seen", () => {
     const now = await head(id)
     expect((await reviewRoute(json("POST", { decision: "approved", ...now }), p({ courseId: id }))).status).toBe(200)
     const [round] = await rounds(id)
-    expect(round).toMatchObject({ decision: "approved", decidedRevisionId: now.revision_id, decidedHash: now.content_hash, decidedBy: "dave" })
+    expect(round).toMatchObject({ decision: "approved", decidedRevisionId: now.revision_id, decidedHash: now.content_hash, decidedBy: "sam" })
     expect(round.decidedRevisionId).not.toBe(round.submittedRevisionId)
-    expect((await revisions(id)).at(-1)).toMatchObject({ kind: "reviewer_edit", actors: ["dave"] })
+    expect((await revisions(id)).at(-1)).toMatchObject({ kind: "reviewer_edit", actors: ["sam"] })
   })
 
   it("an author's edit after acceptance invalidates the acceptance and returns the course to draft", async () => {
     const id = await submitted()
-    await signInAs("dave", { fromReviewArea: true })
+    await signInAs("sam", { fromReviewArea: true })
     await reviewRoute(json("POST", { decision: "approved", ...(await head(id)) }), p({ courseId: id }))
     expect((await course(id)).status).toBe("approved")
 
@@ -413,7 +414,7 @@ describe("review decisions are bound to the content seen", () => {
 
   it("reviewers can't edit an accepted course's content (409); revoking first is the way", async () => {
     const id = await submitted()
-    await signInAs("dave", { fromReviewArea: true })
+    await signInAs("sam", { fromReviewArea: true })
     await reviewRoute(json("POST", { decision: "approved", ...(await head(id)) }), p({ courseId: id }))
     const res = await saveLesson(id, "reviewer tweak after accepting")
     expect(res.status).toBe(409)
@@ -439,7 +440,7 @@ describe("publishing", () => {
     const id = await newCourse()
     await saveLesson(id, "the accepted words")
     await submitDirect(id)
-    await signInAs("dave", { fromReviewArea: true })
+    await signInAs("sam", { fromReviewArea: true })
     const seen = await head(id)
     expect((await reviewRoute(json("POST", { decision: "approved", ...seen }), p({ courseId: id }))).status).toBe(200)
 

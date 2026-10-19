@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-import { LEVELS, type ChangeRequest, type Course, type ReviewStage } from "@/lib/course"
+import { LEVELS, type ChangeRequest, type Course } from "@/lib/course"
 import { STATUS_DESCRIPTIONS, STATUS_LABELS, type ReviewDecision } from "@/lib/course-status"
 import { modeHeaders } from "@/lib/admin-mode"
 
@@ -14,12 +14,6 @@ const DECISIONS: { id: ReviewDecision; label: string; button: string }[] = [
   { id: "changes_requested", label: "Request changes", button: "Send back for changes" },
   { id: "rejected", label: "Reject", button: "Reject course" },
 ]
-
-/** The accept wording differs by stage: the organization stage accepts, the platform stage publishes. */
-const ACCEPT: Record<ReviewStage, { label: string; button: string }> = {
-  org: { label: "Accept", button: "Accept for the organization" },
-  platform: { label: "Publish", button: "Publish to the main host" },
-}
 
 /** "module:<id>" / "lesson:<id>" select values ↔ change request targets. */
 function toTarget(value: string, course: Course): ChangeRequest["target"] {
@@ -48,31 +42,26 @@ export type SeenVersion = { revisionId: string; contentHash: string; number: num
  */
 export function DecisionPanel({
   course,
-  stage,
   canDecide,
   seen,
   historyHref,
 }: {
   course: Course
-  stage: ReviewStage | null
   canDecide: boolean
   seen: SeenVersion | null
   historyHref: string
 }) {
   const router = useRouter()
   const [changedSince, setChangedSince] = useState(false)
-  // Reversing a decision this stage already made: a published course for
-  // platform staff (takes it off the main host — the organization keeps its
-  // approved version), or an approved course for an org admin (removes it from
-  // the organization).
-  const revoking = (stage === "platform" && course.status === "published") || (stage === "org" && course.status === "approved")
+  // Reversing an earlier acceptance: requesting changes or rejecting takes the course down.
+  const revoking = course.status === "approved"
   const [decision, setDecision] = useState<ReviewDecision>(revoking ? "changes_requested" : "approved")
   const [note, setNote] = useState("")
   const [changes, setChanges] = useState<DraftChange[]>([newChange()])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (!stage || !canDecide) {
+  if (!canDecide) {
     return (
       <section className="adm-card adm-decision">
         <h2>Decision</h2>
@@ -84,8 +73,7 @@ export function DecisionPanel({
     )
   }
 
-  const accept = ACCEPT[stage]
-  const decisions = DECISIONS.map((d) => (d.id === "approved" ? { ...d, ...accept } : d))
+  const decisions = DECISIONS
   const filledChanges = changes.filter((c) => c.text.trim())
   const options = revoking ? decisions.filter((d) => d.id !== "approved") : decisions
   const current = decisions.find((d) => d.id === decision)!
@@ -95,9 +83,7 @@ export function DecisionPanel({
   const submit = async () => {
     const confirmText =
       decision === "approved"
-        ? stage === "org"
-          ? `Accept “${course.title}” for the organization? It becomes available to your organization's learners.`
-          : `Publish “${course.title}” to the main course catalogue?`
+        ? `Accept “${course.title}”? It becomes live in the course catalogue.`
         : decision === "rejected"
           ? `Reject “${course.title}”? The creator will see your reason.`
           : `Send “${course.title}” back with ${filledChanges.length} requested change${filledChanges.length === 1 ? "" : "s"}?`
@@ -142,11 +128,11 @@ export function DecisionPanel({
   return (
     <section className="adm-card adm-decision" aria-labelledby="decision-title">
       <h2 id="decision-title">
-        {stage === "org" ? "Organization review" : revoking ? "Revoke publication" : "Platform review"}
+        {revoking ? "Revoke acceptance" : "Review"}
       </h2>
       {seen && (
         <p className="adm-muted adm-reviewing">
-          {revoking ? "Published" : "Reviewing"} <a href={historyHref}>version {seen.number}</a>. Your decision is recorded
+          {revoking ? "Accepted" : "Reviewing"} <a href={historyHref}>version {seen.number}</a>. Your decision is recorded
           against exactly this version.
         </p>
       )}
@@ -158,18 +144,11 @@ export function DecisionPanel({
           </button>
         </div>
       )}
-      {stage === "platform" && (
-        <p className="adm-muted">
-          {revoking
-            ? "This course is published. Requesting changes or rejecting takes it off the main host; your organization keeps its approved version."
-            : "Publishing makes this course live on the main course catalogue. The course needs a cover image."}
-        </p>
-      )}
-      {stage === "org" && revoking && (
-        <p className="adm-muted">
-          This course is approved for your organization. Requesting changes or rejecting removes it from your organization&rsquo;s catalogue.
-        </p>
-      )}
+      <p className="adm-muted">
+        {revoking
+          ? "This course is accepted. Requesting changes or rejecting takes it down."
+          : "Accepting makes this course live in the course catalogue. The course needs a cover image."}
+      </p>
 
       <div className="adm-choices" role="radiogroup" aria-label="Decision">
         {options.map((option) => (
