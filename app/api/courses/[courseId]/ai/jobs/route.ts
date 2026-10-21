@@ -98,6 +98,7 @@ export async function POST(request: Request, ctx: Ctx) {
       throw error
     }
 
+    console.log(`[ai] job ${created.job.id} created: ${created.job.kind} → ${created.job.provider} (${created.created ? "new" : "existing"})`)
     return Response.json({ job: jobView(created.job) }, { status: created.created ? 201 : 200 })
   })
 }

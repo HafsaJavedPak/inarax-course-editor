@@ -27,7 +27,7 @@ import {
  * Options with a single correct answer (mcq options, fill_blank choices).
  * Keeps `correctIndex` pointing at the same option through reorders/removals.
  */
-function OptionsEditor({
+export function OptionsEditor({
   options,
   correctIndex,
   onChange,

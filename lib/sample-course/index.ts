@@ -49,6 +49,7 @@ export function buildSampleCourse(ownerId: string, baseUrl: string): { course: C
         return { id: lessonId, title: lesson.title }
       }),
     })),
+    placement: template.placement[id].map((question) => ({ id: newId(), ...structuredClone(question) })),
   }))
   return { course, lessons }
 }

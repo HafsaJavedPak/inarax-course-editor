@@ -9,6 +9,7 @@ import {
 } from "@/lib/course"
 import { isAuthorableBlock, type Lesson } from "@/lib/lesson"
 import { validateLesson } from "@/lib/lesson-validate"
+import { placementIssues } from "@/lib/placement"
 
 const MINUTES_PER_INTERACTION = { explore: 1, assess: 1.5 } as const
 const EXPLORE_TYPES = new Set([
@@ -35,7 +36,8 @@ export type LessonStats = {
 export type CourseIssue = {
   level: "error" | "warning"
   message: string
-  target?: { levelId?: LevelId; moduleId?: string; lessonId?: string }
+  /** `placement`: the issue is in the level's placement quiz. */
+  target?: { levelId?: LevelId; moduleId?: string; lessonId?: string; placement?: true }
 }
 
 export type LevelBudget = {
@@ -175,6 +177,9 @@ export function validateCourse(
   })
 
   issues.push(...duplicateTitleIssues(course))
+  issues.push(
+    ...placementIssues(course).map((i): CourseIssue => ({ level: "error", message: i.message, target: { levelId: i.levelId, placement: true } })),
+  )
 
   return {
     levels,

@@ -162,9 +162,19 @@ function examplePackage(): CoursePackage {
             ],
           },
         ],
+        placement: [
+          {
+            id: "e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b",
+            question: "Which of these makes a prompt clearer?",
+            options: ["Saying what the answer is for", "Making it shorter", "Using capital letters"],
+            correct_index: 0,
+            difficulty: "easy",
+            explanation: "Context about the goal lets the model choose what matters.",
+          },
+        ],
       },
-      { key: "intermediate", title: "Intermediate", modules: [] },
-      { key: "advanced", title: "Advanced", modules: [] },
+      { key: "intermediate", title: "Intermediate", modules: [], placement: [] },
+      { key: "advanced", title: "Advanced", modules: [], placement: [] },
     ],
     // The host's id for the person, from their launch token's `sub`.
     actor: { id: "3f0c2b9e-8a41-4d7e-9c55-2b6f1e0a7d13", name: "Sara Khan", email: "sara@example.com" },

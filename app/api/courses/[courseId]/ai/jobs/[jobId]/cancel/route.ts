@@ -11,5 +11,6 @@ export async function POST(_request: Request, ctx: Ctx) {
   if (!loaded.ok) return loaded.error
   const result = await requestCancel(loaded.ctx, jobId)
   if (!result.ok) return Response.json({ error: result.error }, { status: result.error === "Job not found" ? 404 : 409 })
+  console.log(`[ai] ${jobId} cancel requested by ${loaded.ctx.userId}`)
   return Response.json({ job: jobView(result.job) })
 }
