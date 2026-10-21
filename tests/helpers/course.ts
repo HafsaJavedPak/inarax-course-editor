@@ -1,11 +1,22 @@
-import { createCourse, type Course } from "@/lib/course"
+import { createCourse, type Course, type PlacementQuestion } from "@/lib/course"
 import type { Lesson } from "@/lib/lesson"
 
 export const LESSON_ID = "11111111-1111-4111-8111-111111111111"
 export const MODULE_ID = "22222222-2222-4222-8222-222222222222"
 export const UPLOAD_URL = "http://localhost:3001/uploads/33333333-3333-4333-8333-333333333333.png"
 
-/** A course with one module and one lesson in the first level. */
+/** A complete placement bank: 1 easy, 2 medium and 2 hard questions. */
+export function samplePlacement(): PlacementQuestion[] {
+  return (["easy", "medium", "medium", "hard", "hard"] as const).map((difficulty, i) => ({
+    id: `77777777-7777-4777-8777-${String(i).padStart(12, "0")}`,
+    question: `Placement question ${i + 1}?`,
+    options: ["Right", "Wrong"],
+    correct_index: 0,
+    difficulty,
+  }))
+}
+
+/** A course with one module and one lesson in the first level, and that level's placement questions. */
 export function sampleCourse(overrides: Partial<Course> = {}): Course {
   const course = createCourse(
     {
@@ -22,6 +33,7 @@ export function sampleCourse(overrides: Partial<Course> = {}): Course {
     "user_local_creator",
   )
   course.levels[0].modules.push({ id: MODULE_ID, title: "Basics", summary: "", lessons: [{ id: LESSON_ID, title: "Intro" }] })
+  course.levels[0].placement = samplePlacement()
   return { ...course, ...overrides }
 }
 

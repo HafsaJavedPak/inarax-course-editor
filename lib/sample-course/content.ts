@@ -7,7 +7,7 @@
 // Ids are left out here: each copy gets fresh ones. Pictures are in
 // public/images/sample-course; `image(name)` gives their full address.
 
-import type { CourseInfo, LevelId } from "@/lib/course"
+import type { CourseInfo, LevelId, PlacementQuestion } from "@/lib/course"
 import type { AuthorableBlockType, BlockDataMap } from "@/lib/lesson"
 
 export const SAMPLE_IMAGES = ["cover", "course-structure", "lesson-editor", "view-laptop", "view-phone"] as const
@@ -17,7 +17,12 @@ export type SampleBlock = { [K in AuthorableBlockType]: { type: K; data: BlockDa
 export type SampleSection = { title: string; required: boolean; blocks: SampleBlock[] }
 export type SampleLesson = { title: string; sections: SampleSection[] }
 export type SampleModule = { title: string; summary: string; lessons: SampleLesson[] }
-export type SampleCourseTemplate = { info: CourseInfo; levels: Record<LevelId, SampleModule[]> }
+export type SamplePlacementQuestion = Omit<PlacementQuestion, "id">
+export type SampleCourseTemplate = {
+  info: CourseInfo
+  levels: Record<LevelId, SampleModule[]>
+  placement: Record<LevelId, SamplePlacementQuestion[]>
+}
 
 const text = (markdown: string): SampleBlock => ({ type: "rich_text", data: { markdown } })
 
@@ -71,6 +76,41 @@ export function sampleCourseTemplate(image: (name: SampleImage) => string): Samp
         },
       ],
     },
+    placement: samplePlacement(),
+  }
+}
+
+const q = (
+  difficulty: PlacementQuestion["difficulty"],
+  question: string,
+  options: string[],
+  explanation: string,
+): SamplePlacementQuestion => ({ difficulty, question, options, correct_index: 0, explanation })
+
+/** Each level's placement questions: 1 easy, 2 medium and 2 hard, the least a level needs. */
+function samplePlacement(): SampleCourseTemplate["placement"] {
+  return {
+    associate: [
+      q("easy", "What does a course's level hold?", ["Modules", "Blocks", "Learners"], "Levels hold modules, and modules hold lessons."),
+      q("medium", "What do learners see one at a time in a lesson?", ["Sections", "Modules", "Levels"], "A lesson is split into sections, shown one at a time."),
+      q("medium", "Which block is best for a paragraph of explanation?", ["Rich text", "Flip cards", "Sequencing"], "Rich text is for reading; the others ask learners to do something."),
+      q("hard", "A picture has no alt text. Who is affected most?", ["Learners using a screen reader", "Reviewers", "Nobody"], "Alt text is read aloud to learners who can't see the picture."),
+      q("hard", "Where do you set a course's cover image?", ["The course settings", "The first lesson", "The review page"], "The cover is part of the course settings."),
+    ],
+    intermediate: [
+      q("easy", "Do explore blocks have wrong answers?", ["No", "Yes", "Only in the last section"], "Explore blocks let learners tap and reveal; nothing is scored."),
+      q("medium", "Which block reveals one side of a card, then the other?", ["Flip cards", "Accordion tabs", "Image hotspot"], "Flip cards show a front and a back."),
+      q("medium", "Which block shows events in order along a line?", ["Stepped timeline", "Wheel diagram", "Image switcher"], "A stepped timeline walks through events in order."),
+      q("hard", "You want learners to compare the same content as text, a table and a chart. Which block?", ["Format switcher", "Nested layers", "Flip cards"], "A format switcher shows one idea in several formats."),
+      q("hard", "Which block suits explaining parts that sit inside each other?", ["Nested layers", "Vertical roadmap", "Accordion tabs"], "Nested layers show parts within parts."),
+    ],
+    advanced: [
+      q("easy", "Which kind of block is scored?", ["Assess blocks", "Explore blocks", "Content blocks"], "Assess blocks check understanding and are scored."),
+      q("medium", "Which block asks learners to put items in order?", ["Sequencing", "Categorization", "Multiple choice"], "Sequencing checks the order of items."),
+      q("medium", "Which block asks learners to sort items into groups?", ["Categorization", "Fill in the blank", "Sequencing"], "Categorization sorts items into buckets."),
+      q("hard", "What happens when you edit an accepted course?", ["It goes back to draft", "Nothing changes", "It's deleted"], "An edit after acceptance reopens the course as a draft for review."),
+      q("hard", "Who can accept a course for the catalogue?", ["Platform reviewers", "Any collaborator", "The course's owner"], "Only platform reviewers decide on courses in review."),
+    ],
   }
 }
 

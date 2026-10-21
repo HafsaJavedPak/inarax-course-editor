@@ -1,5 +1,5 @@
 {
-  "protocol": "2.0",
+  "protocol": "2.1",
   "course": {
     "id": "7f72e600-3425-490c-b530-0179826cb206",
     "revision": 12,
@@ -78,17 +78,33 @@
             }
           ]
         }
+      ],
+      "placement": [
+        {
+          "id": "e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b",
+          "question": "Which of these makes a prompt clearer?",
+          "options": [
+            "Saying what the answer is for",
+            "Making it shorter",
+            "Using capital letters"
+          ],
+          "correct_index": 0,
+          "difficulty": "easy",
+          "explanation": "Context about the goal lets the model choose what matters."
+        }
       ]
     },
     {
       "key": "intermediate",
       "title": "Intermediate",
-      "modules": []
+      "modules": [],
+      "placement": []
     },
     {
       "key": "advanced",
       "title": "Advanced",
-      "modules": []
+      "modules": [],
+      "placement": []
     }
   ],
   "actor": {

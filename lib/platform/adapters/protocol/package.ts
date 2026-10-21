@@ -4,6 +4,7 @@
 import { lastDecision } from "@/lib/course-status"
 import { LEVELS, type Course } from "@/lib/course"
 import type { Lesson } from "@/lib/lesson"
+import { questionProblems } from "@/lib/placement"
 import { PROTOCOL_VERSION, type CoursePackage, type LessonContent } from "@/lib/protocol/wire"
 
 export type PackageInput = {
@@ -60,6 +61,16 @@ export function buildPackage({ course, lessons, coverImageUrl, actor, organizati
             content: (lessons.get(ref.id) as LessonContent | undefined) ?? null,
           })),
         })),
+        placement: (level?.placement ?? [])
+          .filter((q) => questionProblems(q).length === 0)
+          .map((q) => ({
+            id: q.id,
+            question: q.question.trim(),
+            options: q.options.map((o) => o.trim()),
+            correct_index: q.correct_index,
+            difficulty: q.difficulty,
+            explanation: q.explanation?.trim() || null,
+          })),
       }
     }),
     actor: {

@@ -11,7 +11,7 @@
 import { z } from "zod"
 
 /** major.minor. A host accepts any package whose major it supports. */
-export const PROTOCOL_VERSION = "2.0"
+export const PROTOCOL_VERSION = "2.1"
 export const PROTOCOL_MAJOR = 2
 
 /** Paths, relative to the host's base URL (PLATFORM_URL). */
@@ -79,11 +79,35 @@ export const PackageModuleSchema = z.object({
   lessons: z.array(PackageLessonSchema),
 })
 
+/**
+ * A multiple-choice placement question. Learners answer a level's questions
+ * before starting the course so the host can start them at the right level.
+ * Since 2.1.
+ */
+export const PlacementQuestionSchema = z.object({
+  id: uuid,
+  question: z.string().trim().min(1),
+  options: z.array(z.string().trim().min(1)).min(2).max(6),
+  /** Index into `options` of the one correct answer. */
+  correct_index: z.number().int().min(0),
+  difficulty: z.enum(["easy", "medium", "hard"]),
+  /** Shown to the learner after the quiz, if the host shows explanations. */
+  explanation: z.string().nullable(),
+})
+
 export const PackageLevelSchema = z.object({
   /** Stable key of the level within the course, e.g. "associate". */
   key: z.string().regex(/^[a-z0-9_-]{1,50}$/),
   title: z.string().trim().min(1).max(50),
   modules: z.array(PackageModuleSchema),
+  /**
+   * The level's placement question bank, in display order. Only complete
+   * questions are sent; an empty list means the level has none. The editor
+   * only lets a course reach `approved` once every level with lessons has a
+   * full bank. Since 2.1; absent (a 2.0 editor) means "leave the host's
+   * placement questions for this level as they are".
+   */
+  placement: z.array(PlacementQuestionSchema).optional(),
 })
 
 export const ChangeRequestSchema = z.object({

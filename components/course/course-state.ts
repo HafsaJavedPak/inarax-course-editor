@@ -1,4 +1,4 @@
-import type { Course, CourseModule, LessonRef, LevelId } from "@/lib/course"
+import type { Course, CourseModule, LessonRef, LevelId, PlacementQuestion } from "@/lib/course"
 
 export type CourseAction =
   | { type: "addModule"; levelId: LevelId; module: CourseModule }
@@ -9,6 +9,10 @@ export type CourseAction =
   | { type: "renameLesson"; levelId: LevelId; moduleId: string; lessonId: string; title: string }
   | { type: "removeLesson"; levelId: LevelId; moduleId: string; lessonId: string }
   | { type: "moveLesson"; levelId: LevelId; moduleId: string; lessonId: string; offset: -1 | 1 }
+  | { type: "addPlacementQuestion"; levelId: LevelId; question: PlacementQuestion }
+  | { type: "updatePlacementQuestion"; levelId: LevelId; questionId: string; patch: Partial<Omit<PlacementQuestion, "id">> }
+  | { type: "removePlacementQuestion"; levelId: LevelId; questionId: string }
+  | { type: "movePlacementQuestion"; levelId: LevelId; questionId: string; offset: -1 | 1 }
 
 function move<T extends { id: string }>(items: T[], id: string, offset: number): T[] {
   const index = items.findIndex((item) => item.id === id)
@@ -29,6 +33,19 @@ function mapModules(
     ...course,
     levels: course.levels.map((level) =>
       level.id === levelId ? { ...level, modules: update(level.modules) } : level
+    ),
+  }
+}
+
+function mapPlacement(
+  course: Course,
+  levelId: LevelId,
+  update: (questions: PlacementQuestion[]) => PlacementQuestion[]
+): Course {
+  return {
+    ...course,
+    levels: course.levels.map((level) =>
+      level.id === levelId ? { ...level, placement: update(level.placement ?? []) } : level
     ),
   }
 }
@@ -81,5 +98,19 @@ export function courseReducer(course: Course, action: CourseAction): Course {
         ...mod,
         lessons: move(mod.lessons, action.lessonId, action.offset),
       }))
+
+    case "addPlacementQuestion":
+      return mapPlacement(course, action.levelId, (questions) => [...questions, action.question])
+
+    case "updatePlacementQuestion":
+      return mapPlacement(course, action.levelId, (questions) =>
+        questions.map((q) => (q.id === action.questionId ? { ...q, ...action.patch } : q))
+      )
+
+    case "removePlacementQuestion":
+      return mapPlacement(course, action.levelId, (questions) => questions.filter((q) => q.id !== action.questionId))
+
+    case "movePlacementQuestion":
+      return mapPlacement(course, action.levelId, (questions) => move(questions, action.questionId, action.offset))
   }
 }

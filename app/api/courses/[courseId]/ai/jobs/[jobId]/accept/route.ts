@@ -23,8 +23,10 @@ export async function POST(request: Request, ctx: Ctx) {
 
   const result = await acceptJob(loaded.ctx, jobId, loaded.ctx.userId, { mode: parsed.data.mode })
   if (!result.ok) {
+    console.log(`[ai] ${jobId} accept refused: ${result.code}`)
     const status = result.code === "not_found" ? 404 : result.code === "stale" ? 409 : result.code === "bad_state" || result.code === "locked" ? 409 : 400
     return Response.json({ error: result.error, code: result.code, ...(result.diff ? { diff: result.diff } : {}) }, { status })
   }
+  console.log(`[ai] ${jobId} accepted by ${loaded.ctx.userId} → revision ${result.job.acceptedRevisionId}`)
   return Response.json({ job: jobView(result.job) })
 }

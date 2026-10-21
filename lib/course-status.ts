@@ -30,6 +30,7 @@
 
 import type { ChangeRequest, ChangeTarget, Course, CourseStatus, ReviewAction, ReviewEvent } from "@/lib/course"
 import type { CourseReport } from "@/lib/course-validate"
+import { placementIssues } from "@/lib/placement"
 
 /** Resubmissions allowed after a course's first rejection, until a reviewer allows more. */
 export const MAX_RESUBMISSIONS_AFTER_REJECTION = 5
@@ -252,6 +253,15 @@ export function review(
   }
   if (decision === "approved" && !course.cover_image_url) {
     return { error: "Add a cover image before publishing to the course catalogue.", status: 409, code: "cover_required" }
+  }
+  const placement = decision === "approved" ? placementIssues(course) : []
+  if (placement.length) {
+    return {
+      error: `The placement quiz isn't complete: ${placement.map((i) => i.message).join("; ")}`,
+      status: 409,
+      code: "placement_required",
+      detail: placement,
+    }
   }
   if (decision === "rejected" && !note.trim()) {
     return { error: "Explain why the course is rejected.", status: 400 }

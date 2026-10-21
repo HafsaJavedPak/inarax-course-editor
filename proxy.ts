@@ -22,6 +22,7 @@ export default function proxy(request: NextRequest) {
 
   // Every request carries a trace id to routes (audit entries record it) and back to the browser.
   const traceId = traceIdFrom(request.headers.get(TRACE_HEADER))
+  console.log(`[req] ${request.method} ${pathname} (${traceId})`)
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set(TRACE_HEADER, traceId)
   const response = NextResponse.next({ request: { headers: requestHeaders } })

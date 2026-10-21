@@ -147,7 +147,7 @@ export function DecisionPanel({
       <p className="adm-muted">
         {revoking
           ? "This course is accepted. Requesting changes or rejecting takes it down."
-          : "Accepting makes this course live in the course catalogue. The course needs a cover image."}
+          : "Accepting makes this course live in the course catalogue. The course needs a cover image and a complete placement quiz for every level with lessons."}
       </p>
 
       <div className="adm-choices" role="radiogroup" aria-label="Decision">

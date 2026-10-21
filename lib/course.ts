@@ -98,9 +98,33 @@ export const ModuleSchema = z.object({
   lessons: z.array(LessonRefSchema),
 })
 
+export const PLACEMENT_DIFFICULTIES = ["easy", "medium", "hard"] as const
+export type PlacementDifficulty = (typeof PLACEMENT_DIFFICULTIES)[number]
+
+/**
+ * A multiple-choice question in a level's placement quiz: the quiz learners
+ * take before starting the course to find the level they start at. Stored
+ * leniently so half-written questions autosave; lib/placement.ts says what
+ * blocks submitting and accepting.
+ */
+export const PlacementQuestionSchema = z.object({
+  id: uuid,
+  question: z.string(),
+  options: z.array(z.string()).max(8),
+  correct_index: z.number().int().min(0),
+  difficulty: z.enum(PLACEMENT_DIFFICULTIES),
+  explanation: z.string().optional(),
+})
+export type PlacementQuestion = z.infer<typeof PlacementQuestionSchema>
+
 export const LevelSchema = z.object({
   id: z.enum(["associate", "intermediate", "advanced"]),
   modules: z.array(ModuleSchema),
+  /**
+   * The level's placement questions. Optional, not defaulted, so courses
+   * saved before placement existed keep the same content hash.
+   */
+  placement: z.array(PlacementQuestionSchema).max(50).optional(),
 })
 
 export const PricingSchema = z.discriminatedUnion("type", [

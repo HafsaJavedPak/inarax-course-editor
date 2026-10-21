@@ -22,5 +22,6 @@ export async function POST(request: Request, ctx: Ctx) {
 
   const result = await rejectJob(loaded.ctx, jobId, loaded.ctx.userId, parsed.data.reason)
   if (!result.ok) return Response.json({ error: result.error }, { status: result.error === "Job not found" ? 404 : 409 })
+  console.log(`[ai] ${jobId} rejected by ${loaded.ctx.userId}`)
   return Response.json({ job: jobView(result.job) })
 }

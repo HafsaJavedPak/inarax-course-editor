@@ -1,5 +1,5 @@
 {
-  "$id": "https://inara.dev/course-publishing-protocol/2.0/course-package.schema.json",
+  "$id": "https://inara.dev/course-publishing-protocol/2.1/course-package.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
@@ -144,7 +144,8 @@
             "in_review",
             "changes_requested",
             "approved",
-            "rejected"
+            "rejected",
+            "unpublished"
           ]
         },
         "note": {
@@ -322,6 +323,59 @@
                 "title",
                 "summary",
                 "lessons"
+              ]
+            }
+          },
+          "placement": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "question": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "options": {
+                  "minItems": 2,
+                  "maxItems": 6,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "correct_index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "difficulty": {
+                  "type": "string",
+                  "enum": [
+                    "easy",
+                    "medium",
+                    "hard"
+                  ]
+                },
+                "explanation": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "question",
+                "options",
+                "correct_index",
+                "difficulty",
+                "explanation"
               ]
             }
           }

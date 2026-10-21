@@ -1,5 +1,5 @@
 {
-  "$id": "https://inara.dev/course-publishing-protocol/2.0/delete-result.schema.json",
+  "$id": "https://inara.dev/course-publishing-protocol/2.1/delete-result.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {

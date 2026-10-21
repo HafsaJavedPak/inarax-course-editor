@@ -19,6 +19,7 @@ import { TrashIcon } from "@/components/tiptap-icons/trash-icon"
 import { LevelTabs } from "@/components/course/level-tabs"
 import { StatusPanel, type Workflow } from "@/components/course/status-panel"
 import { courseReducer, type CourseAction } from "@/components/course/course-state"
+import { PlacementEditor } from "@/components/course/placement-editor"
 import { SaveBar, type SaveStatus } from "@/components/lesson-editor/save-bar"
 import { usePublish } from "@/components/lesson-editor/use-publish"
 import {
@@ -35,6 +36,7 @@ import { getSubmitBlockers, isLocked } from "@/lib/course-status"
 import { coursePaths, modeHeaders } from "@/lib/admin-mode"
 import { validateCourse, type CourseReport, type LessonStats } from "@/lib/course-validate"
 import { imageSrc } from "@/lib/uploads"
+import { placementIssues, placementLevels } from "@/lib/placement"
 
 import { ShareDialog } from "@/components/course/share-dialog"
 import type { CoursePermissions } from "@/lib/authz/context"
@@ -83,6 +85,8 @@ export function CourseBuilder({
   const [status, setStatus] = useState<SaveStatus>("saved")
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   const [selectedLevel, setSelectedLevel] = useState<LevelId>("associate")
+  // Each level has its modules and its placement quiz; this picks which one shows.
+  const [view, setView] = useState<"modules" | "placement">("modules")
   // Review state is owned by the server; it changes through the status panel,
   // or when a save of an accepted course moves it back to draft.
   const [workflow, setWorkflow] = useState<Workflow>({
@@ -221,6 +225,8 @@ export function CourseBuilder({
   const levelLabel = LEVELS.find((l) => l.id === selectedLevel)!.label
   const levelIssues = report.issues.filter((i) => !i.target?.levelId || i.target.levelId === selectedLevel)
   const limits = getCourseLimits(course)
+  const placementOpen = placementIssues(course).filter((i) => i.levelId === selectedLevel && !i.questionId).length > 0
+  const placementRequired = placementLevels(course).includes(selectedLevel)
 
   const addModule = () =>
     dispatch({
@@ -361,39 +367,63 @@ export function CourseBuilder({
 
         <LevelTabs budgets={report.levels} selected={selectedLevel} onSelect={setSelectedLevel} />
 
+        <div className="course-view-tabs" role="tablist" aria-label={`${levelLabel} content`}>
+          <button type="button" role="tab" aria-selected={view === "modules"} onClick={() => setView("modules")}>
+            Modules
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === "placement"}
+            data-attention={placementRequired && placementOpen}
+            onClick={() => setView("placement")}
+          >
+            Placement quiz ({level.placement?.length ?? 0})
+          </button>
+        </div>
+
         {/* In review: every control below is disabled; lessons open read-only. */}
         <fieldset className="course-fieldset" disabled={readOnly}>
-          <section className="course-level" aria-label={`${levelLabel} modules`}>
-            {level.modules.length === 0 && (
-              <p className="le-empty">No modules in {levelLabel} yet. Add a module, then add lessons to it.</p>
-            )}
+          {view === "placement" ? (
+            <PlacementEditor
+              levelId={selectedLevel}
+              questions={level.placement ?? []}
+              required={placementRequired}
+              dispatch={dispatch}
+            />
+          ) : (
+            <section className="course-level" aria-label={`${levelLabel} modules`}>
+              {level.modules.length === 0 && (
+                <p className="le-empty">No modules in {levelLabel} yet. Add a module, then add lessons to it.</p>
+              )}
 
-            {level.modules.map((mod, moduleIndex) => (
-              <ModuleCard
-                key={mod.id}
-                courseId={course.id}
-                module={mod}
-                index={moduleIndex}
-                count={level.modules.length}
-                lessonStats={lessonStats}
-                lessonMinutes={limits.minutes_per_lesson}
-                dispatch={(action) =>
-                  dispatch({
-                    ...action,
-                    levelId: selectedLevel,
-                  } as CourseAction)
-                }
-                onRemove={() => void removeModule(mod)}
-                onOpenLesson={(lessonId) => void openLesson(lessonId)}
-                readOnly={readOnly}
-                isAdmin={isAdmin}
-              />
-            ))}
+              {level.modules.map((mod, moduleIndex) => (
+                <ModuleCard
+                  key={mod.id}
+                  courseId={course.id}
+                  module={mod}
+                  index={moduleIndex}
+                  count={level.modules.length}
+                  lessonStats={lessonStats}
+                  lessonMinutes={limits.minutes_per_lesson}
+                  dispatch={(action) =>
+                    dispatch({
+                      ...action,
+                      levelId: selectedLevel,
+                    } as CourseAction)
+                  }
+                  onRemove={() => void removeModule(mod)}
+                  onOpenLesson={(lessonId) => void openLesson(lessonId)}
+                  readOnly={readOnly}
+                  isAdmin={isAdmin}
+                />
+              ))}
 
-            <Button variant="ghost" className="le-list-add" showTooltip={false} onClick={addModule}>
-              <span className="tiptap-button-text">+ Add module to {levelLabel}</span>
-            </Button>
-          </section>
+              <Button variant="ghost" className="le-list-add" showTooltip={false} onClick={addModule}>
+                <span className="tiptap-button-text">+ Add module to {levelLabel}</span>
+              </Button>
+            </section>
+          )}
         </fieldset>
 
         {levelIssues.length > 0 && (
@@ -403,6 +433,14 @@ export function CourseBuilder({
               {levelIssues.map((issue, i) => (
                 <li key={i} data-level={issue.level}>
                   {issue.message}
+                  {issue.target?.placement && view !== "placement" && (
+                    <>
+                      {" "}
+                      <button type="button" className="course-issue-link" onClick={() => setView("placement")}>
+                        Go to placement quiz
+                      </button>
+                    </>
+                  )}
                   {issue.target?.lessonId && (
                     <>
                       {" "}

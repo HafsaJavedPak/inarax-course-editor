@@ -1,4 +1,4 @@
-# Course Publishing Protocol, version 2.0
+# Course Publishing Protocol, version 2.1
 
 How the course editor publishes courses to a host platform. The editor owns this
 contract; a host implements it in whatever stack it uses (Next.js, FastAPI, …).
@@ -18,6 +18,11 @@ The source of truth is `lib/protocol/wire.ts` (messages) and
 generated files and `npm run contract:check` fails when they are stale.
 `npm run verify-host` checks a running host against this document (see
 [Conformance](#conformance)).
+
+**Changes in 2.1:** each package level may carry `placement`, the level's
+bank of multiple-choice placement questions (see
+[Placement](#put-v1coursescourse_id)). Optional: 2.0 hosts may ignore it, and
+hosts treat a missing `placement` as "unchanged".
 
 **Changes in 2.0 (breaking):** no more shared secret. Each side has its own
 Ed25519 key pair and publishes only its public keys as a JWKS (see
@@ -322,6 +327,9 @@ The package (`schemas/course-package.schema.json`, example in
       { "id": "…uuid", "title": "…", "summary": "…", "lessons": [
         { "id": "…uuid", "title": "…", "content": { /* lesson content */ } | null }
       ] }
+    ], "placement": [              // 2.1; optional
+      { "id": "…uuid", "question": "…", "options": ["…", "…"], "correct_index": 0,
+        "difficulty": "easy" | "medium" | "hard", "explanation": "…" | null }
     ] }
   ],
   "actor": { "id": "user_local_creator", "name": "…", "email": "…" },
@@ -346,6 +354,15 @@ Semantics the host must implement:
 - **Review status** is the editor's workflow state. The host maps it to its own
   (e.g. "in_review" → its review queue). A host may keep states it owns
   (e.g. "live") and must say so in `warnings` when it can't apply a status.
+- **Placement (2.1).** `levels[].placement` is the level's placement
+  question bank: learners answer questions from it before starting the course
+  so the host can start them at the right level. It replaces whatever bank the
+  host has for that level (`[]`: none); a missing `placement` leaves the
+  host's bank alone. Only complete questions are sent. The editor won't let a
+  course become `approved` until every level with lessons has at least 1 easy,
+  2 medium and 2 hard questions, so hosts may treat the bank of an approved
+  package as reviewed. How many questions a learner sees and the pass mark
+  are the host's choice.
 - **Course pricing, length and audience** are informational; hosts may ignore
   them.
 - **Concurrency.** The host applies packages for one course one at a time. The
