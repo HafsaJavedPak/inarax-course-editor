@@ -10,14 +10,11 @@ import { Input } from "@/components/tiptap-ui-primitive/input"
 
 // --- Lesson editor ---
 import { ImageUrlField } from "@/components/lesson-editor/blocks/content-blocks"
-import { AutoTextarea, CharCount, ListEditor, TextField } from "@/components/lesson-editor/fields"
+import { AutoTextarea, ListEditor, TextField } from "@/components/lesson-editor/fields"
 import {
   BLOCK_LIMITS,
   nextInnerId,
-  cleanRoadmapDateInput,
-  parseRoadmapDate,
   ROADMAP_COLORS,
-  ROADMAP_DATE_FORMATS,
   type AddNextLayerData,
   type FormatSwitcherData,
   type ImageSwitcherData,
@@ -308,12 +305,6 @@ const COLOR_LABELS: Record<RoadmapColor, string> = {
   orange: "Orange",
 }
 
-/** Why a roadmap date isn't valid yet (empty dates are reported by validation, not here). */
-function dateError(date: string): string | null {
-  if (!date.trim() || parseRoadmapDate(date) !== null) return null
-  return `Use a real date as numbers: ${ROADMAP_DATE_FORMATS.join(", ")}`
-}
-
 export function VerticalRoadmapBlock({
   data,
   onChange,
@@ -357,10 +348,8 @@ export function VerticalRoadmapBlock({
                   value={era.name}
                   placeholder="Era name, e.g. Early AI"
                   aria-label={`Era ${index + 1} name`}
-                  maxLength={BLOCK_LIMITS.roadmap_era_name.max}
                   onChange={(e) => update({ ...era, name: e.target.value })}
                 />
-                <CharCount value={era.name} max={BLOCK_LIMITS.roadmap_era_name.max} />
               </div>
               <select
                 className="le-select"
@@ -403,20 +392,10 @@ export function VerticalRoadmapBlock({
                 <div className="le-stack-tight">
                   <Input
                     value={event.date}
-                    placeholder="Date: 1958, 1958-07 or 1958-07-29"
+                    placeholder="Date: 1958, Mar 2023, 1980s, Today…"
                     aria-label={`Event ${index + 1} date`}
-                    aria-invalid={dateError(event.date) ? true : undefined}
-                    aria-describedby={dateError(event.date) ? `${event.id}-date-error` : undefined}
-                    inputMode="numeric"
-                    maxLength={10}
-                    // Numbers and "-" only: anything else is dropped as you type or paste.
-                    onChange={(e) => update({ ...event, date: cleanRoadmapDateInput(e.target.value) })}
+                    onChange={(e) => update({ ...event, date: e.target.value })}
                   />
-                  {dateError(event.date) && (
-                    <span id={`${event.id}-date-error`} className="le-field-error" role="alert">
-                      {dateError(event.date)}
-                    </span>
-                  )}
                 </div>
                 <select
                   className="le-select"
@@ -438,7 +417,6 @@ export function VerticalRoadmapBlock({
                 minRows={2}
                 onChange={(text) => update({ ...event, text })}
               />
-              <CharCount value={event.text} max={BLOCK_LIMITS.roadmap_event_text.max} />
             </div>
           )}
         />

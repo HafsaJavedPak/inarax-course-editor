@@ -88,8 +88,6 @@ export const BLOCK_LIMITS = {
   add_next_layer: { min: 2, max: 6 },
   roadmap_eras: { min: 1, max: 6 },
   roadmap_events: { min: 2, max: 30 },
-  roadmap_era_name: { max: 40 },
-  roadmap_event_text: { max: 300 },
   button_label: { max: 40 },
 } as const
 

@@ -9,7 +9,6 @@ import {
   isUuid,
   parseRoadmapDate,
   ROADMAP_COLORS,
-  ROADMAP_DATE_FORMATS,
   type LabeledItem,
   type Lesson,
   type TypedBlock,
@@ -201,28 +200,15 @@ export function validateBlock(block: TypedBlock): { level: LessonIssue["level"];
       }
       eras.forEach((era, i) => {
         if (isBlank(era.name)) error(`Era ${i + 1} needs a name`)
-        else if (era.name.trim().length > BLOCK_LIMITS.roadmap_era_name.max) {
-          error(`Era ${i + 1} name must be ${BLOCK_LIMITS.roadmap_era_name.max} characters or fewer`)
-        }
         if (!(ROADMAP_COLORS as readonly string[]).includes(era.color)) error(`Era ${i + 1} needs a colour`)
       })
       const eraIds = new Set(eras.map((e) => e.id))
+      // Dates are free text ("1956", "Mar 2023", "Today"); only plain numeric ones can be checked for order.
       const dates: (number | null)[] = []
       events.forEach((event, i) => {
-        if (isBlank(event.date)) {
-          error(`Event ${i + 1} needs a date`)
-          dates.push(null)
-        } else {
-          const date = parseRoadmapDate(event.date)
-          if (date === null) {
-            error(`Event ${i + 1} date “${event.date.trim()}” isn't a valid date. Use numbers only: ${ROADMAP_DATE_FORMATS.join(", ")}`)
-          }
-          dates.push(date)
-        }
+        if (isBlank(event.date)) error(`Event ${i + 1} needs a date`)
+        dates.push(isBlank(event.date) ? null : parseRoadmapDate(event.date))
         if (isBlank(event.text)) error(`Event ${i + 1} needs text`)
-        else if (event.text.trim().length > BLOCK_LIMITS.roadmap_event_text.max) {
-          error(`Event ${i + 1} text must be ${BLOCK_LIMITS.roadmap_event_text.max} characters or fewer`)
-        }
         if (!eraIds.has(event.era_id)) error(`Event ${i + 1} needs an era`)
       })
       // Learners read the line top to bottom, so dates should go forward.
