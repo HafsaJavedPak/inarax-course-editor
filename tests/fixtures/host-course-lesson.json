@@ -1,0 +1,1000 @@
+{
+ "version": 1,
+ "format": "blocks",
+ "intro": {
+  "subtitle": "You use AI dozens of times a day without noticing. In this lesson you'll learn to spot it, understand how it's different from ordinary software, and know when to trust it.",
+  "objectives": [
+   "Define AI in simple terms",
+   "Spot AI in everyday products",
+   "Explain how AI differs from rule-based software",
+   "Describe what today's AI can and can't do"
+  ]
+ },
+ "sections": [
+  {
+   "id": "6f1f6b5e-0b1a-4c52-9d0e-111111111111",
+   "title": "Real blocks",
+   "required_to_advance": true,
+   "blocks": [
+    {
+     "id": "f0e9accd-5418-4c35-aa9c-e07c2a27af88",
+     "personalized": false,
+     "type": "rich_text",
+     "data": {
+      "markdown": "Your phone unlocked when it saw your face. Your email quietly moved three scam messages to spam. Google Maps warned you about traffic before you left. YouTube picked your next video. Your keyboard finished your sentence before you did.\n\nNone of these announced themselves as \"AI.\" That's the point: most AI is invisible."
+     }
+    },
+    {
+     "id": "1b63dcb6-a845-42f1-b344-3ce3fe792a5d",
+     "type": "quick_question",
+     "personalized": false,
+     "required_to_advance": true,
+     "data": {
+      "question": "Quick guess: how many times do you think you've used AI today?",
+      "options": [
+       {
+        "id": "g1",
+        "label": "0–2",
+        "feedback": "That's the most common guess, because most AI works out of sight. The lab will show you how much you've been using without noticing."
+       },
+       {
+        "id": "g2",
+        "label": "3–5",
+        "feedback": "A fair start. When you list the AI around you in the lab, see whether you need to raise your number."
+       },
+       {
+        "id": "g3",
+        "label": "6–10",
+        "feedback": "You're already spotting some of it. In the lab, check how close you were."
+       },
+       {
+        "id": "g4",
+        "label": "10+",
+        "feedback": "You're probably right, and the real number is likely higher still. The lab will help you see where it all hides."
+       }
+      ]
+     }
+    },
+    {
+     "id": "04203317-5768-4267-9214-33728577ad88",
+     "personalized": false,
+     "type": "image",
+     "data": {
+      "image_url": "https://storage.googleapis.com/inara-476406.firebasestorage.app/lesson-assets%2Fai-essentials-20261005%2FL1-0.png",
+      "alt": "Two ways to build a spam filter. Traditional software: a new email plus rules a person wrote gives spam or inbox, the same answer every time. AI system: it first learns from millions of labelled emails and builds a model of the patterns, then a new email goes through the model and comes out as 94% likely spam.",
+      "size": "full"
+     }
+    },
+    {
+     "id": "12333476-8e0a-4a86-98d6-26ab5a29b142",
+     "type": "filter_compare",
+     "personalized": false,
+     "required_to_advance": false,
+     "data": {
+      "title": "Try to fool both filters",
+      "prompt": "Pick an email subject line below. Watch which filter catches it.",
+      "placeholder": "Type a subject line…",
+      "examples": [
+       "FREE MONEY inside",
+       "Fr33 m0ney waiting for you!!",
+       "Congratulations! Claim your prize now",
+       "Lunch meeting tomorrow at 1pm?",
+       "Your invoice for September"
+      ],
+      "positive_label": "Spam",
+      "negative_label": "Inbox",
+      "rule": {
+       "title": "Rule-based filter",
+       "description": "Its only rule: if the subject contains \"free money\", it's spam.",
+       "phrase": "free money",
+       "lookalike_pattern": "fr[e3]{2}|m[o0]n[e3]y|prize|claim|lottery|winner"
+      },
+      "learned": {
+       "title": "Learned filter",
+       "description": "It weighs many patterns it picked up from examples.",
+       "weights": {
+        "free": 1.2,
+        "money": 1.3,
+        "prize": 1.6,
+        "claim": 1.3,
+        "winner": 1.6,
+        "won": 1.2,
+        "congratulations": 1.2,
+        "urgent": 1.2,
+        "click": 1,
+        "now": 0.6,
+        "lottery": 1.8,
+        "cash": 1.2,
+        "offer": 0.8,
+        "limited": 0.8,
+        "guaranteed": 1.2,
+        "act": 0.5,
+        "bonus": 1,
+        "waiting": 0.5,
+        "meeting": -1.2,
+        "lunch": -1.1,
+        "tomorrow": -0.6,
+        "invoice": -0.5,
+        "report": -0.9,
+        "thanks": -0.9,
+        "class": -0.8,
+        "agenda": -1.1,
+        "minutes": -0.6,
+        "assignment": -0.9
+       },
+       "exclaim_weight": 0.45,
+       "exclaim_max": 3,
+       "caps_weight": 0.5,
+       "caps_max": 2,
+       "threshold": 1.4,
+       "steepness": 1.6
+      },
+      "footnote": "This is a simplified simulation. Real spam filters learn from billions of emails and look at far more than the subject line."
+     }
+    },
+    {
+     "id": "2e178730-cb0a-400a-ae82-e5522fbb847f",
+     "personalized": false,
+     "type": "categorization",
+     "data": {
+      "buckets": [
+       {
+        "id": "ai",
+        "label": "AI: learns from examples"
+       },
+       {
+        "id": "not",
+        "label": "Not AI: fixed rules"
+       }
+      ],
+      "items": [
+       {
+        "id": "c1",
+        "label": "A calculator adding two numbers",
+        "correct_bucket_id": "not"
+       },
+       {
+        "id": "c2",
+        "label": "Gmail moving an email to spam",
+        "correct_bucket_id": "ai"
+       },
+       {
+        "id": "c3",
+        "label": "A traffic light that changes every 60 seconds",
+        "correct_bucket_id": "not"
+       },
+       {
+        "id": "c4",
+        "label": "YouTube choosing your next video",
+        "correct_bucket_id": "ai"
+       },
+       {
+        "id": "c5",
+        "label": "Face unlock on your phone",
+        "correct_bucket_id": "ai"
+       },
+       {
+        "id": "c6",
+        "label": "A website chatbot where you tap menu buttons for fixed answers",
+        "correct_bucket_id": "not"
+       },
+       {
+        "id": "c7",
+        "label": "Google Maps predicting your arrival time",
+        "correct_bucket_id": "ai"
+       },
+       {
+        "id": "c8",
+        "label": "An Excel SUM formula",
+        "correct_bucket_id": "not"
+       },
+       {
+        "id": "c9",
+        "label": "Your keyboard suggesting the next word",
+        "correct_bucket_id": "ai"
+       },
+       {
+        "id": "c10",
+        "label": "An ATM checking your PIN",
+        "correct_bucket_id": "not"
+       },
+       {
+        "id": "c11",
+        "label": "Your bank flagging an unusual transaction",
+        "correct_bucket_id": "ai"
+       },
+       {
+        "id": "c12",
+        "label": "A smart thermostat that learns your schedule",
+        "correct_bucket_id": "ai"
+       }
+      ],
+      "points_per_match": 2
+     }
+    },
+    {
+     "id": "9ad1e3e6-1e49-4335-a05c-c3407157bcfc",
+     "type": "compare_columns",
+     "personalized": false,
+     "required_to_advance": false,
+     "data": {
+      "columns": [
+       {
+        "id": "good",
+        "title": "AI is good at",
+        "icon": "✅",
+        "color": "emerald",
+        "body": "- Spotting patterns in huge amounts of data\n- Predicting what's likely to happen next\n- Generating text, images and code quickly\n- Translating and summarising\n- Working at a speed and scale no human can\n- Doing the same task consistently, without tiring"
+       },
+       {
+        "id": "hard",
+        "title": "AI struggles with",
+        "icon": "⚠️",
+        "color": "amber",
+        "body": "- Guaranteeing that what it says is true\n- Knowing about events after it was trained\n- Common sense in unfamiliar situations\n- Understanding meaning the way people do\n- Being free of bias, since it learns from human data\n- Taking responsibility for decisions"
+       }
+      ],
+      "caption": "Strengths and limits of today's AI"
+     }
+    },
+    {
+     "id": "81247714-d87d-4e31-8966-ad53fa3ce894",
+     "personalized": false,
+     "type": "flip_cards",
+     "data": {
+      "cards": [
+       {
+        "id": "m1",
+        "front": "AI thinks and feels like a human.",
+        "back": "AI finds patterns and predicts outputs. It has no feelings or intentions of its own."
+       },
+       {
+        "id": "m2",
+        "front": "If AI says it confidently, it must be right.",
+        "back": "AI can sound completely confident while being completely wrong. You'll see this happen in this week's project."
+       },
+       {
+        "id": "m3",
+        "front": "AI is objective because it's a machine.",
+        "back": "AI learns from human-created data, so it can absorb human biases."
+       },
+       {
+        "id": "m4",
+        "front": "AI will replace everyone's job.",
+        "back": "AI mostly changes tasks within jobs. People who use AI well tend to gain an advantage. That's what Module 4 is about."
+       }
+      ]
+     }
+    },
+    {
+     "id": "7d95491b-5999-40a5-a990-9dc790c0bbfa",
+     "type": "free_response",
+     "personalized": false,
+     "data": {
+      "prompt": "Log the AI system you found.",
+      "min_words": 20,
+      "fields": [
+       {
+        "id": "system",
+        "label": "AI system",
+        "hint": "e.g. Instagram, Careem, Google Translate"
+       },
+       {
+        "id": "where",
+        "label": "Where exactly is AI used?",
+        "hint": "The specific feature, not the whole app"
+       },
+       {
+        "id": "input",
+        "label": "Input it receives",
+        "hint": "Be concrete: \"live location data\", not just \"data\""
+       },
+       {
+        "id": "output",
+        "label": "Output it produces"
+       },
+       {
+        "id": "wrong",
+        "label": "Could it get it wrong? How?",
+        "hint": "One realistic failure",
+        "long": true
+       }
+      ]
+     }
+    },
+    {
+     "id": "da95cb9c-765c-44e8-b60a-0e9c4553cc09",
+     "personalized": false,
+     "type": "mcq",
+     "data": {
+      "question": "Which description best explains what AI is?",
+      "options": [
+       "Any software that runs on a computer",
+       "Software that follows a very long list of rules",
+       "Technology that performs tasks needing human-like intelligence by learning patterns from data",
+       "A robot that thinks like a human"
+      ],
+      "correct_index": 2,
+      "points": 10,
+      "explanation": "The key idea is learning from data. Following rules, however many, is traditional software."
+     }
+    },
+    {
+     "id": "bee3c42b-aa3b-4f1a-88d2-26502f8f3940",
+     "personalized": false,
+     "type": "nested_layers",
+     "data": {
+      "layers": [
+       {
+        "id": "l1",
+        "label": "Artificial intelligence",
+        "body": "**What it is:** The whole field: any technique that makes computers do tasks that normally need human intelligence.\n\n**How it works:** Early AI used hand-written rules and logic. Today, almost all AI learns from data instead.\n\n**Examples:** 1990s chess computers, Expert systems, Everything inside this box\n\n**Timeline:** Field founded in 1956"
+       },
+       {
+        "id": "l2",
+        "label": "Machine learning",
+        "body": "**What it is:** AI that learns patterns from data instead of following rules a person wrote.\n\n**How it works:** Show it many examples with the right answers, and it learns to predict answers for new cases.\n\n**Examples:** Spam filters, Fraud alerts, Netflix recommendations, House-price predictions\n\n**Timeline:** Became mainstream in the 1990s–2000s"
+       },
+       {
+        "id": "l3",
+        "label": "Deep learning",
+        "body": "**What it is:** Machine learning that uses neural networks with many layers.\n\n**How it works:** Each layer picks up more complex patterns, which makes it great at messy data like images, speech and language.\n\n**Examples:** Face unlock, Voice assistants, Self-driving car vision, Medical image analysis\n\n**Timeline:** Took off in 2012"
+       },
+       {
+        "id": "l4",
+        "label": "Generative AI",
+        "body": "**What it is:** Deep learning models that create new content, instead of only sorting or predicting.\n\n**How it works:** It learns the patterns of text, images or sound so well that it can produce new examples that follow them.\n\n**Examples:** Image generators, AI music tools, AI video tools, Chat assistants\n\n**Timeline:** Went mainstream in 2022\n\nMany generative models are now multimodal: they can take in and produce text, images and audio together."
+       },
+       {
+        "id": "l5",
+        "label": "Large language models",
+        "body": "**What it is:** Generative AI trained on enormous amounts of text to predict the next word, one piece at a time.\n\n**How it works:** By predicting what comes next extremely well, it can write, summarise, translate, answer questions and write code. You'll see how in Lesson 4.\n\n**Examples:** GPT models (ChatGPT), Claude, Gemini, Llama\n\n**Timeline:** Built on the 2017 transformer; exploded in 2022\n\nMost popular assistants are powered by multimodal LLMs, so they can read images too."
+       }
+      ]
+     }
+    },
+    {
+     "id": "4ad06e7b-695b-4322-bfaa-c85b82045157",
+     "type": "image_switcher",
+     "personalized": false,
+     "data": {
+      "options": [
+       {
+        "id": "s1",
+        "label": "1. Pixels",
+        "image_url": "https://storage.googleapis.com/inara-476406.firebasestorage.app/lesson-assets%2Fai-essentials-20261005%2FL2-face-step-1.png",
+        "alt": "Step 1: a face photo shown as a grid of small coloured squares, beside a network whose first column, pixels, is lit.",
+        "caption": "Input: your photo arrives as millions of tiny coloured dots called pixels. On their own, they mean nothing."
+       },
+       {
+        "id": "s2",
+        "label": "2. Edges",
+        "image_url": "https://storage.googleapis.com/inara-476406.firebasestorage.app/lesson-assets%2Fai-essentials-20261005%2FL2-face-step-2.png",
+        "alt": "Step 2: the face reduced to its outlines and lines, with the network's first layer of edge detectors lit.",
+        "caption": "Layer 1 spots simple patterns in the pixels: edges, lines, and patches of light and dark."
+       },
+       {
+        "id": "s3",
+        "label": "3. Shapes",
+        "image_url": "https://storage.googleapis.com/inara-476406.firebasestorage.app/lesson-assets%2Fai-essentials-20261005%2FL2-face-step-3.png",
+        "alt": "Step 3: the eyes, nose and mouth outlined on the face, with the second layer of shape detectors lit.",
+        "caption": "Layer 2 combines those edges into shapes: an eye, the curve of a nose, a mouth."
+       },
+       {
+        "id": "s4",
+        "label": "4. Face",
+        "image_url": "https://storage.googleapis.com/inara-476406.firebasestorage.app/lesson-assets%2Fai-essentials-20261005%2FL2-face-step-4.png",
+        "alt": "Step 4: the whole face with a green tick, and the network's answer: this is you, 97 percent sure, phone unlocked.",
+        "caption": "The final layer combines shapes into a whole face, and the network gives its answer: \"This is you, 97% sure.\" Your phone unlocks."
+       }
+      ]
+     }
+    },
+    {
+     "id": "2db6e723-6b54-42cb-9b18-f7f22094ce3a",
+     "personalized": false,
+     "type": "vertical_roadmap",
+     "data": {
+      "eras": [
+       {
+        "id": "rules",
+        "name": "Rules era: intelligence written by hand",
+        "color": "amber"
+       },
+       {
+        "id": "learning",
+        "name": "Learning era: intelligence learned from data",
+        "color": "emerald"
+       }
+      ],
+      "events": [
+       {
+        "id": "ev-1",
+        "date": "1956",
+        "era_id": "rules",
+        "text": "The term \"artificial intelligence\" is coined at a summer workshop at Dartmouth College, and AI becomes a field of research."
+       },
+       {
+        "id": "ev-2",
+        "date": "1966",
+        "era_id": "rules",
+        "text": "ELIZA, one of the first chatbots, imitates a therapist using simple pattern-matching rules."
+       },
+       {
+        "id": "ev-3",
+        "date": "1980s",
+        "era_id": "rules",
+        "text": "\"Expert systems\" boom: programs built from thousands of if-then rules. They're costly to maintain and brittle, and funding dries up in an \"AI winter.\""
+       },
+       {
+        "id": "ev-4",
+        "date": "1997",
+        "era_id": "rules",
+        "text": "IBM's Deep Blue beats world chess champion Garry Kasparov, mostly by brute-force searching millions of moves."
+       },
+       {
+        "id": "ev-5",
+        "date": "2012",
+        "era_id": "learning",
+        "text": "The deep learning breakthrough: a neural network called AlexNet crushes a major image-recognition contest. The learning era begins in earnest."
+       },
+       {
+        "id": "ev-6",
+        "date": "2016",
+        "era_id": "learning",
+        "text": "DeepMind's AlphaGo beats Go champion Lee Sedol, in a game long thought too complex for computers."
+       },
+       {
+        "id": "ev-7",
+        "date": "2017",
+        "era_id": "learning",
+        "text": "Google researchers publish the **transformer**, the design behind almost every modern language model."
+       },
+       {
+        "id": "ev-8",
+        "date": "2022",
+        "era_id": "learning",
+        "text": "ChatGPT launches in November and becomes one of the fastest-growing apps in history."
+       },
+       {
+        "id": "ev-9",
+        "date": "2023–24",
+        "era_id": "learning",
+        "text": "Multimodal models arrive: assistants that understand images and audio, not just text."
+       },
+       {
+        "id": "ev-10",
+        "date": "Today",
+        "era_id": "learning",
+        "text": "AI agents that use tools and take actions, not just answer questions. You'll build with these in Module 4."
+       }
+      ]
+     }
+    },
+    {
+     "id": "1cf2575a-8dbc-4ee2-84b6-efe2a2cd088a",
+     "type": "card_grid",
+     "personalized": false,
+     "required_to_advance": false,
+     "data": {
+      "columns": 4,
+      "cards": [
+       {
+        "id": "data",
+        "icon": "📚",
+        "title": "Data",
+        "body": "The internet created enormous amounts of text, images and video to learn from.",
+        "color": "sky"
+       },
+       {
+        "id": "compute",
+        "icon": "⚡",
+        "title": "Computing power",
+        "body": "Graphics chips (GPUs), built for video games, turned out to be perfect for training neural networks.",
+        "color": "amber"
+       },
+       {
+        "id": "designs",
+        "icon": "🧩",
+        "title": "Better designs",
+        "body": "New techniques, especially the 2017 transformer, made it possible to learn from all that data efficiently.",
+        "color": "violet"
+       },
+       {
+        "id": "modern-ai",
+        "icon": "🚀",
+        "title": "Modern AI",
+        "body": "ChatGPT, image generators, voice assistants and the tools you'll use in this course.",
+        "color": "emerald"
+       }
+      ],
+      "caption": "Think of it as fuel, engine and design. You need all three."
+     }
+    },
+    {
+     "id": "cacf3208-59c9-4a94-b1d5-7a5ab06c5e25",
+     "type": "train_model",
+     "personalized": false,
+     "required_to_advance": true,
+     "data": {
+      "labels": [
+       {
+        "id": "u",
+        "label": "Urgent"
+       },
+       {
+        "id": "w",
+        "label": "Can wait"
+       }
+      ],
+      "training": [
+       {
+        "id": "t1",
+        "text": "The client website is down, please fix it now",
+        "label_id": "u"
+       },
+       {
+        "id": "t2",
+        "text": "Sharing some photos from the team lunch",
+        "label_id": "w"
+       },
+       {
+        "id": "t3",
+        "text": "Deadline moved to today, need the report urgently",
+        "label_id": "u"
+       },
+       {
+        "id": "t4",
+        "text": "No rush, but have a look at this idea next week",
+        "label_id": "w"
+       },
+       {
+        "id": "t5",
+        "text": "Payment failed and the customer is waiting on the phone",
+        "label_id": "u"
+       },
+       {
+        "id": "t6",
+        "text": "Monthly newsletter: new courses this season",
+        "label_id": "w"
+       },
+       {
+        "id": "t7",
+        "text": "Server crashed, nobody can log in right now",
+        "label_id": "u"
+       },
+       {
+        "id": "t8",
+        "text": "When you get a chance, update your profile picture",
+        "label_id": "w"
+       },
+       {
+        "id": "t9",
+        "text": "Urgent: sign the contract before 5pm today",
+        "label_id": "u"
+       },
+       {
+        "id": "t10",
+        "text": "Sometime next month let's plan a team outing",
+        "label_id": "w"
+       }
+      ],
+      "test": [
+       {
+        "id": "x1",
+        "text": "The booking page is down and customers are waiting",
+        "label_id": "u"
+       },
+       {
+        "id": "x2",
+        "text": "Need your approval today before the deadline",
+        "label_id": "u"
+       },
+       {
+        "id": "x3",
+        "text": "Here are some ideas for next week's workshop, no rush",
+        "label_id": "w"
+       },
+       {
+        "id": "x4",
+        "text": "Newsletter photos from last month's event",
+        "label_id": "w"
+       },
+       {
+        "id": "x5",
+        "text": "Login failed for the whole team, fix it right now",
+        "label_id": "u"
+       },
+       {
+        "id": "x6",
+        "text": "When you get a chance, look at the new course ideas",
+        "label_id": "w"
+       }
+      ],
+      "experiments": true,
+      "swap_ids": [
+       "t1",
+       "t4",
+       "t5"
+      ]
+     }
+    },
+    {
+     "id": "e820d960-c028-43f6-89d1-cdbffe9d7bde",
+     "type": "meaning_map",
+     "personalized": false,
+     "required_to_advance": false,
+     "data": {
+      "caption": "A meaning map: similar meanings sit close together",
+      "groups": [
+       {
+        "id": "fruit",
+        "label": "fruit"
+       },
+       {
+        "id": "transport",
+        "label": "transport"
+       },
+       {
+        "id": "feelings",
+        "label": "feelings"
+       },
+       {
+        "id": "cities",
+        "label": "cities"
+       }
+      ],
+      "words": [
+       {
+        "id": "mango",
+        "label": "mango",
+        "group_id": "fruit"
+       },
+       {
+        "id": "banana",
+        "label": "banana",
+        "group_id": "fruit"
+       },
+       {
+        "id": "apple",
+        "label": "apple",
+        "group_id": "fruit"
+       },
+       {
+        "id": "dates",
+        "label": "dates",
+        "group_id": "fruit"
+       },
+       {
+        "id": "car",
+        "label": "car",
+        "group_id": "transport"
+       },
+       {
+        "id": "bus",
+        "label": "bus",
+        "group_id": "transport"
+       },
+       {
+        "id": "rickshaw",
+        "label": "rickshaw",
+        "group_id": "transport"
+       },
+       {
+        "id": "train",
+        "label": "train",
+        "group_id": "transport"
+       },
+       {
+        "id": "happy",
+        "label": "happy",
+        "group_id": "feelings"
+       },
+       {
+        "id": "joyful",
+        "label": "joyful",
+        "group_id": "feelings"
+       },
+       {
+        "id": "glad",
+        "label": "glad",
+        "group_id": "feelings"
+       },
+       {
+        "id": "sad",
+        "label": "sad",
+        "group_id": "feelings"
+       },
+       {
+        "id": "karachi",
+        "label": "Karachi",
+        "group_id": "cities"
+       },
+       {
+        "id": "lahore",
+        "label": "Lahore",
+        "group_id": "cities"
+       },
+       {
+        "id": "riyadh",
+        "label": "Riyadh",
+        "group_id": "cities"
+       },
+       {
+        "id": "islamabad",
+        "label": "Islamabad",
+        "group_id": "cities"
+       }
+      ],
+      "notes": [
+       {
+        "word_id": "sad",
+        "text": "Notice \"sad\" is near the happy words but a bit apart: they're all feelings, but opposite ones. Embeddings capture both kinds of relationship."
+       }
+      ]
+     }
+    },
+    {
+     "id": "4ce4aa4a-9469-4db8-b659-4ed34be7ddb4",
+     "personalized": false,
+     "type": "add_next_layer",
+     "data": {
+      "layers": [
+       {
+        "id": "l1",
+        "label": "LLM",
+        "body": "**Adds:** The engine\n\nA model that predicts the next token. No chat window, no memory, no tools. Developers reach it through code (an API).",
+        "color": "sky"
+       },
+       {
+        "id": "l2",
+        "label": "Chatbot",
+        "body": "**Adds:** + a chat interface\n\nA conversation you can type into. (A chatbot can also be rule-based, with no LLM at all.)",
+        "color": "indigo"
+       },
+       {
+        "id": "l3",
+        "label": "AI assistant",
+        "body": "**Adds:** + files, search, memory and tools\n\nNow it can read your documents, search the web and remember preferences. It helps you do tasks, but waits for your instructions.",
+        "color": "violet"
+       },
+       {
+        "id": "l4",
+        "label": "AI agent",
+        "body": "**Adds:** + a goal, planning and actions\n\nGive it a goal and it plans the steps, uses tools to take actions, checks results and keeps going, with less supervision.",
+        "color": "rose"
+       }
+      ]
+     }
+    },
+    {
+     "id": "0a90e938-1d9a-4c35-a780-c5dfef5e130b",
+     "personalized": false,
+     "type": "accordion_tabs",
+     "data": {
+      "display": "tabs",
+      "sections": [
+       {
+        "id": "s1",
+        "title": "What time do you open?",
+        "body": "**LLM-powered chatbot**\n\nWe're open every day from 8am to 11pm. See you soon! ☕"
+       },
+       {
+        "id": "s2",
+        "title": "Do you have anything without gluten for my son?",
+        "body": "**LLM-powered chatbot**\n\nYes! Our rice kheer, fruit chaat and chana chaat are all gluten-free. Just avoid the parathas, chapatis and rolls, since they're made with wheat."
+       },
+       {
+        "id": "s3",
+        "title": "I'm vegetarian. What goes well with chai?",
+        "body": "**LLM-powered chatbot**\n\nLovely choice! An aloo paratha or a veg chapati roll goes perfectly with doodh patti chai. For something lighter, try the chana chaat."
+       },
+       {
+        "id": "s4",
+        "title": "Can I book a table for 12 on Friday evening?",
+        "body": "**LLM-powered chatbot**\n\nWe'd love to have your group! For 12 people you'll need to reserve by phone on 051-000-0000. I can't make the booking myself, but the team will sort it out for you."
+       }
+      ]
+     }
+    },
+    {
+     "id": "bb7889c3-16e3-4f13-a2ef-3c1e8cae6cfe",
+     "personalized": false,
+     "type": "stepped_timeline",
+     "data": {
+      "steps": [
+       {
+        "id": "t1",
+        "label": "Step 1",
+        "body": "**Think:** I need to know when you're free next week.\n\n**Act (tool call):** `check_calendar(you, next week)`\n\n**Observe:** You're free Tuesday 2–4pm and Thursday 10am–12pm."
+       },
+       {
+        "id": "t2",
+        "label": "Step 2",
+        "body": "**Think:** Now I need Sara's availability.\n\n**Act (tool call):** `check_calendar(Sara, next week)`\n\n**Observe:** Sara is free Thursday 11am–1pm and Friday 9–11am."
+       },
+       {
+        "id": "t3",
+        "label": "Step 3",
+        "body": "**Think:** Thursday 11am–12pm works for both of you.\n\n**Act (tool call):** `draft_invite(Sara, Thursday 11:00)`\n\n**Observe:** Invite drafted: \"Catch-up, Thursday 11:00–12:00.\""
+       },
+       {
+        "id": "t4",
+        "label": "Step 4",
+        "body": "**Think:** Sending this will email Sara on your behalf. I should check with you first.\n\n**Act (tool call):** `ask_user(\"Send the invite for Thursday 11am?\")`\n\n**Observe:** You replied: \"Yes, send it.\""
+       },
+       {
+        "id": "t5",
+        "label": "Step 5",
+        "body": "**Think:** Approved. Sending now.\n\n**Act (tool call):** `send_invite(Sara)`\n\n**Observe:** Sara accepted. ✅ Goal complete: meeting booked for Thursday 11:00–12:00."
+       }
+      ]
+     }
+    },
+    {
+     "id": "1cb8671b-abeb-49d7-a70e-b70a30867ed3",
+     "type": "color_sort",
+     "personalized": false,
+     "required_to_advance": true,
+     "data": {
+      "categories": [
+       {
+        "id": "b1",
+        "label": "LLM",
+        "color": "sky"
+       },
+       {
+        "id": "b2",
+        "label": "Chatbot",
+        "color": "indigo"
+       },
+       {
+        "id": "b3",
+        "label": "AI assistant",
+        "color": "violet"
+       },
+       {
+        "id": "b4",
+        "label": "AI agent",
+        "color": "rose"
+       }
+      ],
+      "items": [
+       {
+        "id": "c1",
+        "text": "A developer sends text to a language model from their own app's code. There's no chat window.",
+        "category_id": "b1",
+        "why": "Using the model directly from code is using the LLM itself."
+       },
+       {
+        "id": "c2",
+        "text": "A bank's website chat offers buttons: \"Check balance\", \"Block card\", \"Talk to a person\".",
+        "category_id": "b2",
+        "why": "It's a conversational interface with pre-written replies: a rule-based chatbot."
+       },
+       {
+        "id": "c3",
+        "text": "You upload a PDF to Claude and ask it to summarise it and draft an email about it.",
+        "category_id": "b3",
+        "why": "It uses your files and helps you with a task you asked for: an AI assistant."
+       },
+       {
+        "id": "c4",
+        "text": "A system watches the support inbox, reads each email, looks up the order, drafts a refund and sends it for approval, without being asked each time.",
+        "category_id": "b4",
+        "why": "It pursues a goal, decides its own steps and uses tools: an AI agent."
+       },
+       {
+        "id": "c5",
+        "text": "An airline's website chat answers baggage questions using an LLM, but can't change bookings.",
+        "category_id": "b2",
+        "why": "It's LLM-powered, but it only talks. With no tools or actions, it's a chatbot."
+       },
+       {
+        "id": "c6",
+        "text": "Gemini on your phone reads your calendar, sets reminders when you ask and searches the web.",
+        "category_id": "b3",
+        "why": "It has tools and access to your data, but acts when you ask: an AI assistant."
+       }
+      ],
+      "points_per_item": 5
+     }
+    },
+    {
+     "id": "12338884-aaf7-4896-9e6c-179f4e93898c",
+     "personalized": true,
+     "type": "workplace_scenario",
+     "data": {
+      "component_prompt": "Write a short, realistic workplace scenario (130-170 words) as a THIRD-PERSON narrative about one professional who works in {{department}} in {{domain}}. If the department or the field is \"Generic\", set the story in an ordinary office instead. Give the professional a first name common in Pakistan or Saudi Arabia and refer to them as he or she, never \"you\". They need to produce something for work, such as a message, a visual, a short audio or video piece, or a small script, and must pick which kind of generative AI fits. Follow them choosing the right kind of output for the job, using it, and then catching that kind of output's typical weakness, for example wrong small text in an image or a made-up fact in text, before it reaches anyone. Use only ideas from this lesson, name no AI products, and invent no statistics. Keep the final decision and the accountability with the person. Write it as one story the reader follows: concrete, plain and professional, with no second person, no headings, no lists and no definitions. Write it as one continuous story with no line of hyphens or other separator.",
+      "metadata_fields": [
+       "domain",
+       "department"
+      ]
+     }
+    },
+    {
+     "id": "4e914a90-4e88-4118-9cd2-29bdb1e2293e",
+     "personalized": false,
+     "type": "sequencing",
+     "data": {
+      "items": [
+       {
+        "id": "s1",
+        "label": "List my 5 key experiences and skills from the internship"
+       },
+       {
+        "id": "s2",
+        "label": "Pick the 2 most impressive, with a result for each"
+       },
+       {
+        "id": "s3",
+        "label": "Draft a 150-word LinkedIn post around those 2"
+       },
+       {
+        "id": "s4",
+        "label": "Critique the draft for tone, clarity and humble-bragging"
+       },
+       {
+        "id": "s5",
+        "label": "Rewrite it using the critique, with 3 relevant hashtags"
+       }
+      ],
+      "correct_order": [
+       "s1",
+       "s2",
+       "s3",
+       "s4",
+       "s5"
+      ],
+      "points": 15
+     }
+    },
+    {
+     "id": "9293dcc9-13c7-4cb5-86ef-908dd32b9c01",
+     "personalized": false,
+     "type": "wheel_diagram",
+     "data": {
+      "center_label": "Verification Wheel",
+      "slices": [
+       {
+        "id": "w1",
+        "label": "Accuracy",
+        "body": "**Question to ask:** Are the facts, numbers, names and dates correct?\n\n**Red flags**\n\n- Precise numbers or percentages\n- Dates, names and job titles\n- \"Confirmed\" where you said \"tentative\"\n\n**How to check:** Compare with your source document or an official site."
+       },
+       {
+        "id": "w2",
+        "label": "Relevance",
+        "body": "**Question to ask:** Does it answer what I actually asked?\n\n**Red flags**\n\n- Generic filler that could apply to anything\n- Drifting off topic\n- Answering an easier question than yours\n\n**How to check:** Re-read your prompt, then the answer. Cut anything that doesn't serve your goal."
+       },
+       {
+        "id": "w3",
+        "label": "Completeness",
+        "body": "**Question to ask:** Is anything important missing?\n\n**Red flags**\n\n- Missing deadlines, risks or conditions\n- Only one side of an issue\n- Steps skipped in instructions\n\n**How to check:** List what your reader must know, then tick each item off."
+       },
+       {
+        "id": "w4",
+        "label": "Source quality",
+        "body": "**Question to ask:** Where does this come from, and can I check it?\n\n**Red flags**\n\n- Statistics with no source\n- Sources that don't exist or don't say that\n- Quotes from famous people\n\n**How to check:** Open every link. Search for the original report or quote."
+       },
+       {
+        "id": "w5",
+        "label": "Reasoning",
+        "body": "**Question to ask:** Does the logic hold up?\n\n**Red flags**\n\n- Conclusions that don't follow\n- Maths that doesn't add up\n- Contradictions between sentences\n\n**How to check:** Ask: does B really follow from A? Redo any calculations."
+       },
+       {
+        "id": "w6",
+        "label": "Bias",
+        "body": "**Question to ask:** Is it fair and balanced?\n\n**Red flags**\n\n- Assumptions about gender, age, nationality or religion\n- Only one perspective\n- Stereotyped examples or images\n\n**How to check:** Ask: who could this exclude or offend? Would it read differently for someone else?"
+       },
+       {
+        "id": "w7",
+        "label": "Safety",
+        "body": "**Question to ask:** Could acting on this cause harm?\n\n**Red flags**\n\n- Health, legal or financial advice\n- Private or personal data\n- Instructions that could hurt someone\n\n**How to check:** For high-stakes topics, check with a qualified human. Remove private data."
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

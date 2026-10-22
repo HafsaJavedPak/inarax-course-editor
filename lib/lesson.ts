@@ -347,6 +347,17 @@ export function getLessonTitle(lesson: Lesson): string {
 // ---------------------------------------------------------------------------
 
 /**
+ * What a block's editor needs that its data lacks: lists and objects only. Missing scalars (a caption, a button
+ * label, an explanation, a default answer) stay missing, because adding them would make a lesson that came from the
+ * platform differ from what it was (and the platform refuses some of them blank, e.g. an empty button label).
+ */
+function missingShape(defaults: object, data: object): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(defaults).filter(([key, value]) => !(key in data) && typeof value === "object" && value !== null),
+  )
+}
+
+/**
  * Checks the envelope is structurally a lesson (so the editor can open it) and
  * swaps `"NEW_UUID"` placeholders — which the authoring prompt allows — for
  * real ids. Content-level rules are reported by validateLesson instead, so
@@ -376,7 +387,7 @@ export function parseLesson(input: unknown): { lesson: Lesson } | { error: strin
         // Fill in missing fields so the form editors can rely on the shape.
         const data = b.data && typeof b.data === "object" ? b.data : {}
         // Form-driven blocks keep their data exactly as stored: their starter has blank required fields that must not be added to real content.
-        blocks.push({ ...b, id, data: isSpecBlockType(b.type) ? data : { ...createBlockData(b.type), ...data } } as TypedBlock)
+        blocks.push({ ...b, id, data: isSpecBlockType(b.type) ? data : { ...missingShape(createBlockData(b.type), data), ...data } } as TypedBlock)
       } else {
         blocks.push({ ...b, id })
       }
