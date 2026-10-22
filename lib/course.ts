@@ -319,8 +319,9 @@ export type ChangeTarget = z.infer<typeof ChangeTargetSchema>
  *   edited      the author edited an accepted course, which reopened it as a draft
  *   unlocked    a reviewer allowed more resubmissions after the limit was reached
  *   taken_down  a live course was taken down from the catalogue (see takedown() in lib/course-status.ts)
+ *   transferred the course was handed to another owner (note: who to)
  */
-export const REVIEW_ACTIONS = ["created", "submitted", "withdrawn", "decided", "edited", "unlocked", "taken_down"] as const
+export const REVIEW_ACTIONS = ["created", "submitted", "withdrawn", "decided", "edited", "unlocked", "taken_down", "transferred"] as const
 export type ReviewAction = (typeof REVIEW_ACTIONS)[number]
 
 /** One entry in a course's review timeline. */

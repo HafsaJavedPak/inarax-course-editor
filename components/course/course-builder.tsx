@@ -57,6 +57,7 @@ const ALL_PERMISSIONS: CoursePermissions = {
   restore: true,
   takedown: true,
   sponsor: false,
+  transfer: false,
   ai: true,
   role: null,
   sample: false,

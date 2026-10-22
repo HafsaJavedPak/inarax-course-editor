@@ -72,6 +72,8 @@ export type CourseAction =
   | "course.settings"
   /** Decide whether the organization sponsors the course (its members enroll without purchasing). An org admin in their org, or platform staff; organization courses only. */
   | "course.sponsor"
+  /** Hand the course to another owner (an organization's course; the new owner is a member of it). */
+  | "course.transfer"
   /** Give, change and remove access (grants, invitations). */
   | "course.share"
   /** Request an AI job for this course (generate text, images …). The output is only a suggestion. */
@@ -155,6 +157,9 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
     case "course.sponsor":
       // Only an organization has members to sponsor; the decision is the admin's (or the platform's), never the author's.
       return (isOrgAdmin(course, role) || subject.staff) && course.tenantKind === "org" && !course.sample
+    case "course.transfer":
+      // The owner, an admin of the organization, or platform staff; only an organization has members to hand it to.
+      return (author || isOrgAdmin(course, role) || subject.staff) && course.tenantKind === "org" && !course.sample
     case "course.share":
       // The owner, a co-owner, an org admin in their org, a manager of its department, or platform staff.
       return author || coOwner || isOrgAdmin(course, role) || manager || subject.staff

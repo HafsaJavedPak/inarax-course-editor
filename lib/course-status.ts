@@ -81,6 +81,8 @@ export function eventLabel(event: ReviewEvent): string {
       return "More resubmissions allowed"
     case "taken_down":
       return "Taken down from the catalogue"
+    case "transferred":
+      return "Handed to another owner"
     case "decided":
       return STATUS_LABELS[event.status]
   }

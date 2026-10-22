@@ -103,6 +103,18 @@ describe("course access", () => {
     })
   })
 
+  it("handing a course to another owner: its owner, its organization's admins and platform staff, organization courses only", () => {
+    expect(can(author, "course.transfer", orgCourse)).toBe(true)
+    expect(can(orgAdmin, "course.transfer", orgCourse)).toBe(true)
+    expect(can(staff, "course.transfer", orgCourse)).toBe(true)
+    expect(can(otherCreator, "course.transfer", orgCourse)).toBe(false)
+    expect(can(stranger, "course.transfer", orgCourse)).toBe(false)
+    // A personal workspace has no one to hand it to.
+    expect(can(owner, "course.transfer", personalCourse)).toBe(false)
+    expect(can(staff, "course.transfer", personalCourse)).toBe(false)
+    expect(can(author, "course.transfer", { ...orgCourse, sample: true })).toBe(false)
+  })
+
   it("platform staff review and publish organizations' courses too", () => {
     expect(allowed(staff, orgCourse)).toEqual(without("course.submit", "course.restore", "course.ai.apply"))
   })

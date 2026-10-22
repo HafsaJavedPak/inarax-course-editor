@@ -665,6 +665,26 @@ export async function restoreRevision(
   })
 }
 
+/** Hands a course to another owner. Callers check who may (lib/authz/ownership). The new owner must be a member of the course's workspace. */
+export async function transferOwner(scope: Scope, courseId: string, newOwnerId: string, by: string): Promise<Course | null> {
+  return withTenantScope(scope, async (tx) => {
+    const record = await selectCourse(tx, scope, courseId, true)
+    if (!record) return null
+    const now = new Date().toISOString()
+    const next = CourseSchema.parse({
+      ...record.course,
+      owner_id: newOwnerId,
+      updated_at: now,
+      review_history: [
+        ...record.course.review_history,
+        { status: record.course.status, action: "transferred", at: now, by, note: `Handed to ${newOwnerId}`, changes: [] },
+      ],
+    })
+    await writeCourse(tx, next)
+    return next
+  })
+}
+
 /** Deletes a course with all its lessons. Uploaded images are kept (they may be shared). */
 export async function deleteCourse(scope: Scope, courseId: string): Promise<void> {
   await withTenantScope(scope, (tx) => tx.delete(courses).where(and(eq(courses.id, courseId), tenantFilter(courses, scope))))
