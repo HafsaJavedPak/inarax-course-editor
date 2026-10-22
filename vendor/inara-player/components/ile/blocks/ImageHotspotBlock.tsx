@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/ImageHotspotBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/ImageHotspotBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import Image from "next/image";
@@ -39,7 +39,7 @@ function SpotInfo({
   return (
     <>
       <div className="flex items-start justify-between gap-2">
-        <h4 className="font-montserrat !m-0 text-[15px] font-bold leading-snug text-slate-900">{spot.title}</h4>
+        <h4 className="font-montserrat !m-0 text-[14px] font-bold leading-snug text-slate-900">{spot.title}</h4>
         <button
           type="button"
           onClick={onClose}

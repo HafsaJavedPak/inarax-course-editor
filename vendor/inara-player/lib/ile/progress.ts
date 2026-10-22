@@ -1,4 +1,4 @@
-// Copied from inara-next lib/ile/progress.ts @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next lib/ile/progress.ts @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import type { LessonBlock, LessonContent, LessonSection } from "@/vendor/inara-player/lib/lesson-content/schema";
@@ -8,10 +8,12 @@ import { isInteractiveBlock } from "@/vendor/inara-player/lib/ile/block-meta";
  * Blocks the learner must finish before "Continue" unlocks. Tabs and the vertical roadmap are
  * the exceptions: they are optional reading and carry no points (see scoring.ts), because
  * forcing a click on each tab, or a scroll past every event, added friction without learning.
+ * The filter comparison, the meaning map and tap-to-reveal tiles are optional for the same reason.
  */
 export function isRequiredBlock(block: LessonBlock): boolean {
   if (!isInteractiveBlock(block.type)) return false;
-  if (block.type === "vertical_roadmap") return false;
+  if (block.type === "vertical_roadmap" || block.type === "filter_compare" || block.type === "meaning_map" || block.type === "tile_reveal")
+    return false;
   return !(block.type === "accordion_tabs" && block.data.display === "tabs");
 }
 

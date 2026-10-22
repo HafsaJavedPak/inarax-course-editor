@@ -1,13 +1,14 @@
 // Content validation, following json-guide/engine-reference.md §8 plus the
 // authoring-prompt quality rules that can be checked mechanically.
 
+import { SPEC_FORMS, isSpecBlockType } from "@/lib/block-forms"
+import { validateSpecBlock } from "@/lib/block-forms/validate"
 import {
   BLOCK_LIMITS,
   isAuthorableBlock,
   isUuid,
   parseRoadmapDate,
   ROADMAP_COLORS,
-  ROADMAP_DATE_FORMATS,
   type LabeledItem,
   type Lesson,
   type TypedBlock,
@@ -39,6 +40,8 @@ function hasDuplicates(ids: string[]) {
 /** Messages for one block; ids and cross-block uniqueness are checked by validateLesson. */
 export function validateBlock(block: TypedBlock): { level: LessonIssue["level"]; message: string }[] {
   const issues: { level: LessonIssue["level"]; message: string }[] = []
+  if (isSpecBlockType(block.type)) return validateSpecBlock(block, SPEC_FORMS[block.type].fields)
+
   const error = (message: string) => issues.push({ level: "error", message })
   const warn = (message: string) => issues.push({ level: "warning", message })
 
@@ -91,11 +94,17 @@ export function validateBlock(block: TypedBlock): { level: LessonIssue["level"];
       break
 
     case "mcq": {
-      const { question, options, correct_index } = block.data
+      const { question, options, correct_index, correct_indices } = block.data
       if (isBlank(question)) error("Question is required")
       if (options.length < 2) error("Add at least two options")
       if (options.some(isBlank)) error("Options can't be empty")
-      if (!(correct_index >= 0 && correct_index < options.length)) error("Pick the correct option")
+      if (correct_indices !== undefined) {
+        if (correct_index !== undefined) error("Use either one correct answer or several, not both")
+        if (correct_indices.length < 1 || correct_indices.some((i) => !(i >= 0 && i < options.length))) error("Tick at least one correct option")
+        if (hasDuplicates(correct_indices.map(String))) error("Each correct option can only be ticked once")
+      } else if (correct_index === undefined || !(correct_index >= 0 && correct_index < options.length)) {
+        error("Pick the correct option")
+      }
       const lengths = options.map((o) => o.trim().length).filter(Boolean)
       if (lengths.length >= 2 && Math.max(...lengths) > Math.min(...lengths) * 1.25 + 5) {
         warn("Options differ a lot in length — learners tend to pick the longest one")
@@ -191,28 +200,15 @@ export function validateBlock(block: TypedBlock): { level: LessonIssue["level"];
       }
       eras.forEach((era, i) => {
         if (isBlank(era.name)) error(`Era ${i + 1} needs a name`)
-        else if (era.name.trim().length > BLOCK_LIMITS.roadmap_era_name.max) {
-          error(`Era ${i + 1} name must be ${BLOCK_LIMITS.roadmap_era_name.max} characters or fewer`)
-        }
         if (!(ROADMAP_COLORS as readonly string[]).includes(era.color)) error(`Era ${i + 1} needs a colour`)
       })
       const eraIds = new Set(eras.map((e) => e.id))
+      // Dates are free text ("1956", "Mar 2023", "Today"); only plain numeric ones can be checked for order.
       const dates: (number | null)[] = []
       events.forEach((event, i) => {
-        if (isBlank(event.date)) {
-          error(`Event ${i + 1} needs a date`)
-          dates.push(null)
-        } else {
-          const date = parseRoadmapDate(event.date)
-          if (date === null) {
-            error(`Event ${i + 1} date “${event.date.trim()}” isn't a valid date. Use numbers only: ${ROADMAP_DATE_FORMATS.join(", ")}`)
-          }
-          dates.push(date)
-        }
+        if (isBlank(event.date)) error(`Event ${i + 1} needs a date`)
+        dates.push(isBlank(event.date) ? null : parseRoadmapDate(event.date))
         if (isBlank(event.text)) error(`Event ${i + 1} needs text`)
-        else if (event.text.trim().length > BLOCK_LIMITS.roadmap_event_text.max) {
-          error(`Event ${i + 1} text must be ${BLOCK_LIMITS.roadmap_event_text.max} characters or fewer`)
-        }
         if (!eraIds.has(event.era_id)) error(`Event ${i + 1} needs an era`)
       })
       // Learners read the line top to bottom, so dates should go forward.
@@ -256,6 +252,13 @@ export function validateLesson(lesson: Lesson): LessonIssue[] {
     issues.push({ sectionId: "", level: "error", message: "A lesson needs at least one section" })
   }
 
+  if (lesson.intro) {
+    const { subtitle, objectives } = lesson.intro
+    if (subtitle !== undefined && isBlank(subtitle)) issues.push({ sectionId: "", level: "error", message: "Intro subtitle can't be empty: clear it to remove the intro" })
+    if (objectives && objectives.length > 8) issues.push({ sectionId: "", level: "error", message: "An intro can have at most 8 outcomes" })
+    if (objectives?.some(isBlank)) issues.push({ sectionId: "", level: "error", message: "Intro outcomes can't be empty" })
+  }
+
   for (const section of lesson.sections) {
     const add = (level: LessonIssue["level"], message: string, blockId?: string) =>
       issues.push({ sectionId: section.id, blockId, level, message })
@@ -271,7 +274,8 @@ export function validateLesson(lesson: Lesson): LessonIssue[] {
       blockIds.add(block.id)
 
       if (!isAuthorableBlock(block)) continue
-      if (block.personalized) add("error", '"personalized" must be false', block.id)
+      const mayBePersonalized = isSpecBlockType(block.type) && "personalized" in SPEC_FORMS[block.type]
+      if (block.personalized && !mayBePersonalized) add("error", '"personalized" must be false', block.id)
       for (const issue of validateBlock(block)) add(issue.level, issue.message, block.id)
     }
   }

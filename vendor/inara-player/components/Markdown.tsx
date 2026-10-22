@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/Markdown.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/Markdown.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import ReactMarkdown, { Components } from "react-markdown";
@@ -42,8 +42,12 @@ const MermaidRenderer = dynamic(
 );
 
 import { useLessonText } from "@/vendor/inara-player/components/ile/LessonLanguageProvider";
+import PromptBox from "@/vendor/inara-player/components/ile/PromptBox";
+import GuideInfoStrip from "@/vendor/inara-player/components/ile/GuideInfoStrip";
+import ListenBox from "@/vendor/inara-player/components/ile/ListenBox";
+import { COLOR_HEX, isBlockColor } from "@/vendor/inara-player/lib/ile/palette";
 import type { IleStringKey } from "@/vendor/inara-player/lib/ile/strings";
-import { Sparkles, Image as ImageIcon, Code2, Info, Lightbulb, StickyNote, AlertTriangle, ThumbsUp } from "lucide-react";
+import { Sparkles, Image as ImageIcon, Code2, Info, Lightbulb, StickyNote, AlertTriangle, ThumbsUp, MessageCircleQuestion, Hammer, BookmarkCheck, ArrowUpRight } from "lucide-react";
 
 // ... Mermaid Code ...
 
@@ -151,6 +155,26 @@ const MarkdownImage = ({ src, alt }: { src?: string; alt?: string }) => {
   );
 };
 
+/**
+ * A colon followed by a letter or digit parses as an inline directive, so "9:30am", "16:9"
+ * or "ISO 45001:2018" would lose everything after the colon. Only our own inline tags
+ * (`:color[…]`, `:highlight[…]` and `:image[…]`) are directives; anything else goes back to
+ * the text exactly as written.
+ */
+function restoreUnknownTextDirectivesPlugin() {
+  return (tree: Node, file: { toString(): string }) => {
+    const source = String(file);
+    visit(tree, "textDirective", (node: Node, index, parent) => {
+      const dNode = node as unknown as DirectiveNode;
+      if (isTextStyleKind(dNode.name) || dNode.name === "image" || !parent || index === undefined) return;
+      const start = node.position?.start.offset;
+      const end = node.position?.end.offset;
+      const literal = start !== undefined && end !== undefined ? source.slice(start, end) : `:${dNode.name}`;
+      (parent as unknown as { children: Node[] }).children.splice(index, 1, { type: "text", value: literal } as Node);
+    });
+  };
+}
+
 // 3. Directive Plugin
 function customDirectivePlugin() {
   return (tree: Node) => {
@@ -172,6 +196,43 @@ function customDirectivePlugin() {
             className: "directive-image",
             src: dNode.attributes?.src || "",
             alt: dNode.attributes?.alt || labelText,
+          };
+        } else if (dNode.name === "guide-info") {
+          // The strip's items are its list lines, carried as plain text to the renderer.
+          data.hName = "div";
+          const items = (dNode.children as MdNode[] | undefined ?? [])
+            .filter((c) => c.type === "list")
+            .flatMap((list) => list.children ?? [])
+            .map((item) => nodeText(item).replace(/\s+/g, " ").trim())
+            .filter(Boolean);
+          data.hProperties = { className: "directive-guide-info", "data-items": JSON.stringify(items) };
+        } else if (dNode.name === "table-colors") {
+          // `:::table-colors emerald amber` colours the wrapped table's columns in order;
+          // "-" leaves a column as it is. The label is consumed, not shown.
+          data.hName = "div";
+          // In lessons the colour list was already lifted into `attributes.title`.
+          const children = (dNode.children as MdNode[] | undefined) ?? [];
+          const label = children.find((c) => c.data?.directiveLabel);
+          dNode.children = children.filter((c) => !c.data?.directiveLabel) as typeof dNode.children;
+          data.hProperties = {
+            className: "directive-table-colors",
+            "data-colors": dNode.attributes?.title ?? (label ? nodeText(label).trim() : ""),
+          };
+        } else if (dNode.name === "listen") {
+          // Text read aloud by the browser's voice: the label is the title, the body the text.
+          data.hName = "div";
+          const children = (dNode.children as MdNode[] | undefined) ?? [];
+          const label = children.find((c) => c.data?.directiveLabel);
+          const text = children
+            .filter((c) => !c.data?.directiveLabel)
+            .map((c) => nodeText(c).trim())
+            .filter(Boolean)
+            .join("\n");
+          const title = dNode.attributes?.title ?? (label ? nodeText(label).trim() : "");
+          data.hProperties = {
+            className: "directive-listen",
+            "data-text": text,
+            ...(title ? { "data-title": title } : {}),
           };
         } else {
           data.hName = "div";
@@ -250,10 +311,75 @@ function LessonCallout({
       </span>
       <div className="min-w-0 flex-1">
         <span className={`mb-1 block text-xs font-bold uppercase tracking-[0.1em] rtl:tracking-normal ${accent}`}>{title || t(label)}</span>
-        <div className="text-[17px] leading-[1.65] text-slate-800 [&_.md-paragraph]:mb-2 [&_.md-paragraph:last-child]:mb-0 [&_ol]:!mb-2 [&_ol]:!space-y-1 [&_ol]:!ps-5 [&_ol:last-child]:!mb-0 [&_ul]:!mb-2 [&_ul]:!space-y-1 [&_ul]:!ps-5 [&_ul:last-child]:!mb-0">{children}</div>
+        <div className="text-[14px] leading-[1.65] text-slate-800 [&_.md-paragraph]:mb-2 [&_.md-paragraph:last-child]:mb-0 [&_ol]:!mb-2 [&_ol]:!space-y-1 [&_ol]:!ps-5 [&_ol:last-child]:!mb-0 [&_ul]:!mb-2 [&_ul]:!space-y-1 [&_ul]:!ps-5 [&_ul:last-child]:!mb-0">{children}</div>
       </div>
     </div>
   );
+}
+
+/**
+ * The three cards a lesson usually ends on: a reflection prompt, the step of the week's
+ * project, and the key takeaways. Each gets its own layout rather than a coloured box, and
+ * they ease in one after another when the part opens, so a closing part reads as a sequence
+ * instead of a stack.
+ */
+const LESSON_CARDS = {
+  reflect: {
+    label: "calloutReflect",
+    Icon: MessageCircleQuestion,
+    box: "border-violet-200 bg-gradient-to-br from-violet-50 to-white",
+    icon: "bg-violet-600 text-white",
+    accent: "text-violet-700",
+    body: "text-[14px] font-medium leading-[1.6] text-slate-800",
+  },
+  project: {
+    label: "calloutProject",
+    Icon: Hammer,
+    box: "border-sky-200 bg-gradient-to-br from-sky-50 to-white",
+    icon: "bg-sky-600 text-white",
+    accent: "text-sky-700",
+    body: "text-[14px] leading-[1.65] text-slate-800",
+  },
+  takeaways: {
+    label: "calloutTakeaways",
+    Icon: BookmarkCheck,
+    box: "border-emerald-200 bg-white",
+    icon: "bg-emerald-600 text-white",
+    accent: "text-emerald-700",
+    // Each point gets a check mark instead of a bullet or number.
+    body: "text-[14px] leading-[1.6] text-slate-800 [&_ol]:!m-0 [&_ol]:!list-none [&_ol]:!space-y-3 [&_ol]:!ps-0 [&_ul]:!m-0 [&_ul]:!list-none [&_ul]:!space-y-3 [&_ul]:!ps-0 [&_li]:relative [&_li]:!ps-8 [&_li]:before:absolute [&_li]:before:start-0 [&_li]:before:top-[0.2em] [&_li]:before:flex [&_li]:before:h-5 [&_li]:before:w-5 [&_li]:before:items-center [&_li]:before:justify-center [&_li]:before:rounded-full [&_li]:before:bg-emerald-100 [&_li]:before:text-[12px] [&_li]:before:font-bold [&_li]:before:text-emerald-700 [&_li]:before:content-['✓']",
+  },
+} as const satisfies Record<string, { label: IleStringKey; Icon: unknown; box: string; icon: string; accent: string; body: string }>;
+
+function LessonCard({ kind, title, children }: { kind: keyof typeof LESSON_CARDS; title?: string; children: ReactNode }) {
+  const t = useLessonText();
+  const { label, Icon, box, icon, accent, body } = LESSON_CARDS[kind];
+  // The project card names the project step ("AI Test Drive, step 1 of 5"), so its title is
+  // the heading and the generic label sits above it; the other two just use their title.
+  const heading = kind === "project" ? title : undefined;
+  return (
+    <div className={`lesson-card ile-card-in my-8 rounded-2xl border p-5 shadow-sm first:mt-0 last:mb-0 sm:p-6 ${box}`}>
+      <div className="mb-3 flex items-center gap-3">
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${icon}`}>
+          <Icon className="h-5 w-5" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <span className={`block text-xs font-bold uppercase tracking-[0.1em] rtl:tracking-normal ${accent}`}>
+            {kind === "project" ? t(label) : title || t(label)}
+          </span>
+          {heading ? <span className="font-montserrat block text-[15px] font-bold leading-snug text-slate-900">{heading}</span> : null}
+        </div>
+      </div>
+      <div className={`[&_.md-paragraph]:mb-2 [&_.md-paragraph:last-child]:mb-0 ${body}`}>{children}</div>
+    </div>
+  );
+}
+
+function lessonCardKind(className: string): keyof typeof LESSON_CARDS | null {
+  if (className.includes("directive-reflect")) return "reflect";
+  if (className.includes("directive-project")) return "project";
+  if (className.includes("directive-takeaways")) return "takeaways";
+  return null;
 }
 
 function lessonCalloutKind(className: string): keyof typeof LESSON_CALLOUTS | null {
@@ -267,26 +393,29 @@ function lessonCalloutKind(className: string): keyof typeof LESSON_CALLOUTS | nu
 
 /** Block lessons get their own reading scale; every other caller keeps the original look. */
 const LESSON_COMPONENTS: Components = {
+  // Code and prompt blocks draw their own frame; prose's <pre> styling would wrap a second one.
+  pre: ({ children }) => <div className="not-prose">{children}</div>,
   h1: ({ children }) => (
-    <h1 className="font-montserrat !mb-5 !mt-10 !text-[length:clamp(28px,3.4vw,36px)] font-extrabold !leading-[1.15] tracking-tight text-slate-900 first:!mt-0">{children}</h1>
+    <h1 className="font-montserrat !mb-5 !mt-10 !text-[length:clamp(20px,2.3vw,24px)] font-extrabold !leading-[1.15] tracking-tight text-slate-900 first:!mt-0">{children}</h1>
   ),
   h2: ({ children }) => (
-    <h2 className="font-montserrat !mb-4 !mt-10 !text-[length:clamp(22px,2.6vw,28px)] font-bold !leading-[1.25] tracking-tight text-slate-900 first:!mt-0">{children}</h2>
+    <h2 className="font-montserrat !mb-4 !mt-10 !text-[length:clamp(17px,1.8vw,20px)] font-bold !leading-[1.25] tracking-tight text-slate-900 first:!mt-0">{children}</h2>
   ),
   h3: ({ children }) => (
-    <h3 className="font-montserrat !mb-3 !mt-8 !text-[length:clamp(19px,2vw,22px)] font-bold !leading-[1.3] text-slate-900 first:!mt-0">{children}</h3>
+    <h3 className="font-montserrat !mb-3 !mt-8 !text-[length:clamp(15px,1.5vw,17px)] font-bold !leading-[1.3] text-slate-900 first:!mt-0">{children}</h3>
   ),
   p: ({ children }) => (
-    <div className="md-paragraph mb-6 text-[17px] leading-[1.75] text-slate-700 sm:text-[18px]" role="paragraph">
+    <div className="md-paragraph mb-4 text-[14px] leading-[1.7] text-slate-700 sm:text-[15px]" role="paragraph">
       {children}
     </div>
   ),
   // `!ms-0` cancels the site-wide list margin (.learning-content ul/ol), which stacked on this
-  // indent and pushed lesson bullets about 60px in.
+  // indent and pushed lesson bullets about 60px in. `!ps-7` on ol beats `.learning-content ol`
+  // zeroing the padding, which hid the numbers outside the box.
   ul: ({ children }) => <ul className="mb-6 list-disc space-y-2 !ms-0 ps-7 marker:text-slate-400">{children}</ul>,
-  ol: ({ children }) => <ol className="mb-6 list-decimal space-y-2 !ms-0 ps-7 tabular-nums marker:text-slate-400">{children}</ol>,
+  ol: ({ children }) => <ol className="mb-6 list-decimal space-y-2 !ms-0 !ps-7 tabular-nums marker:text-slate-400">{children}</ol>,
   li: ({ children }) => (
-    <li className="text-[17px] leading-[1.75] text-slate-700 sm:text-[18px] [&_strong]:font-semibold [&_strong]:text-slate-900">{children}</li>
+    <li className="text-[14px] leading-[1.7] text-slate-700 sm:text-[15px] [&_strong]:font-semibold [&_strong]:text-slate-900">{children}</li>
   ),
   // Tables size their columns to the content. The default look pins the first column to 25%,
   // which squeezed long row labels into narrow stacked lines beside a mostly empty column.
@@ -295,13 +424,15 @@ const LESSON_COMPONENTS: Components = {
       <table className="w-full min-w-[28rem] border-collapse text-start">{children}</table>
     </div>
   ),
+  // A tinted header and alternating row shades, so a reader can follow a row across the table.
   th: ({ children }) => (
-    <th className="whitespace-nowrap border-b border-e border-slate-200 bg-slate-50 px-4 py-2.5 text-start text-[14px] font-semibold text-slate-700 last:border-e-0 sm:text-[15px]">
+    <th className="whitespace-nowrap border-b border-e border-indigo-500 bg-indigo-600 px-4 py-2.5 text-start text-[12px] font-semibold text-white last:border-e-0 sm:text-[13px]">
       {children}
     </th>
   ),
+  tr: ({ children }) => <tr className="border-b border-slate-200 last:border-0 even:bg-indigo-50/70">{children}</tr>,
   td: ({ children }) => (
-    <td className="border-e border-slate-200 px-4 py-3 align-top text-[15px] leading-relaxed text-slate-700 last:border-e-0 sm:text-[16px] [&_strong]:font-semibold [&_strong]:text-slate-900">
+    <td className="border-e border-slate-200 px-4 py-3 align-top text-[13px] leading-relaxed text-slate-700 last:border-e-0 sm:text-[14px] [&_strong]:font-semibold [&_strong]:text-slate-900">
       {children}
     </td>
   ),
@@ -317,12 +448,13 @@ export default function Markdown({
   variant?: "default" | "lesson";
 }) {
   // `:::tip Try it yourself` puts the title on the opening line. The normaliser would push it
-  // into the body, so lesson callouts turn it into a directive label first. A same-line
+  // into the body, so lesson callouts turn it into a directive label first (and so do
+  // `:::listen <title>` and `:::table-colors <colours>`). A same-line
   // callout (`:::info text :::`) is content, not a title, and is left alone.
   const source =
     variant === "lesson"
       ? content.replace(
-          /^([ \t]*:::(?:info|note|tip|warning|good))[ \t]+([^\[\]\n]+?)[ \t]*$/gim,
+          /^([ \t]*:::(?:info|note|tip|warning|good|reflect|project|takeaways|listen|table-colors))[ \t]+([^\[\]\n]+?)[ \t]*$/gim,
           (line, opening: string, title: string) => (title.trim().endsWith(":::") ? line : `${opening}[${title.trim()}]`),
         )
       : content;
@@ -360,6 +492,48 @@ export default function Markdown({
   const components: Components = {
     // --- Map Directives to UI ---
     div: ({ className, children, ...props }) => {
+      const lessonCard = variant === "lesson" && className ? lessonCardKind(className) : null;
+      if (lessonCard) {
+        const title = (props as { "data-title"?: string })["data-title"];
+        return (
+          <LessonCard kind={lessonCard} title={title}>
+            {children}
+          </LessonCard>
+        );
+      }
+      if (className?.includes("directive-table-colors")) {
+        // A `rows` word anywhere in the list stripes alternate rows, so rows read apart too.
+        const words = String((props as { "data-colors"?: string })["data-colors"] ?? "")
+          .split(/[\s,]+/)
+          .filter(Boolean);
+        const colors = words.filter((w) => w !== "rows").slice(0, 6);
+        const style: Record<string, string> = {};
+        const marks: Record<string, string> = words.includes("rows") ? { "data-rows": "" } : {};
+        colors.forEach((c, i) => {
+          if (!isBlockColor(c)) return;
+          style[`--col-${i + 1}-head`] = COLOR_HEX[c].head;
+          style[`--col-${i + 1}-tint`] = COLOR_HEX[c].tint;
+          marks[`data-c${i + 1}`] = "";
+        });
+        return (
+          <div className="table-colored" style={style} {...marks}>
+            {children}
+          </div>
+        );
+      }
+      if (className?.includes("directive-listen")) {
+        const p = props as { "data-text"?: string; "data-title"?: string };
+        return <ListenBox title={p["data-title"]} text={p["data-text"] ?? ""} />;
+      }
+      if (className?.includes("directive-guide-info")) {
+        let items: string[] = [];
+        try {
+          items = JSON.parse((props as { "data-items"?: string })["data-items"] ?? "[]");
+        } catch {
+          items = [];
+        }
+        return <GuideInfoStrip items={items} />;
+      }
       const lessonCallout = variant === "lesson" && className ? lessonCalloutKind(className) : null;
       if (lessonCallout) {
         const title = (props as { "data-title"?: string })["data-title"];
@@ -455,7 +629,7 @@ export default function Markdown({
       </th>
     ),
     tr: ({ children }) => (
-      <tr className="border-b border-[#e5e7eb] last:border-0">
+      <tr className="border-b border-[#e5e7eb] last:border-0 even:bg-slate-50">
         {children}
       </tr>
     ),
@@ -485,6 +659,12 @@ export default function Markdown({
 
       if (isBlock) {
         const language = match ? match[1] : 'text';
+        // In lessons, plain text blocks are things to paste into an AI tool (prompts, templates,
+        // sample rows), so they read as text with a Copy button rather than as a code window.
+        if (variant === "lesson" && (language === "text" || language === "prompt")) {
+          const raw = Array.isArray(children) ? children.join("") : String(children ?? "");
+          return <PromptBox text={raw.replace(/\n$/, "")} />;
+        }
         return (
           <figure className="my-10 w-full max-w-4xl mx-auto">
             <div className="bg-[#1e1e2e] rounded-2xl overflow-hidden shadow-lg border border-[#313244]">
@@ -523,6 +703,24 @@ export default function Markdown({
     h2: ({ children }) => <h2 className="text-[32px] font-bold mb-6 text-slate-900">{children}</h2>,
     h3: ({ children }) => <h3 className="text-[24px] font-bold mb-4 text-slate-900">{children}</h3>,
     p: markdownParagraphAsDiv,
+    // Links out of the platform open in a new tab, so a learner following one (a tool's sign-up
+    // page, a source) keeps their place in the lesson. Links within the site stay in the tab.
+    // Styled so a link reads as one inside a sentence: brand colour, underline, and a small
+    // arrow when it leaves the platform.
+    a: ({ node: _node, href, children, ...props }) => {
+      const external = typeof href === "string" && /^https?:\/\//i.test(href);
+      return (
+        <a
+          href={href}
+          {...props}
+          {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+          className="font-semibold text-indigo-600 underline decoration-indigo-300 decoration-[1.5px] underline-offset-[3px] transition-colors hover:text-indigo-700 hover:decoration-indigo-600"
+        >
+          {children}
+          {external ? <ArrowUpRight className="ms-0.5 inline h-[0.85em] w-[0.85em] align-[-0.05em] rtl:-scale-x-100" aria-hidden /> : null}
+        </a>
+      );
+    },
     ...(variant === "lesson" ? LESSON_COMPONENTS : {}),
   };
 
@@ -534,6 +732,7 @@ export default function Markdown({
             ...(mathPlugins.remarkMath ? [mathPlugins.remarkMath] : []),
             remarkGfm,
             remarkDirective,
+            restoreUnknownTextDirectivesPlugin,
             ...(variant === "lesson" ? [lessonDirectiveLabelPlugin] : []),
             customDirectivePlugin,
           ]}

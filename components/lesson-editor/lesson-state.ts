@@ -5,11 +5,13 @@ import {
   type AuthorableBlockType,
   type Lesson,
   type LessonBlock,
+  type LessonIntro,
   type LessonSection,
 } from "@/lib/lesson"
 
 export type LessonAction =
   | { type: "replace"; lesson: Lesson }
+  | { type: "setIntro"; intro: LessonIntro | undefined }
   | { type: "addSection"; afterId?: string; section?: LessonSection }
   | { type: "updateSection"; id: string; patch: Partial<Omit<LessonSection, "id" | "blocks">> }
   | { type: "removeSection"; id: string }
@@ -44,6 +46,12 @@ export function lessonReducer(lesson: Lesson, action: LessonAction): Lesson {
   switch (action.type) {
     case "replace":
       return action.lesson
+
+    case "setIntro": {
+      const { intro: _old, ...rest } = lesson
+      void _old
+      return action.intro ? { ...rest, intro: action.intro } : rest
+    }
 
     case "addSection": {
       const section = action.section ?? createSection()

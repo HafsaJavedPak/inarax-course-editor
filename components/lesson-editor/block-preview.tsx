@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react"
 
-import { BLOCK_CATALOG, type AuthorableBlockType } from "@/lib/lesson"
+import { SPEC_FORMS, isSpecBlockType } from "@/lib/block-forms"
+import { BLOCK_CATALOG, type AuthorableBlockType, type BlockDataMap } from "@/lib/lesson"
 
 import "@/components/lesson-editor/block-preview.scss"
 
@@ -12,7 +13,7 @@ import "@/components/lesson-editor/block-preview.scss"
  * The sketches are drawn here (not the player's real blocks), so they appear
  * instantly and can't take focus from the menu.
  */
-const PREVIEW_COPY: Record<AuthorableBlockType, { learner: string; goodFor: string }> = {
+const HAND_WRITTEN_COPY: Record<keyof BlockDataMap, { learner: string; goodFor: string }> = {
   rich_text: {
     learner: "Reads formatted text: headings, lists, quotes, code and tables.",
     goodFor: "Explanations, instructions and anything that is mostly words.",
@@ -329,6 +330,21 @@ function Sketch({ type }: { type: AuthorableBlockType }): ReactNode {
           <Line w={22} />
         </div>
       )
+    default:
+      // Form-driven blocks share a generic sketch; their real look is in the lesson preview.
+      return (
+        <div className="bp-stack">
+          <Line w={50} tone="strong" />
+          <Line />
+          <div className="bp-row">
+            <span className="bp-card">A</span>
+            <span className="bp-card" data-flipped>
+              B
+            </span>
+          </div>
+          <Line w={70} />
+        </div>
+      )
   }
 }
 
@@ -344,7 +360,7 @@ export function BlockPreview({ type }: { type: AuthorableBlockType | null }) {
   }
 
   const meta = BLOCK_CATALOG[type]
-  const copy = PREVIEW_COPY[type]
+  const copy = isSpecBlockType(type) ? SPEC_FORMS[type] : HAND_WRITTEN_COPY[type]
   return (
     <div className="bp" data-category={meta.category}>
       <div className="bp-stage" aria-hidden>

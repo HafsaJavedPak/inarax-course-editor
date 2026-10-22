@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/SequencingBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/SequencingBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import { useState } from "react";
@@ -61,7 +61,7 @@ function SortableItem({
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex min-h-11 touch-manipulation select-none items-center gap-3 rounded-xl border-[1.5px] px-3 py-2.5 text-[15px] [-webkit-touch-callout:none] leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${row} ${
+      className={`flex min-h-11 touch-manipulation select-none items-center gap-3 rounded-xl border-[1.5px] px-3 py-2.5 text-[14px] [-webkit-touch-callout:none] leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${row} ${
         disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"
       } ${isDragging ? "relative z-10 border-indigo-400 bg-white shadow-lg ring-2 ring-indigo-100" : ""}`}
     >

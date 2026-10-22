@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/WheelDiagramBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/WheelDiagramBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import { useEffect, useState, type KeyboardEvent } from "react";
@@ -10,6 +10,7 @@ import { useLessonProgress } from "@/vendor/inara-player/components/ile/LessonPr
 import { useLessonText } from "@/vendor/inara-player/components/ile/LessonLanguageProvider";
 import { BLOCK_BODY_TEXT, BlockCard } from "@/vendor/inara-player/components/ile/blocks/BlockCard";
 import { EXPLORE_POINTS } from "@/vendor/inara-player/lib/ile/scoring";
+import { autoColor, COLOR_CLASSES } from "@/vendor/inara-player/lib/ile/palette";
 
 // Geometry in SVG user units; the viewBox scales it to the container width.
 const SIZE = 240;
@@ -22,7 +23,10 @@ const LABEL_MAX_LINES = 3;
 
 function polar(radius: number, angleDeg: number): [number, number] {
   const rad = (angleDeg * Math.PI) / 180;
-  return [CENTER + radius * Math.cos(rad), CENTER + radius * Math.sin(rad)];
+  // Rounded so the server and the browser print the same numbers (their last digits of
+  // cos/sin can differ, which React reports as a hydration mismatch).
+  const round = (n: number) => Math.round(n * 100) / 100;
+  return [round(CENTER + radius * Math.cos(rad)), round(CENTER + radius * Math.sin(rad))];
 }
 
 /** Clockwise angles for slice `index` of `count`, starting at 12 o'clock. */
@@ -109,7 +113,7 @@ export default function WheelDiagramBlock({
 
   const complete = isBlockComplete(block.id);
   const activeSlice = slices.find((s) => s.id === activeId);
-  const hubLines = block.data.center_label ? wrapLabel(block.data.center_label, 11, 3) : [];
+  const hubLines = block.data.center_label ? wrapLabel(block.data.center_label, 13, 3) : [];
 
   return (
     <BlockCard
@@ -129,12 +133,10 @@ export default function WheelDiagramBlock({
           const isVisited = complete || visited.has(slice.id);
           const [lx, ly] = polar(LABEL_R, sliceAngles(index, slices.length).mid);
           const lines = wrapLabel(slice.label);
-          const fill = isActive
-            ? "fill-indigo-600"
-            : isVisited
-              ? "fill-indigo-100 group-hover:fill-indigo-200"
-              : "fill-slate-100 group-hover:fill-slate-200";
-          const text = isActive ? "fill-white" : isVisited ? "fill-indigo-900" : "fill-slate-700";
+          // Every slice has its own colour (the author's, else a different one per slice).
+          const tone = COLOR_CLASSES[slice.color ?? autoColor(index)];
+          const fill = isActive ? tone.fillActive : isVisited ? tone.fillVisited : tone.fillRest;
+          const text = isActive ? "fill-white" : "fill-slate-800";
           return (
             <g
               key={slice.id}
@@ -186,7 +188,7 @@ export default function WheelDiagramBlock({
       </svg>
       {activeSlice ? (
         <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-5" aria-live="polite">
-          <div className="font-montserrat text-[18px] font-bold leading-snug text-slate-900">{activeSlice.label}</div>
+          <div className="font-montserrat text-[15px] font-bold leading-snug text-slate-900">{activeSlice.label}</div>
           <div className={BLOCK_BODY_TEXT}>
             <Markdown content={activeSlice.body} variant="lesson" />
           </div>

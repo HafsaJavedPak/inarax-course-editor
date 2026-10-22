@@ -1,0 +1,2853 @@
+{
+ "rich_text": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "rich_text",
+  "personalized": false,
+  "data": {
+   "markdown": ""
+  }
+ },
+ "image": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "image",
+  "personalized": false,
+  "data": {
+   "image_url": "",
+   "alt": "",
+   "caption": "",
+   "size": "full",
+   "align": "center"
+  }
+ },
+ "image_hotspot": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "image_hotspot",
+  "personalized": false,
+  "data": {
+   "image_url": "",
+   "alt": "",
+   "hotspots": []
+  }
+ },
+ "flip_cards": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "flip_cards",
+  "personalized": false,
+  "data": {
+   "cards": [
+    {
+     "id": "3fefc96b-19ee-446c-87da-97e7cec4317b",
+     "front": "",
+     "back": ""
+    }
+   ]
+  }
+ },
+ "accordion_tabs": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "accordion_tabs",
+  "personalized": false,
+  "data": {
+   "display": "accordion",
+   "sections": [
+    {
+     "id": "a3cd2e0c-8ea4-4749-af69-242db29b4b48",
+     "title": "",
+     "body": ""
+    }
+   ]
+  }
+ },
+ "stepped_timeline": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "stepped_timeline",
+  "personalized": false,
+  "data": {
+   "steps": [
+    {
+     "id": "f4bf09ab-e9d6-4236-9e53-87e9ec38eccb",
+     "label": "",
+     "body": ""
+    }
+   ]
+  }
+ },
+ "wheel_diagram": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "wheel_diagram",
+  "personalized": false,
+  "data": {
+   "center_label": "",
+   "slices": [
+    {
+     "id": "d5e1086e-7de9-4222-849e-9a1d822518b3",
+     "label": "",
+     "body": ""
+    },
+    {
+     "id": "2b602f47-3820-4350-8416-bfac63965013",
+     "label": "",
+     "body": ""
+    }
+   ]
+  }
+ },
+ "nested_layers": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "nested_layers",
+  "personalized": false,
+  "data": {
+   "layers": [
+    {
+     "id": "e647cf5f-fdde-4b85-adf5-6bff1fe3b078",
+     "label": "",
+     "body": ""
+    },
+    {
+     "id": "eb2072f9-cf17-4356-992c-a630227cb730",
+     "label": "",
+     "body": ""
+    }
+   ]
+  }
+ },
+ "format_switcher": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "format_switcher",
+  "personalized": false,
+  "data": {
+   "title": "",
+   "prompt": "",
+   "complete_on": "any",
+   "options": [
+    {
+     "id": "304f9226-f84a-440a-a754-97f49db5a3ae",
+     "label": "",
+     "body": ""
+    },
+    {
+     "id": "8faa1d6f-1c8e-4953-86f0-aeca221e1cd4",
+     "label": "",
+     "body": ""
+    }
+   ]
+  }
+ },
+ "image_switcher": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "image_switcher",
+  "personalized": false,
+  "data": {
+   "options": [
+    {
+     "id": "58046087-29cd-4783-b0e4-e06a568e78cb",
+     "label": "",
+     "image_url": "",
+     "alt": "",
+     "caption": ""
+    },
+    {
+     "id": "1ef1c2b7-34ce-4e5a-b399-1a079b6616e2",
+     "label": "",
+     "image_url": "",
+     "alt": "",
+     "caption": ""
+    }
+   ]
+  }
+ },
+ "vertical_roadmap": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "vertical_roadmap",
+  "personalized": false,
+  "data": {
+   "eras": [
+    {
+     "id": "dc26187e-6163-4ef8-bb3a-ed2cd165e200",
+     "name": "",
+     "color": "indigo"
+    }
+   ],
+   "events": [
+    {
+     "id": "0a2b9451-cd32-45d0-9f9f-768017950f6d",
+     "date": "",
+     "era_id": "dc26187e-6163-4ef8-bb3a-ed2cd165e200",
+     "text": ""
+    },
+    {
+     "id": "bb79199e-34bd-43fc-ab6c-ec9009943ec0",
+     "date": "",
+     "era_id": "dc26187e-6163-4ef8-bb3a-ed2cd165e200",
+     "text": ""
+    }
+   ]
+  }
+ },
+ "add_next_layer": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "add_next_layer",
+  "personalized": false,
+  "data": {
+   "layers": [
+    {
+     "id": "3b31f74a-6d24-46bf-ad75-461d94f62d11",
+     "label": "",
+     "body": ""
+    },
+    {
+     "id": "a031d84c-d289-4b12-a5d8-a47a7c385172",
+     "label": "",
+     "body": ""
+    }
+   ]
+  }
+ },
+ "context_window_slider": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "context_window_slider",
+  "personalized": false,
+  "data": {
+   "title": "",
+   "window_min": 2,
+   "messages": [
+    {
+     "id": "55c9e8cc-fdf1-4bd3-9701-037cd0a03eaa",
+     "role": "you",
+     "text": "Hi! My name is Ayesha and I'm planning a trip to Hunza."
+    },
+    {
+     "id": "1ddb05a1-5e49-4947-9e36-4fdc62b690c1",
+     "role": "ai",
+     "text": "Nice to meet you, Ayesha! Hunza is beautiful. How can I help?"
+    },
+    {
+     "id": "2532c1f0-0b1d-4870-8e77-f5687062e445",
+     "role": "you",
+     "text": "By the way, what's my name?"
+    }
+   ],
+   "remembered_answer": "AI: \"Your name is Ayesha!\" The first message is still inside the window, so the model can see it.",
+   "forgotten_answer": "AI: \"I'm not sure. I don't think you've told me your name.\" The message with your name is outside the window."
+  }
+ },
+ "cliche_highlighter": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "cliche_highlighter",
+  "personalized": false,
+  "data": {
+   "title": "",
+   "sample_text": "In today's fast-paced world, I'm thrilled to announce that I have embarked on an exciting new journey as a Junior Analyst! This role is a testament to my dedication, and I look forward to leveraging my skills to unlock new opportunities and navigate the ever-evolving landscape of logistics.",
+   "phrases": [
+    "In today's fast-paced world",
+    "thrilled to announce",
+    "embarked on",
+    "journey",
+    "testament to",
+    "leveraging",
+    "unlock",
+    "ever-evolving"
+   ]
+  }
+ },
+ "tokenizer_playground": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "tokenizer_playground",
+  "personalized": false,
+  "data": {
+   "title": "",
+   "min_distinct": 2,
+   "fine_print": "These are the real splits from GPT-4o's tokenizer. Other models learn their own chunks, so their splits differ a little. A dot (\u00b7) shows a space that belongs to the token.",
+   "examples": [
+    {
+     "id": "85dddfba-48df-4d59-a472-f6631979cb7e",
+     "label": "English sentence",
+     "text": "Artificial intelligence is transforming how we learn.",
+     "tokens": [
+      "Artificial",
+      " intelligence",
+      " is",
+      " transforming",
+      " how",
+      " we",
+      " learn",
+      "."
+     ]
+    },
+    {
+     "id": "389d7506-537e-46ef-9460-daedd557bede",
+     "label": "Long words",
+     "text": "unbelievably overthinking",
+     "tokens": [
+      "un",
+      "bel",
+      "ievably",
+      " over",
+      "thinking"
+     ]
+    },
+    {
+     "id": "d418de8b-cef6-43a7-90e1-be95def4e09d",
+     "label": "Numbers",
+     "text": "The order total is 1234567 rupees.",
+     "tokens": [
+      "The",
+      " order",
+      " total",
+      " is",
+      " ",
+      "123",
+      "456",
+      "7",
+      " ru",
+      "pees",
+      "."
+     ]
+    },
+    {
+     "id": "cd92119b-77fb-46f3-a2b5-1a17a7673f3a",
+     "label": "Urdu",
+     "text": "\u0645\u062c\u06be\u06d2 \u0645\u0635\u0646\u0648\u0639\u06cc \u0630\u06c1\u0627\u0646\u062a \u0633\u06cc\u06a9\u06be\u0646\u06cc \u06c1\u06d2",
+     "tokens": [
+      "\u0645\u062c",
+      "\u06be\u06d2",
+      " \u0645\u0635\u0646\u0648\u0639",
+      "\u06cc",
+      " \u0630\u06c1",
+      "\u0627\u0646\u062a",
+      " \u0633",
+      "\u06cc\u06a9\u06be",
+      "\u0646\u06cc",
+      " \u06c1\u06d2"
+     ]
+    },
+    {
+     "id": "2927bd74-3fb5-4946-8fbf-22c1028251d2",
+     "label": "Arabic",
+     "text": "\u0623\u0631\u064a\u062f \u0623\u0646 \u0623\u062a\u0639\u0644\u0645 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a",
+     "tokens": [
+      "\u0623",
+      "\u0631\u064a\u062f",
+      " \u0623\u0646",
+      " \u0623",
+      "\u062a\u0639",
+      "\u0644\u0645",
+      " \u0627\u0644\u0630",
+      "\u0643",
+      "\u0627\u0621",
+      " \u0627\u0644\u0627\u0635",
+      "\u0637",
+      "\u0646\u0627",
+      "\u0639\u064a"
+     ]
+    }
+   ]
+  }
+ },
+ "be_the_model": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "be_the_model",
+  "personalized": false,
+  "data": {
+   "title": "Be the model",
+   "subtitle": "Generate the rest of the sentence. Tap a word to pick it yourself, or let the model pick.",
+   "prompt": "My favourite thing to eat for breakfast is",
+   "temperature_min": 0.1,
+   "temperature_max": 2,
+   "temperature_default": 1,
+   "max_words": 6,
+   "min_sentences": 3,
+   "insight_both_temps": "You've tried both ends. At low temperature the sentences barely change. At high temperature you get variety, and oddities like \"sandpaper\" or \"gravel\". The model never \"knew\" what you eat. It just picked likely words.",
+   "insight_hint": "Try this: generate 2 sentences at temperature 0.2, then 2 at 1.8. Compare how similar they are.",
+   "transitions": [
+    {
+     "after": "START",
+     "options": [
+      {
+       "word": "paratha",
+       "p": 0.3
+      },
+      {
+       "word": "eggs",
+       "p": 0.22
+      },
+      {
+       "word": "toast",
+       "p": 0.15
+      },
+      {
+       "word": "halwa puri",
+       "p": 0.11
+      },
+      {
+       "word": "cereal",
+       "p": 0.08
+      },
+      {
+       "word": "fruit",
+       "p": 0.07
+      },
+      {
+       "word": "leftover biryani",
+       "p": 0.05
+      },
+      {
+       "word": "sandpaper",
+       "p": 0.02
+      }
+     ]
+    },
+    {
+     "after": "paratha",
+     "options": [
+      {
+       "word": "with",
+       "p": 0.42
+      },
+      {
+       "word": "and",
+       "p": 0.26
+      },
+      {
+       "word": "because",
+       "p": 0.18
+      },
+      {
+       "word": ".",
+       "p": 0.14
+      }
+     ]
+    },
+    {
+     "after": "eggs",
+     "options": [
+      {
+       "word": "with",
+       "p": 0.42
+      },
+      {
+       "word": "and",
+       "p": 0.26
+      },
+      {
+       "word": "because",
+       "p": 0.18
+      },
+      {
+       "word": ".",
+       "p": 0.14
+      }
+     ]
+    },
+    {
+     "after": "toast",
+     "options": [
+      {
+       "word": "with",
+       "p": 0.42
+      },
+      {
+       "word": "and",
+       "p": 0.26
+      },
+      {
+       "word": "because",
+       "p": 0.18
+      },
+      {
+       "word": ".",
+       "p": 0.14
+      }
+     ]
+    },
+    {
+     "after": "halwa puri",
+     "options": [
+      {
+       "word": "with",
+       "p": 0.42
+      },
+      {
+       "word": "and",
+       "p": 0.26
+      },
+      {
+       "word": "because",
+       "p": 0.18
+      },
+      {
+       "word": ".",
+       "p": 0.14
+      }
+     ]
+    },
+    {
+     "after": "cereal",
+     "options": [
+      {
+       "word": "with",
+       "p": 0.42
+      },
+      {
+       "word": "and",
+       "p": 0.26
+      },
+      {
+       "word": "because",
+       "p": 0.18
+      },
+      {
+       "word": ".",
+       "p": 0.14
+      }
+     ]
+    },
+    {
+     "after": "fruit",
+     "options": [
+      {
+       "word": "with",
+       "p": 0.42
+      },
+      {
+       "word": "and",
+       "p": 0.26
+      },
+      {
+       "word": "because",
+       "p": 0.18
+      },
+      {
+       "word": ".",
+       "p": 0.14
+      }
+     ]
+    },
+    {
+     "after": "leftover biryani",
+     "options": [
+      {
+       "word": "with",
+       "p": 0.42
+      },
+      {
+       "word": "and",
+       "p": 0.26
+      },
+      {
+       "word": "because",
+       "p": 0.18
+      },
+      {
+       "word": ".",
+       "p": 0.14
+      }
+     ]
+    },
+    {
+     "after": "sandpaper",
+     "options": [
+      {
+       "word": "with",
+       "p": 0.42
+      },
+      {
+       "word": "and",
+       "p": 0.26
+      },
+      {
+       "word": "because",
+       "p": 0.18
+      },
+      {
+       "word": ".",
+       "p": 0.14
+      }
+     ]
+    },
+    {
+     "after": "with",
+     "options": [
+      {
+       "word": "chai",
+       "p": 0.44
+      },
+      {
+       "word": "tea",
+       "p": 0.18
+      },
+      {
+       "word": "yogurt",
+       "p": 0.14
+      },
+      {
+       "word": "butter",
+       "p": 0.12
+      },
+      {
+       "word": "ketchup",
+       "p": 0.09
+      },
+      {
+       "word": "gravel",
+       "p": 0.03
+      }
+     ]
+    },
+    {
+     "after": "and",
+     "options": [
+      {
+       "word": "chai",
+       "p": 0.38
+      },
+      {
+       "word": "an omelette",
+       "p": 0.2
+      },
+      {
+       "word": "fresh juice",
+       "p": 0.17
+      },
+      {
+       "word": "a long nap",
+       "p": 0.15
+      },
+      {
+       "word": "regret",
+       "p": 0.1
+      }
+     ]
+    },
+    {
+     "after": "because",
+     "options": [
+      {
+       "word": "it",
+       "p": 0.46
+      },
+      {
+       "word": "my mother",
+       "p": 0.24
+      },
+      {
+       "word": "nothing",
+       "p": 0.18
+      },
+      {
+       "word": "the sky",
+       "p": 0.12
+      }
+     ]
+    },
+    {
+     "after": "it",
+     "options": [
+      {
+       "word": "keeps me full",
+       "p": 0.42
+      },
+      {
+       "word": "tastes like home",
+       "p": 0.34
+      },
+      {
+       "word": "is quick",
+       "p": 0.2
+      },
+      {
+       "word": "sings",
+       "p": 0.04
+      }
+     ]
+    },
+    {
+     "after": "my mother",
+     "options": [
+      {
+       "word": "makes it",
+       "p": 0.6
+      },
+      {
+       "word": "loves it",
+       "p": 0.3
+      },
+      {
+       "word": "says so",
+       "p": 0.1
+      }
+     ]
+    },
+    {
+     "after": "nothing",
+     "options": [
+      {
+       "word": "beats it",
+       "p": 0.8
+      },
+      {
+       "word": "else compares",
+       "p": 0.2
+      }
+     ]
+    },
+    {
+     "after": "the sky",
+     "options": [
+      {
+       "word": "is blue",
+       "p": 0.6
+      },
+      {
+       "word": "told me",
+       "p": 0.4
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "workflow_simulator": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "workflow_simulator",
+  "personalized": false,
+  "data": {
+   "title": "Workflow Simulator",
+   "subtitle": "Design the restaurant's feedback automation. Choose one option for each block, then run it with three real test responses.",
+   "action_label": "\ud83d\udce7 Action \u2014 Send email",
+   "perfect_verdict": "\ud83c\udf89 A well-designed automation. Instant trigger, useful AI step, a record kept, and complaints routed to a human. Now build it for real in Make.com.",
+   "imperfect_verdict": "Almost. Fix these, then run it again:",
+   "slots": [
+    {
+     "id": "trigger",
+     "emoji": "\u26a1",
+     "label": "Trigger",
+     "options": [
+      {
+       "id": "t2",
+       "label": "New Google Form response",
+       "score": 2,
+       "result": {
+        "text": "\u26a1 Triggered as soon as the form was submitted."
+       }
+      },
+      {
+       "id": "t1",
+       "label": "Every Monday at 9am",
+       "score": 1,
+       "issue": "Feedback waits up to a week before anyone sees it.",
+       "result": {
+        "text": "\u26a1 Waited until Monday 9am."
+       }
+      },
+      {
+       "id": "t0",
+       "label": "New email in your personal inbox",
+       "score": 0,
+       "issue": "Your personal inbox is full of unrelated mail. The automation will try to reply to everything.",
+       "result": {
+        "text": "\u26a1 Mixed in with personal emails. Hard to find."
+       }
+      }
+     ]
+    },
+    {
+     "id": "ai",
+     "emoji": "\ud83e\udd16",
+     "label": "AI step",
+     "options": [
+      {
+       "id": "a2",
+       "label": "Classify as complaint, question or praise, and draft a reply",
+       "score": 2,
+       "result": {
+        "text": "\ud83e\udd16 AI classified it as: {type}, and drafted a reply."
+       }
+      },
+      {
+       "id": "a0a",
+       "label": "Calculate the average rating",
+       "score": 0,
+       "issue": "That's maths. A formula does it perfectly, and it doesn't help you reply.",
+       "result": {
+        "text": "\ud83e\udd16 Calculate the average rating: no useful reply drafted."
+       }
+      },
+      {
+       "id": "a0b",
+       "label": "Write a funny poem about the feedback",
+       "score": 0,
+       "issue": "Not what a customer needs.",
+       "result": {
+        "text": "\ud83e\udd16 Write a funny poem about the feedback: no useful reply drafted."
+       }
+      }
+     ]
+    },
+    {
+     "id": "tool",
+     "emoji": "\ud83d\udd27",
+     "label": "Tool",
+     "options": [
+      {
+       "id": "tool2",
+       "label": "Add a row to a Google Sheet",
+       "score": 2,
+       "result": {
+        "text": "\ud83d\udd27 Saved to the feedback sheet."
+       }
+      },
+      {
+       "id": "tool0a",
+       "label": "Delete the form response",
+       "score": 0,
+       "issue": "You'd lose the record of what the customer said.",
+       "result": {
+        "text": "\ud83d\udd27 Response deleted. The record is gone."
+       }
+      },
+      {
+       "id": "tool0b",
+       "label": "Post the feedback publicly on Facebook",
+       "score": 0,
+       "issue": "That publishes customers' words without permission. A privacy problem.",
+       "result": {
+        "text": "\ud83d\udd27 Posted publicly on Facebook."
+       }
+      }
+     ]
+    },
+    {
+     "id": "router",
+     "emoji": "\ud83d\udd00",
+     "label": "Router",
+     "blocked_by": "ai",
+     "blocked_result": "\ud83d\udd00 Nothing sensible to route.",
+     "options": [
+      {
+       "id": "r2",
+       "label": "Complaints \u2192 staff review; everything else \u2192 auto-reply",
+       "score": 2,
+       "result": {
+        "text": "\ud83d\udd00 Auto-reply sent within a minute."
+       },
+       "results_by_type": {
+        "complaint": {
+         "text": "\ud83d\udd00 Complaint \u2192 sent to staff to review before replying."
+        }
+       }
+      },
+      {
+       "id": "r0",
+       "label": "Auto-reply to everything",
+       "score": 0,
+       "issue": "Angry customers get an automatic, possibly wrong, reply to a serious complaint.",
+       "result": {
+        "text": "\ud83d\udd00 Auto-reply sent.",
+        "ok": true
+       },
+       "results_by_type": {
+        "complaint": {
+         "text": "\ud83d\udd00 An automatic reply went to an angry customer asking for a refund. No human saw it."
+        }
+       }
+      },
+      {
+       "id": "r1",
+       "label": "Send everything to staff to reply manually",
+       "score": 1,
+       "issue": "Safe, but it saves almost no time.",
+       "result": {
+        "text": "\ud83d\udd00 Sent to staff. The customer waits for someone to reply by hand."
+       },
+       "results_by_type": {
+        "complaint": {
+         "text": "\ud83d\udd00 Sent to staff. The customer waits for someone to reply by hand.",
+         "ok": true
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "tests": [
+    {
+     "id": "praise",
+     "message": "\u2b50 \"Loved the biryani! Best in town.\"",
+     "type": "praise"
+    },
+    {
+     "id": "question",
+     "message": "\u2753 \"Do you deliver to DHA Phase 6?\"",
+     "type": "question"
+    },
+    {
+     "id": "complaint",
+     "message": "\ud83d\ude20 \"My order was an hour late and cold. I want my money back.\"",
+     "type": "complaint"
+    }
+   ]
+  }
+ },
+ "agent_simulator": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "agent_simulator",
+  "personalized": false,
+  "data": {
+   "title": "Agent Simulator",
+   "goal": "Handle today's customer inquiries for Chai Corner catering.",
+   "inbox": "From: Hina K. \u2014 \"Hi! I need catering for 40 people this Saturday. What would it cost? Also, my last order (#1182) arrived cold, which was disappointing.\"",
+   "end_message": "\ud83c\udf89 Goal complete. You chose the best action first time in {score} steps. Notice what the good choices had in common: sort first, look things up instead of guessing, stay within authority, get approval before anything involving money goes out, and remember only what's useful.",
+   "steps": [
+    {
+     "id": "s1",
+     "think": "This email contains more than one request. What should I do first?",
+     "actions": [
+      {
+       "id": "s1a",
+       "code": "classify_email()",
+       "label": "Sort the email into its separate requests",
+       "correct": true,
+       "result": "Two intents found: a catering quote request, and a complaint about order #1182.",
+       "consequence": "Wrong path."
+      },
+      {
+       "id": "s1b",
+       "code": "send_reply(\"Our catering is Rs 1,000 per person!\")",
+       "label": "Reply straight away with a price",
+       "correct": false,
+       "result": "Would send a wrong price.",
+       "consequence": "You guessed a price without checking. It's wrong, and you ignored the complaint. The customer is now more annoyed."
+      },
+      {
+       "id": "s1c",
+       "code": "issue_refund(order #1182)",
+       "label": "Refund the last order immediately",
+       "correct": false,
+       "result": "Would issue a refund.",
+       "consequence": "You acted on the complaint without checking the policy or the order, and ignored the catering request."
+      }
+     ]
+    },
+    {
+     "id": "s2",
+     "think": "I need a price for 40 people.",
+     "observation": "Two intents: catering quote, and complaint about order #1182.",
+     "actions": [
+      {
+       "id": "s2a",
+       "code": "lookup_prices(\"catering\")",
+       "label": "Look up the official catering price list",
+       "correct": true,
+       "result": "Catering: Rs 950 per person, minimum 30 people. 40 people = Rs 38,000.",
+       "consequence": "Wrong path."
+      },
+      {
+       "id": "s2b",
+       "code": "guess_price()",
+       "label": "Estimate a price from similar orders",
+       "correct": false,
+       "result": "Would guess a price.",
+       "consequence": "Guessing prices is how agents make expensive promises. Always use the real source."
+      },
+      {
+       "id": "s2c",
+       "code": "forward_to_manager(all)",
+       "label": "Forward everything to the manager",
+       "correct": false,
+       "result": "Would forward to manager.",
+       "consequence": "Safe, but it defeats the point. The agent can handle a price lookup itself."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "dual_chatbot": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "dual_chatbot",
+  "personalized": false,
+  "data": {
+   "title": "Try two chatbots",
+   "subtitle": "Both of these bots work for the same (made-up) caf\u00e9. One follows keyword rules. The other is powered by an LLM. Ask them the same questions and compare.",
+   "rule_panel_title": "Rule-based chatbot",
+   "rule_panel_sub": "Matches keywords to pre-written replies",
+   "llm_panel_title": "LLM-powered chatbot",
+   "llm_panel_sub": "Generates a reply from the caf\u00e9's information",
+   "fine_print": "Live AI replies aren't available here, so the LLM chatbot shows pre-generated replies for the four example questions.",
+   "min_asks": 2,
+   "failure_reply": "Sorry, I didn't understand. Please type one of: HOURS, MENU, PRICES, LOCATION, BOOKING.",
+   "presets": [
+    "What time do you open?",
+    "Do you have anything without gluten for my son?",
+    "I'm vegetarian. What goes well with chai?",
+    "Can I book a table for 12 on Friday evening?"
+   ],
+   "rules": [
+    {
+     "id": "hours",
+     "pattern": "open|opening|close|closing|hours|time|timing",
+     "reply": "Our hours are 8am\u201311pm, every day."
+    },
+    {
+     "id": "book",
+     "pattern": "book|booking|reserve|reservation",
+     "reply": "For reservations, call 051-000-0000."
+    },
+    {
+     "id": "menu",
+     "pattern": "menu|food|eat|dishes",
+     "reply": "Menu: chai, parathas, chapati rolls, chaat, kheer."
+    },
+    {
+     "id": "price",
+     "pattern": "price|prices|cost|much",
+     "reply": "Prices range from Rs 250 to Rs 650."
+    },
+    {
+     "id": "where",
+     "pattern": "where|location|address|located",
+     "reply": "We're in Blue Area, Islamabad."
+    }
+   ],
+   "canned_llm": [
+    {
+     "question": "what time do you open?",
+     "reply": "We're open every day from 8am to 11pm. See you soon! \u2615"
+    },
+    {
+     "question": "do you have anything without gluten for my son?",
+     "reply": "Yes! Our rice kheer, fruit chaat and chana chaat are all gluten-free. Just avoid the parathas, chapatis and rolls, since they're made with wheat."
+    },
+    {
+     "question": "i'm vegetarian. what goes well with chai?",
+     "reply": "Lovely choice! An aloo paratha or a veg chapati roll goes perfectly with doodh patti chai. For something lighter, try the chana chaat."
+    },
+    {
+     "question": "can i book a table for 12 on friday evening?",
+     "reply": "We'd love to have your group! For 12 people you'll need to reserve by phone on 051-000-0000. I can't make the booking myself, but the team will sort it out for you."
+    }
+   ]
+  }
+ },
+ "data_sandbox": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "data_sandbox",
+  "personalized": false,
+  "data": {
+   "title": "Talk to your data",
+   "subtitle": "Pick a dataset, look at the chart or table, then judge each AI claim. Is the AI right or wrong about the numbers?",
+   "min_judgments": 6,
+   "datasets": [
+    {
+     "id": "cafe",
+     "label": "\u2615 Caf\u00e9 sales (2025)",
+     "info": "Chai Corner's monthly sales. Revenue is in rupees.",
+     "default_metric": "revenue",
+     "columns": [
+      {
+       "id": "month",
+       "label": "Month"
+      },
+      {
+       "id": "chai",
+       "label": "Chai cups",
+       "numeric": true
+      },
+      {
+       "id": "snacks",
+       "label": "Snacks sold",
+       "numeric": true
+      },
+      {
+       "id": "revenue",
+       "label": "Revenue (Rs)",
+       "numeric": true
+      }
+     ],
+     "rows": [
+      {
+       "month": "Jan",
+       "chai": 4200,
+       "snacks": 1800,
+       "revenue": 1260000
+      },
+      {
+       "month": "Feb",
+       "chai": 4000,
+       "snacks": 1750,
+       "revenue": 1195000
+      },
+      {
+       "month": "Mar",
+       "chai": 3100,
+       "snacks": 1200,
+       "revenue": 905000
+      },
+      {
+       "month": "Apr",
+       "chai": 4600,
+       "snacks": 2100,
+       "revenue": 1415000
+      },
+      {
+       "month": "May",
+       "chai": 4500,
+       "snacks": 2000,
+       "revenue": 1380000
+      },
+      {
+       "month": "Jun",
+       "chai": 3900,
+       "snacks": 1600,
+       "revenue": 1170000
+      },
+      {
+       "month": "Jul",
+       "chai": 3700,
+       "snacks": 1500,
+       "revenue": 1110000
+      },
+      {
+       "month": "Aug",
+       "chai": 3800,
+       "snacks": 1550,
+       "revenue": 1135000
+      },
+      {
+       "month": "Sep",
+       "chai": 4700,
+       "snacks": 2200,
+       "revenue": 1450000
+      },
+      {
+       "month": "Oct",
+       "chai": 5100,
+       "snacks": 2400,
+       "revenue": 1575000
+      },
+      {
+       "month": "Nov",
+       "chai": 5400,
+       "snacks": 2600,
+       "revenue": 1690000
+      },
+      {
+       "month": "Dec",
+       "chai": 5900,
+       "snacks": 2900,
+       "revenue": 1850000
+      }
+     ],
+     "judgments": [
+      {
+       "id": "c1",
+       "question": "Which month had the highest revenue?",
+       "ai_claim": "December, with Rs 1,850,000.",
+       "ai_correct": true,
+       "truth": "Dec: Rs 1,850,000. The AI is right."
+      },
+      {
+       "id": "c2",
+       "question": "What was the average monthly revenue?",
+       "ai_claim": "About Rs 1,320,000 per month.",
+       "ai_correct": false,
+       "truth": "The average is Rs 1,344,583. The AI gave the median (the middle value), not the average. A mixed-up measure."
+      },
+      {
+       "id": "c3",
+       "question": "What will revenue be in January 2026?",
+       "ai_claim": "January 2026 revenue will be exactly Rs 1,950,000, continuing the upward trend.",
+       "ai_correct": false,
+       "truth": "Nobody can know exactly. Revenue did rise from September to December, but last January (Rs 1,260,000) was far lower than December (Rs 1,850,000), so there may be a seasonal dip. A sensible prediction gives a range and states its assumptions. An exact number is false confidence."
+      }
+     ]
+    },
+    {
+     "id": "school",
+     "label": "\ud83c\udf93 Grade 10 maths results",
+     "info": "16 students, anonymised. Homework is the % of homework completed; Score is the final test out of 100.",
+     "default_metric": "score",
+     "columns": [
+      {
+       "id": "student",
+       "label": "Student"
+      },
+      {
+       "id": "class",
+       "label": "Class"
+      },
+      {
+       "id": "homework",
+       "label": "Homework (%)",
+       "numeric": true
+      },
+      {
+       "id": "score",
+       "label": "Score",
+       "numeric": true
+      }
+     ],
+     "rows": [
+      {
+       "student": "S01",
+       "class": "A",
+       "homework": 90,
+       "score": 82
+      },
+      {
+       "student": "S02",
+       "class": "A",
+       "homework": 75,
+       "score": 68
+      },
+      {
+       "student": "S03",
+       "class": "A",
+       "homework": 40,
+       "score": 45
+      },
+      {
+       "student": "S04",
+       "class": "A",
+       "homework": 85,
+       "score": 77
+      },
+      {
+       "student": "S05",
+       "class": "A",
+       "homework": 60,
+       "score": 55
+      },
+      {
+       "student": "S06",
+       "class": "A",
+       "homework": 95,
+       "score": 91
+      },
+      {
+       "student": "S07",
+       "class": "A",
+       "homework": 30,
+       "score": 38
+      },
+      {
+       "student": "S08",
+       "class": "A",
+       "homework": 70,
+       "score": 64
+      },
+      {
+       "student": "S09",
+       "class": "B",
+       "homework": 80,
+       "score": 71
+      },
+      {
+       "student": "S10",
+       "class": "B",
+       "homework": 55,
+       "score": 49
+      },
+      {
+       "student": "S11",
+       "class": "B",
+       "homework": 65,
+       "score": 58
+      },
+      {
+       "student": "S12",
+       "class": "B",
+       "homework": 35,
+       "score": 42
+      },
+      {
+       "student": "S13",
+       "class": "B",
+       "homework": 90,
+       "score": 85
+      },
+      {
+       "student": "S14",
+       "class": "B",
+       "homework": 45,
+       "score": 47
+      },
+      {
+       "student": "S15",
+       "class": "B",
+       "homework": 75,
+       "score": 66
+      },
+      {
+       "student": "S16",
+       "class": "B",
+       "homework": 50,
+       "score": 52
+      }
+     ],
+     "judgments": [
+      {
+       "id": "s1",
+       "question": "Which class scored higher on average?",
+       "ai_claim": "Class A, averaging 65 compared with 58.75 for Class B.",
+       "ai_correct": true,
+       "truth": "Class A: 65, Class B: 58.75. The AI is right."
+      },
+      {
+       "id": "s2",
+       "question": "How many students scored below 50?",
+       "ai_claim": "3 students scored below 50.",
+       "ai_correct": false,
+       "truth": "5 students: S03, S07, S10, S12, S14. The AI miscounted. Counting is surprisingly easy for AI to get wrong."
+      },
+      {
+       "id": "s3",
+       "question": "Does doing more homework lead to higher scores?",
+       "ai_claim": "Yes. Doing more homework causes higher scores, so making homework compulsory will raise results.",
+       "ai_correct": false,
+       "truth": "There's a very strong link (correlation 0.98), but that doesn't prove homework causes the scores. Motivated students may do both. And 16 students is a small sample. Correlation isn't causation."
+      }
+     ]
+    },
+    {
+     "id": "clinic",
+     "label": "\ud83c\udfe5 Clinic appointments (one week)",
+     "info": "A small clinic's bookings for one week. Wait is the average wait in minutes.",
+     "default_metric": "wait",
+     "columns": [
+      {
+       "id": "day",
+       "label": "Day"
+      },
+      {
+       "id": "booked",
+       "label": "Booked",
+       "numeric": true
+      },
+      {
+       "id": "noshows",
+       "label": "No-shows",
+       "numeric": true
+      },
+      {
+       "id": "wait",
+       "label": "Avg wait (min)",
+       "numeric": true
+      }
+     ],
+     "rows": [
+      {
+       "day": "Mon",
+       "booked": 62,
+       "noshows": 11,
+       "wait": 48
+      },
+      {
+       "day": "Tue",
+       "booked": 48,
+       "noshows": 5,
+       "wait": 22
+      },
+      {
+       "day": "Wed",
+       "booked": 50,
+       "noshows": 6,
+       "wait": 25
+      },
+      {
+       "day": "Thu",
+       "booked": 47,
+       "noshows": 4,
+       "wait": 20
+      },
+      {
+       "day": "Fri",
+       "booked": 40,
+       "noshows": 9,
+       "wait": 30
+      },
+      {
+       "day": "Sat",
+       "booked": 55,
+       "noshows": 8,
+       "wait": 35
+      }
+     ],
+     "judgments": [
+      {
+       "id": "cl1",
+       "question": "Which day has the most no-shows?",
+       "ai_claim": "Monday, with 11 no-shows.",
+       "ai_correct": true,
+       "truth": "Mon, with 11. The AI is right."
+      },
+      {
+       "id": "cl2",
+       "question": "What's the no-show rate for the week?",
+       "ai_claim": "The no-show rate is about 7 per day, or 7%.",
+       "ai_correct": false,
+       "truth": "43 no-shows out of 302 bookings = 14.2%. The AI confused an average count per day with a rate."
+      },
+      {
+       "id": "cl3",
+       "question": "Why are Monday waits so long?",
+       "ai_claim": "Monday waits are long because of staff shortages at the start of the week.",
+       "ai_correct": false,
+       "truth": "The data shows Monday has the most bookings (62) and the longest wait (48 minutes). It says nothing about staff. The AI invented a cause. More bookings is one likely factor worth investigating."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "checklist": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "checklist",
+  "personalized": false,
+  "data": {
+   "items": [
+    {
+     "id": "c33a140c-86c7-4472-a3d4-b6855dbdc56a",
+     "label": ""
+    }
+   ]
+  }
+ },
+ "free_response": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "free_response",
+  "personalized": false,
+  "data": {
+   "prompt": "",
+   "min_words": 20
+  }
+ },
+ "quick_question": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "quick_question",
+  "personalized": false,
+  "data": {
+   "question": "ChatGPT writes fluent emails, essays and code. How do you think it learned to do that?",
+   "options": [
+    {
+     "id": "a",
+     "label": "Programmers wrote grammar rules for it",
+     "feedback": "Not quite. Nobody wrote grammar rules for it. Language is far too messy for rules to capture."
+    },
+    {
+     "id": "b",
+     "label": "It read huge amounts of text and learned the patterns",
+     "feedback": "Exactly right."
+    },
+    {
+     "id": "c",
+     "label": "It looks up every answer on the internet",
+     "feedback": "Not quite. Some assistants can search the web as an extra tool, but the model itself doesn't look things up."
+    },
+    {
+     "id": "d",
+     "label": "I'm not sure",
+     "feedback": "That's fine. That's what this lesson is for."
+    }
+   ],
+   "correct_id": "b",
+   "explanation": "It was trained on enormous amounts of text and learned the patterns of language: which words follow which, how arguments are structured, what an email sounds like. In this lesson, you'll see how that works by training a model yourself."
+  }
+ },
+ "card_grid": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "card_grid",
+  "personalized": false,
+  "data": {
+   "columns": 3,
+   "cards": [
+    {
+     "id": "c1",
+     "icon": "\ud83c\udfb2",
+     "title": "It predicts, it doesn't look up",
+     "body": "An LLM has no built-in fact database. It generates text that sounds right, one likely token at a time."
+    },
+    {
+     "id": "c2",
+     "icon": "\ud83d\udd73\ufe0f",
+     "title": "Gaps in its training data",
+     "body": "When it knows little about a topic, or the event happened after its knowledge cutoff, it fills the gap with plausible guesses."
+    },
+    {
+     "id": "c3",
+     "icon": "\ud83d\ude42",
+     "title": "Built to sound helpful",
+     "body": "It's trained to give fluent, confident answers. Sounding sure is not the same as being right."
+    }
+   ],
+   "caption": "Three reasons LLMs hallucinate"
+  }
+ },
+ "compare_columns": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "compare_columns",
+  "personalized": false,
+  "data": {
+   "columns": [
+    {
+     "id": "good",
+     "title": "AI is good at",
+     "icon": "\u2705",
+     "color": "emerald",
+     "body": "- Spotting patterns in huge amounts of data\n- Predicting what's likely to happen next\n- Generating text, images and code quickly\n- Translating and summarising\n- Working at a speed and scale no human can\n- Doing the same task consistently, without tiring"
+    },
+    {
+     "id": "hard",
+     "title": "AI struggles with",
+     "icon": "\u26a0\ufe0f",
+     "color": "amber",
+     "body": "- Guaranteeing that what it says is true\n- Knowing about events after it was trained\n- Common sense in unfamiliar situations\n- Understanding meaning the way people do\n- Being free of bias, since it learns from human data\n- Taking responsibility for decisions"
+    }
+   ],
+   "caption": "Strengths and limits of today's AI"
+  }
+ },
+ "tile_reveal": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "tile_reveal",
+  "personalized": false,
+  "data": {
+   "prompt": "Responsible AI isn't about being scared of AI. It's about knowing where it can go wrong, and having a move ready for each. Tap each risk.",
+   "tiles": [
+    {
+     "id": "r1",
+     "icon": "\ud83c\udfb2",
+     "title": "Hallucination",
+     "boxes": [
+      {
+       "label": "What it looks like",
+       "text": "Confident answers that are wrong: invented facts, fake sources, made-up quotes.",
+       "color": "amber"
+      },
+      {
+       "label": "Your move",
+       "text": "Match checking to the stakes, and run important outputs around the Verification Wheel.",
+       "color": "emerald"
+      }
+     ]
+    },
+    {
+     "id": "r2",
+     "icon": "\u2696\ufe0f",
+     "title": "Bias",
+     "boxes": [
+      {
+       "label": "What it looks like",
+       "text": "Stereotypes in text and images, unfair assumptions about gender, age, religion or nationality, and one-sided answers.",
+       "color": "amber"
+      },
+      {
+       "label": "Your move",
+       "text": "Ask \"who could this exclude?\" Request balanced perspectives, and review anything that affects people.",
+       "color": "emerald"
+      }
+     ]
+    },
+    {
+     "id": "r3",
+     "icon": "\ud83d\udd0f",
+     "title": "Privacy",
+     "boxes": [
+      {
+       "label": "What it looks like",
+       "text": "Pasting personal data (names, numbers, health, money) into tools that may store it.",
+       "color": "amber"
+      },
+      {
+       "label": "Your move",
+       "text": "Use the Data Traffic Light. Replace details with placeholders, and check your tool's data settings.",
+       "color": "emerald"
+      }
+     ]
+    },
+    {
+     "id": "r4",
+     "icon": "\ud83d\udee1\ufe0f",
+     "title": "Security",
+     "boxes": [
+      {
+       "label": "What it looks like",
+       "text": "Convincing AI-written phishing, fake AI apps and browser extensions, and company secrets leaking through AI tools.",
+       "color": "amber"
+      },
+      {
+       "label": "Your move",
+       "text": "Use trusted, approved tools only. Never share passwords or codes, and verify unexpected requests.",
+       "color": "emerald"
+      }
+     ]
+    },
+    {
+     "id": "r5",
+     "icon": "\u00a9\ufe0f",
+     "title": "Copyright",
+     "boxes": [
+      {
+       "label": "What it looks like",
+       "text": "Copying others' work through AI, or using AI images or text commercially without checking the terms.",
+       "color": "amber"
+      },
+      {
+       "label": "Your move",
+       "text": "Don't paste paid content to reproduce it, credit sources, and check your tool's terms before commercial use.",
+       "color": "emerald"
+      }
+     ]
+    },
+    {
+     "id": "r6",
+     "icon": "\ud83d\udce2",
+     "title": "Deepfakes and misinformation",
+     "boxes": [
+      {
+       "label": "What it looks like",
+       "text": "Cloned voices, fake videos of real people, and fake \"breaking news\" images spreading on WhatsApp.",
+       "color": "amber"
+      },
+      {
+       "label": "Your move",
+       "text": "Pause before you share or pay. Verify through a trusted source or a different channel.",
+       "color": "emerald"
+      }
+     ]
+    },
+    {
+     "id": "r7",
+     "icon": "\ud83e\udde0",
+     "title": "Over-reliance",
+     "boxes": [
+      {
+       "label": "What it looks like",
+       "text": "Letting AI make decisions it shouldn't, losing your own skills, or submitting AI work you don't understand.",
+       "color": "amber"
+      },
+      {
+       "label": "Your move",
+       "text": "Keep a human in charge of important decisions, understand what you submit, and disclose AI use when required.",
+       "color": "emerald"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "color_sort": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "color_sort",
+  "personalized": false,
+  "data": {
+   "prompt": "Before you paste anything into an AI tool, run it through the Traffic Light. Sort each item.",
+   "categories": [
+    {
+     "id": "green",
+     "label": "Green",
+     "color": "emerald",
+     "icon": "\ud83d\udfe2"
+    },
+    {
+     "id": "amber",
+     "label": "Amber",
+     "color": "amber",
+     "icon": "\ud83d\udfe0"
+    },
+    {
+     "id": "red",
+     "label": "Red",
+     "color": "rose",
+     "icon": "\ud83d\udd34"
+    }
+   ],
+   "items": [
+    {
+     "id": "i1",
+     "text": "A public news article you want summarised",
+     "category_id": "green",
+     "why": "Public information. Go ahead."
+    },
+    {
+     "id": "i2",
+     "text": "Your own essay draft, with no personal details",
+     "category_id": "green",
+     "why": "Your own non-sensitive writing is fine."
+    },
+    {
+     "id": "i3",
+     "text": "A made-up example you wrote to test a prompt",
+     "category_id": "green",
+     "why": "Invented data is always safe."
+    },
+    {
+     "id": "i4",
+     "text": "Meeting notes that mention client names",
+     "category_id": "amber",
+     "why": "Replace client names with placeholders, or use an approved company tool."
+    },
+    {
+     "id": "i5",
+     "text": "A customer complaint email",
+     "category_id": "amber",
+     "why": "Remove the customer's name, contact details and order number first."
+    },
+    {
+     "id": "i6",
+     "text": "Survey results that include respondents' names",
+     "category_id": "amber",
+     "why": "Strip the names. The AI only needs the answers."
+    },
+    {
+     "id": "i7",
+     "text": "Your company's unreleased product plans",
+     "category_id": "amber",
+     "why": "Confidential: only use a tool your company has approved for this."
+    },
+    {
+     "id": "i8",
+     "text": "Your password or a one-time code",
+     "category_id": "red",
+     "why": "Never. No legitimate AI task needs these."
+    },
+    {
+     "id": "i9",
+     "text": "A CNIC, Iqama or passport number",
+     "category_id": "red",
+     "why": "Never share government ID numbers with AI tools."
+    },
+    {
+     "id": "i10",
+     "text": "A patient's medical report with their name",
+     "category_id": "red",
+     "why": "Health data about a named person is highly sensitive and often legally protected."
+    }
+   ],
+   "points_per_item": 2
+  }
+ },
+ "slider_set": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "slider_set",
+  "personalized": false,
+  "data": {
+   "prompt": "Set the right level for each decision, then lock it in.",
+   "mode": "judge",
+   "levels": [
+    "AI decides alone",
+    "AI decides, human spot-checks",
+    "AI suggests, human decides",
+    "Human only"
+   ],
+   "start": 1,
+   "left_label": "\u2190 More AI",
+   "right_label": "More human \u2192",
+   "items": [
+    {
+     "id": "d1",
+     "text": "Filtering spam from your email inbox",
+     "accept": [
+      0,
+      1
+     ],
+     "why": "Low stakes and easy to fix. You can always check the spam folder."
+    },
+    {
+     "id": "d2",
+     "text": "Recommending the next song in a playlist",
+     "accept": [
+      0
+     ],
+     "why": "Nothing bad happens if it picks a song you skip."
+    },
+    {
+     "id": "d3",
+     "text": "Flagging suspicious card transactions for review",
+     "accept": [
+      1,
+      2
+     ],
+     "why": "AI is great at spotting patterns. People should confirm before blocking a customer's money for long."
+    },
+    {
+     "id": "d4",
+     "text": "Shortlisting job applicants from 500 CVs",
+     "accept": [
+      2
+     ],
+     "why": "It affects livelihoods, and AI can copy past hiring bias. People must review, decide and be able to explain why."
+    },
+    {
+     "id": "d5",
+     "text": "Reading X-rays to flag possible fractures",
+     "accept": [
+      2
+     ],
+     "why": "AI can be a powerful second pair of eyes, but a qualified doctor makes the diagnosis."
+    },
+    {
+     "id": "d6",
+     "text": "Deciding a student's final exam grade",
+     "accept": [
+      2,
+      3
+     ],
+     "why": "Grades shape futures. A teacher must decide, and students must be able to question it."
+    },
+    {
+     "id": "d7",
+     "text": "Deciding whether to fire an employee",
+     "accept": [
+      3
+     ],
+     "why": "A life-changing decision about a person needs human judgement, context and accountability."
+    }
+   ]
+  }
+ },
+ "scenario_sort": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "scenario_sort",
+  "personalized": false,
+  "data": {
+   "prompt": "AI doesn't replace jobs in one go. It changes individual tasks. Pick a job and sort each of its tasks: will AI mostly **automate** it, **assist** a person with it, or will it stay **mostly human**? Then compare with an expert view.",
+   "categories": [
+    {
+     "id": "automate",
+     "label": "Automate",
+     "color": "sky",
+     "icon": "\u2699\ufe0f",
+     "summary": "tasks mostly automated"
+    },
+    {
+     "id": "assist",
+     "label": "AI assists",
+     "color": "violet",
+     "icon": "\ud83e\udd1d",
+     "summary": "tasks AI assists with"
+    },
+    {
+     "id": "human",
+     "label": "Mostly human",
+     "color": "emerald",
+     "icon": "\ud83d\udc64",
+     "summary": "tasks that stay human"
+    }
+   ],
+   "scenarios": [
+    {
+     "id": "marketing",
+     "label": "Marketing executive",
+     "icon": "\ud83d\udce3",
+     "items": [
+      {
+       "id": "marketing-1",
+       "text": "Resize images for different platforms",
+       "category_id": "automate",
+       "why": "Repetitive and rule-based. Tools already do it."
+      },
+      {
+       "id": "marketing-2",
+       "text": "Write first drafts of social posts",
+       "category_id": "assist",
+       "why": "AI drafts quickly; you add brand voice, real details and judgement."
+      },
+      {
+       "id": "marketing-3",
+       "text": "Analyse campaign performance data",
+       "category_id": "assist",
+       "why": "AI finds patterns fast; you decide what they mean and what to do."
+      },
+      {
+       "id": "marketing-4",
+       "text": "Schedule posts across channels",
+       "category_id": "automate",
+       "why": "Scheduling tools and automations handle it."
+      },
+      {
+       "id": "marketing-5",
+       "text": "Decide the campaign strategy",
+       "category_id": "human",
+       "why": "AI can offer ideas, but strategy needs judgement and accountability."
+      },
+      {
+       "id": "marketing-6",
+       "text": "Build relationships with clients and partners",
+       "category_id": "human",
+       "why": "Trust is built person to person."
+      }
+     ],
+     "closing": "The marketing executive doesn't disappear. The job shifts towards the human tasks, with AI handling or speeding up the rest."
+    },
+    {
+     "id": "teacher",
+     "label": "Teacher",
+     "icon": "\ud83e\uddd1\u200d\ud83c\udfeb",
+     "items": [
+      {
+       "id": "teacher-1",
+       "text": "Mark multiple-choice tests",
+       "category_id": "automate",
+       "why": "Fully rule-based, and easy to check."
+      },
+      {
+       "id": "teacher-2",
+       "text": "Create quiz questions",
+       "category_id": "assist",
+       "why": "AI drafts questions; you check accuracy and level."
+      },
+      {
+       "id": "teacher-3",
+       "text": "Plan lessons",
+       "category_id": "assist",
+       "why": "AI suggests activities and resources; you shape them for your class."
+      },
+      {
+       "id": "teacher-4",
+       "text": "Give feedback on essays",
+       "category_id": "assist",
+       "why": "AI can suggest comments; the teacher decides the grade and tone."
+      },
+      {
+       "id": "teacher-5",
+       "text": "Record attendance",
+       "category_id": "automate",
+       "why": "Simple data entry, easily automated."
+      },
+      {
+       "id": "teacher-6",
+       "text": "Support a struggling student",
+       "category_id": "human",
+       "why": "Care, trust and knowing the child are human."
+      }
+     ],
+     "closing": "The teacher doesn't disappear. The job shifts towards the human tasks, with AI handling or speeding up the rest."
+    },
+    {
+     "id": "accountant",
+     "label": "Accountant",
+     "icon": "\ud83d\udcca",
+     "items": [
+      {
+       "id": "accountant-1",
+       "text": "Enter invoice data into the system",
+       "category_id": "automate",
+       "why": "AI can read invoices and fill fields, with exceptions checked."
+      },
+      {
+       "id": "accountant-2",
+       "text": "Reconcile bank statements",
+       "category_id": "automate",
+       "why": "Matching transactions is rule-based and increasingly automated."
+      },
+      {
+       "id": "accountant-3",
+       "text": "Spot unusual transactions",
+       "category_id": "assist",
+       "why": "AI flags patterns; an accountant investigates."
+      },
+      {
+       "id": "accountant-4",
+       "text": "Draft monthly reports",
+       "category_id": "assist",
+       "why": "AI drafts; the accountant verifies every figure."
+      },
+      {
+       "id": "accountant-5",
+       "text": "Advise a client on tax planning",
+       "category_id": "human",
+       "why": "Regulated, high-stakes advice needs a qualified, accountable person."
+      },
+      {
+       "id": "accountant-6",
+       "text": "Explain results to a nervous business owner",
+       "category_id": "human",
+       "why": "Clear, empathetic explanation builds trust."
+      }
+     ],
+     "closing": "The accountant doesn't disappear. The job shifts towards the human tasks, with AI handling or speeding up the rest."
+    },
+    {
+     "id": "support",
+     "label": "Customer support agent",
+     "icon": "\ud83c\udfa7",
+     "items": [
+      {
+       "id": "support-1",
+       "text": "Sort incoming tickets by topic",
+       "category_id": "automate",
+       "why": "Classification is an AI strength, as you saw in Lesson 19."
+      },
+      {
+       "id": "support-2",
+       "text": "Answer common FAQs",
+       "category_id": "automate",
+       "why": "An assistant grounded in the FAQ can handle these, with spot-checks."
+      },
+      {
+       "id": "support-3",
+       "text": "Draft replies to complex issues",
+       "category_id": "assist",
+       "why": "AI drafts; the agent checks facts and tone."
+      },
+      {
+       "id": "support-4",
+       "text": "Summarise call notes",
+       "category_id": "assist",
+       "why": "AI summarises; the agent confirms nothing important is missing."
+      },
+      {
+       "id": "support-5",
+       "text": "Calm an angry customer on the phone",
+       "category_id": "human",
+       "why": "Empathy and real-time judgement stay human."
+      },
+      {
+       "id": "support-6",
+       "text": "Decide on refunds and exceptions",
+       "category_id": "human",
+       "why": "Money and fairness decisions need human accountability."
+      }
+     ],
+     "closing": "The customer support agent doesn't disappear. The job shifts towards the human tasks, with AI handling or speeding up the rest."
+    }
+   ],
+   "footnote": "These are informed judgements about likely change over the next few years, not predictions. Different workplaces will adopt AI at very different speeds."
+  }
+ },
+ "spot_the_errors": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "spot_the_errors",
+  "personalized": false,
+  "data": {
+   "prompt": "An events team asked AI to turn their internal brief into an invitation email for school principals. The email has **8 problems**, including something important that's missing. Your job: **find, verify, correct and explain**.\n\nCompare the email with the brief. Tap any sentence you think is wrong, then pick which part of the Wheel it fails and write a quick correction.",
+   "source_title": "Internal brief (the truth)",
+   "source_icon": "\ud83d\udcc4",
+   "source": "- **Event:** Karachi Youth Tech Summit 2026\n- **Date:** Saturday 14 November, 9:30am\u20135pm\n- **Venue:** Expo Centre, Hall 2, Karachi\n- **Who:** students aged 16\u201324, all genders welcome\n- **Seats:** 200, free, first come first served\n- **Registration closes:** 5 November\n- **Speakers:** 6 confirmed\n- **Lunch** provided; bring student ID\n- **Questions:** events@summit.example\n- **Internal only:** venue manager Imran, 0300-1234567. Do not share.",
+   "document_title": "AI-drafted email to principals",
+   "document_icon": "\u2709\ufe0f",
+   "categories": [
+    {
+     "id": "acc",
+     "label": "Accuracy",
+     "color": "indigo"
+    },
+    {
+     "id": "rel",
+     "label": "Relevance",
+     "color": "emerald"
+    },
+    {
+     "id": "com",
+     "label": "Completeness",
+     "color": "amber"
+    },
+    {
+     "id": "src",
+     "label": "Source quality",
+     "color": "violet"
+    },
+    {
+     "id": "rea",
+     "label": "Reasoning",
+     "color": "sky"
+    },
+    {
+     "id": "bias",
+     "label": "Bias",
+     "color": "rose"
+    },
+    {
+     "id": "safe",
+     "label": "Safety",
+     "color": "orange"
+    }
+   ],
+   "sentences": [
+    {
+     "id": "s1",
+     "text": "Dear Principals, we're excited to invite your students to the Karachi Youth Tech Summit 2026!"
+    },
+    {
+     "id": "s2",
+     "text": "The summit takes place on Sunday 14 November at the Expo Centre, Hall 2.",
+     "category_id": "acc",
+     "why": "The brief says Saturday, not Sunday.",
+     "fix": "The summit takes place on Saturday 14 November, 9:30am\u20135pm, at the Expo Centre, Hall 2."
+    },
+    {
+     "id": "s3",
+     "text": "Karachi is Pakistan's largest city and a major port on the Arabian Sea.",
+     "category_id": "rel",
+     "why": "True, but irrelevant. Principals don't need a geography lesson.",
+     "fix": "(Delete this sentence.)"
+    },
+    {
+     "id": "s4",
+     "text": "It's a free event, so there's no limit on how many students can attend.",
+     "category_id": "rea",
+     "why": "Free doesn't mean unlimited: there are only 200 seats, first come first served.",
+     "fix": "The event is free, but places are limited to 200 students, first come first served."
+    },
+    {
+     "id": "s5",
+     "text": "The day will feature 10 confirmed speakers from leading tech companies.",
+     "category_id": "acc",
+     "why": "The brief says 6 confirmed speakers, and doesn't say where they're from.",
+     "fix": "The day will feature 6 confirmed speakers."
+    },
+    {
+     "id": "s6",
+     "text": "According to a 2024 UNESCO report, 90% of students who attend tech summits find jobs within a year.",
+     "category_id": "src",
+     "why": "This statistic isn't in the brief, and there's no evidence the report exists. It's very likely invented.",
+     "fix": "(Delete this sentence, unless you can find and cite the real source.)"
+    },
+    {
+     "id": "s7",
+     "text": "The summit is ideal for boys aged 16\u201324 who are interested in engineering.",
+     "category_id": "bias",
+     "why": "The brief says all genders are welcome. This excludes girls, and narrows it to engineering.",
+     "fix": "The summit is open to all students aged 16\u201324 who are curious about technology."
+    },
+    {
+     "id": "s8",
+     "text": "Lunch is provided, and students should bring their student ID."
+    },
+    {
+     "id": "s9",
+     "text": "For any questions, call our venue manager Imran directly on 0300-1234567.",
+     "category_id": "safe",
+     "why": "This shares a private, internal-only phone number. That's a privacy breach.",
+     "fix": "For any questions, email events@summit.example."
+    },
+    {
+     "id": "s10",
+     "text": "We look forward to seeing your students there!"
+    }
+   ],
+   "missing": {
+    "question": "Is anything important missing from the email? Select any that apply.",
+    "options": [
+     {
+      "id": "m1",
+      "label": "Registration deadline (5 November)",
+      "correct": true
+     },
+     {
+      "id": "m2",
+      "label": "The venue",
+      "correct": false
+     },
+     {
+      "id": "m3",
+      "label": "Lunch details",
+      "correct": false
+     },
+     {
+      "id": "m4",
+      "label": "Age range",
+      "correct": false
+     }
+    ],
+    "category_id": "com",
+    "why": "The registration deadline (5 November) and first-come-first-served rule are missing. Principals need them to act."
+   },
+   "allow_notes": true,
+   "corrected_title": "The corrected email",
+   "corrected": "Dear Principals, we're excited to invite your students to the Karachi Youth Tech Summit 2026!\n\nThe summit takes place on Saturday 14 November, 9:30am\u20135pm, at the Expo Centre, Hall 2, Karachi. It's open to all students aged 16\u201324 who are curious about technology, and it's free, but places are limited to 200 students, first come first served. Registration closes on 5 November.\n\nThe day will feature 6 confirmed speakers. Lunch is provided, and students should bring their student ID.\n\nFor any questions, email events@summit.example. We look forward to seeing your students there!"
+  }
+ },
+ "decision_tree": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "decision_tree",
+  "personalized": false,
+  "data": {
+   "prompt": "Think of a problem from your study, work or home. Answer five honest questions about it, and the decision tree will tell you what to do. Try it with two different problems.",
+   "questions": [
+    {
+     "id": "q1",
+     "text": "Is this task repeated often, or does it involve a lot of information?",
+     "hint": "One-off tasks are often quicker to just do yourself.",
+     "exit": {
+      "on": "no",
+      "outcome_id": "one-off"
+     }
+    },
+    {
+     "id": "q2",
+     "text": "Would a simpler fix work: a checklist, a template, a reminder, or a conversation?",
+     "hint": "Be honest. Simple fixes are cheaper, faster and safer.",
+     "exit": {
+      "on": "yes",
+      "outcome_id": "simple-fix"
+     }
+    },
+    {
+     "id": "q3",
+     "text": "Does it involve text, images, data or patterns: writing, summarising, sorting, answering, analysing?",
+     "hint": "These are the things AI is good at.",
+     "exit": {
+      "on": "no",
+      "outcome_id": "not-ai"
+     }
+    },
+    {
+     "id": "q4",
+     "text": "If AI gets it wrong, can a person catch and fix the mistake before it causes harm?",
+     "hint": "Think about health, money, safety and people's rights.",
+     "exit": {
+      "on": "no",
+      "outcome_id": "high-risk"
+     }
+    },
+    {
+     "id": "q5",
+     "text": "Does it need sensitive personal data: health, finances, ID numbers, private details?",
+     "hint": "Remember the Data Traffic Light.",
+     "exit": {
+      "on": "yes",
+      "outcome_id": "safeguards"
+     }
+    }
+   ],
+   "outcomes": [
+    {
+     "id": "one-off",
+     "tone": "caution",
+     "title": "Probably not worth it",
+     "body": "For a one-off task, setting up AI may take longer than doing it yourself. You can still use a chat assistant for a quick first draft or idea."
+    },
+    {
+     "id": "simple-fix",
+     "tone": "caution",
+     "title": "Try the simple fix first",
+     "body": "Start with the non-AI fix. If the problem is still there after a few weeks, come back and consider AI."
+    },
+    {
+     "id": "not-ai",
+     "tone": "stop",
+     "title": "Not an AI problem",
+     "body": "This sounds like a physical, technical or people problem. AI might help you research solutions, but it won't solve it directly."
+    },
+    {
+     "id": "high-risk",
+     "tone": "stop",
+     "title": "High risk: keep humans in charge",
+     "body": "Use AI only as an assistant that suggests, with a qualified person making every decision, or don't use AI here at all."
+    },
+    {
+     "id": "safeguards",
+     "tone": "caution",
+     "title": "Possible, with strong safeguards",
+     "body": "Only use approved tools, remove or replace personal details, and keep a human reviewing every output. Check your organisation's policy first."
+    },
+    {
+     "id": "good",
+     "tone": "good",
+     "title": "A good AI opportunity",
+     "body": "Start small, measure the before and after, and keep a person reviewing the outputs. This could make a great capstone."
+    }
+   ],
+   "final_outcome_id": "good"
+  }
+ },
+ "prompt_builder": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "prompt_builder",
+  "personalized": false,
+  "data": {
+   "prompt": "Image prompts have their own blueprint: eight blocks, each answering a question the AI can't guess. Pick a brief, fill in the blocks (tap the suggestions to add them), and watch your prompt and frame take shape. Then copy it into ImagineArt.",
+   "briefs": [
+    {
+     "id": "bakery",
+     "label": "Bakery Instagram post",
+     "icon": "\ud83e\uddc1",
+     "suggestions": {
+      "subject": [
+       "freshly baked cardamom buns",
+       "a cup of chai beside warm buns",
+       "a baker dusting sugar on pastries"
+      ],
+      "setting": [
+       "a cosy Karachi bakery counter",
+       "on a rustic wooden table",
+       "a sunny caf\u00e9 window"
+      ],
+      "style": [
+       "realistic photo",
+       "warm food photography",
+       "watercolour painting"
+      ],
+      "composition": [
+       "close-up",
+       "top-down flat lay",
+       "shallow depth of field"
+      ],
+      "lighting": [
+       "soft morning window light",
+       "golden hour",
+       "warm caf\u00e9 lighting"
+      ],
+      "mood": [
+       "warm golden tones, inviting",
+       "soft pastel colours, cosy"
+      ],
+      "text": [
+       "no text in the image",
+       "leave empty space at the top for a headline"
+      ],
+      "format": [
+       "square 1:1",
+       "portrait 4:5"
+      ]
+     }
+    },
+    {
+     "id": "workshop",
+     "label": "Coding workshop banner",
+     "icon": "\ud83d\udcbb",
+     "suggestions": {
+      "subject": [
+       "three students coding together on laptops",
+       "a young woman coding on a laptop",
+       "a mentor helping a student at a screen"
+      ],
+      "setting": [
+       "a bright, modern university lab",
+       "a co-working space with whiteboards",
+       "a lecture hall with a big screen"
+      ],
+      "style": [
+       "flat vector illustration",
+       "3D render",
+       "realistic photo",
+       "minimalist"
+      ],
+      "composition": [
+       "wide shot",
+       "eye-level",
+       "over-the-shoulder view of the screen"
+      ],
+      "lighting": [
+       "bright studio lighting",
+       "neon glow",
+       "soft daylight"
+      ],
+      "mood": [
+       "bold teal and navy, energetic",
+       "clean blue and white, professional"
+      ],
+      "text": [
+       "no text in the image",
+       "leave empty space on the left for the workshop title"
+      ],
+      "format": [
+       "wide 16:9",
+       "vertical 9:16"
+      ]
+     }
+    },
+    {
+     "id": "own",
+     "label": "My own idea",
+     "icon": "\u270f\ufe0f"
+    }
+   ],
+   "fields": [
+    {
+     "id": "subject",
+     "label": "Subject",
+     "question": "What's in the picture?",
+     "color": "indigo",
+     "suggestions": [
+      "freshly baked cardamom buns",
+      "a young woman coding on a laptop",
+      "a steaming cup of chai"
+     ]
+    },
+    {
+     "id": "setting",
+     "label": "Setting",
+     "question": "Where is it?",
+     "color": "emerald",
+     "suggestions": [
+      "a cosy Karachi bakery",
+      "a bright university lab",
+      "on a rustic wooden table"
+     ]
+    },
+    {
+     "id": "style",
+     "label": "Style",
+     "question": "What kind of image?",
+     "color": "violet",
+     "suggestions": [
+      "realistic photo",
+      "flat vector illustration",
+      "3D render",
+      "watercolour painting",
+      "minimalist"
+     ]
+    },
+    {
+     "id": "composition",
+     "label": "Composition",
+     "question": "What angle and framing?",
+     "color": "sky",
+     "suggestions": [
+      "close-up",
+      "top-down flat lay",
+      "wide shot",
+      "eye-level",
+      "shallow depth of field"
+     ]
+    },
+    {
+     "id": "lighting",
+     "label": "Lighting",
+     "question": "What light?",
+     "color": "amber",
+     "suggestions": [
+      "soft morning window light",
+      "golden hour",
+      "bright studio lighting",
+      "neon glow"
+     ]
+    },
+    {
+     "id": "mood",
+     "label": "Colour and mood",
+     "question": "What feeling and palette?",
+     "color": "rose",
+     "suggestions": [
+      "warm golden tones, inviting",
+      "bold teal and navy, energetic",
+      "calm pastel colours"
+     ]
+    },
+    {
+     "id": "text",
+     "label": "Text",
+     "question": "Any words in the image?",
+     "color": "orange",
+     "suggestions": [
+      "no text in the image",
+      "leave empty space at the top for a headline"
+     ]
+    },
+    {
+     "id": "format",
+     "label": "Format",
+     "question": "What shape?",
+     "color": "slate",
+     "suggestions": [
+      "square 1:1",
+      "portrait 4:5",
+      "vertical 9:16",
+      "wide 16:9"
+     ],
+     "single": true
+    }
+   ],
+   "frame_field_id": "format",
+   "min_filled": 3,
+   "link": {
+    "label": "Open ImagineArt",
+    "url": "https://www.imagine.art"
+   }
+  }
+ },
+ "project_export": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "project_export",
+  "personalized": false,
+  "data": {
+   "title": "Take your Playbook with you",
+   "intro": "Download everything you've written so far as a PDF, with each question and your answers.",
+   "filename": "my-prompt-playbook"
+  }
+ },
+ "filter_compare": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "filter_compare",
+  "personalized": false,
+  "data": {
+   "title": "Try to fool both filters",
+   "prompt": "Pick an email subject line below. Watch which filter catches it.",
+   "placeholder": "Type a subject line\u2026",
+   "examples": [
+    "FREE MONEY inside",
+    "Fr33 m0ney waiting for you!!",
+    "Congratulations! Claim your prize now",
+    "Lunch meeting tomorrow at 1pm?",
+    "Your invoice for September"
+   ],
+   "positive_label": "Spam",
+   "negative_label": "Inbox",
+   "rule": {
+    "title": "Rule-based filter",
+    "description": "Its only rule: if the subject contains \"free money\", it's spam.",
+    "phrase": "free money",
+    "lookalike_pattern": "fr[e3]{2}|m[o0]n[e3]y|prize|claim|lottery|winner"
+   },
+   "learned": {
+    "title": "Learned filter",
+    "description": "It weighs many patterns it picked up from examples.",
+    "weights": {
+     "free": 1.2,
+     "money": 1.3,
+     "prize": 1.6,
+     "claim": 1.3,
+     "winner": 1.6,
+     "won": 1.2,
+     "congratulations": 1.2,
+     "urgent": 1.2,
+     "click": 1,
+     "now": 0.6,
+     "lottery": 1.8,
+     "cash": 1.2,
+     "offer": 0.8,
+     "limited": 0.8,
+     "guaranteed": 1.2,
+     "act": 0.5,
+     "bonus": 1,
+     "waiting": 0.5,
+     "meeting": -1.2,
+     "lunch": -1.1,
+     "tomorrow": -0.6,
+     "invoice": -0.5,
+     "report": -0.9,
+     "thanks": -0.9,
+     "class": -0.8,
+     "agenda": -1.1,
+     "minutes": -0.6,
+     "assignment": -0.9
+    },
+    "exclaim_weight": 0.45,
+    "exclaim_max": 3,
+    "caps_weight": 0.5,
+    "caps_max": 2,
+    "threshold": 1.4,
+    "steepness": 1.6
+   },
+   "footnote": "This is a simplified simulation. Real spam filters learn from billions of emails and look at far more than the subject line."
+  }
+ },
+ "train_model": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "train_model",
+  "personalized": false,
+  "data": {
+   "labels": [
+    {
+     "id": "u",
+     "label": "Urgent"
+    },
+    {
+     "id": "w",
+     "label": "Can wait"
+    }
+   ],
+   "training": [
+    {
+     "id": "t1",
+     "text": "The client website is down, please fix it now",
+     "label_id": "u"
+    },
+    {
+     "id": "t2",
+     "text": "Sharing some photos from the team lunch",
+     "label_id": "w"
+    },
+    {
+     "id": "t3",
+     "text": "Deadline moved to today, need the report urgently",
+     "label_id": "u"
+    },
+    {
+     "id": "t4",
+     "text": "No rush, but have a look at this idea next week",
+     "label_id": "w"
+    },
+    {
+     "id": "t5",
+     "text": "Payment failed and the customer is waiting on the phone",
+     "label_id": "u"
+    },
+    {
+     "id": "t6",
+     "text": "Monthly newsletter: new courses this season",
+     "label_id": "w"
+    },
+    {
+     "id": "t7",
+     "text": "Server crashed, nobody can log in right now",
+     "label_id": "u"
+    },
+    {
+     "id": "t8",
+     "text": "When you get a chance, update your profile picture",
+     "label_id": "w"
+    },
+    {
+     "id": "t9",
+     "text": "Urgent: sign the contract before 5pm today",
+     "label_id": "u"
+    },
+    {
+     "id": "t10",
+     "text": "Sometime next month let's plan a team outing",
+     "label_id": "w"
+    }
+   ],
+   "test": [
+    {
+     "id": "x1",
+     "text": "The booking page is down and customers are waiting",
+     "label_id": "u"
+    },
+    {
+     "id": "x2",
+     "text": "Need your approval today before the deadline",
+     "label_id": "u"
+    },
+    {
+     "id": "x3",
+     "text": "Here are some ideas for next week's workshop, no rush",
+     "label_id": "w"
+    },
+    {
+     "id": "x4",
+     "text": "Newsletter photos from last month's event",
+     "label_id": "w"
+    },
+    {
+     "id": "x5",
+     "text": "Login failed for the whole team, fix it right now",
+     "label_id": "u"
+    },
+    {
+     "id": "x6",
+     "text": "When you get a chance, look at the new course ideas",
+     "label_id": "w"
+    }
+   ],
+   "experiments": true,
+   "swap_ids": [
+    "t1",
+    "t4",
+    "t5"
+   ]
+  }
+ },
+ "meaning_map": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "meaning_map",
+  "personalized": false,
+  "data": {
+   "caption": "A meaning map: similar meanings sit close together",
+   "groups": [
+    {
+     "id": "fruit",
+     "label": "fruit"
+    },
+    {
+     "id": "transport",
+     "label": "transport"
+    },
+    {
+     "id": "feelings",
+     "label": "feelings"
+    },
+    {
+     "id": "cities",
+     "label": "cities"
+    }
+   ],
+   "words": [
+    {
+     "id": "mango",
+     "label": "mango",
+     "group_id": "fruit"
+    },
+    {
+     "id": "banana",
+     "label": "banana",
+     "group_id": "fruit"
+    },
+    {
+     "id": "apple",
+     "label": "apple",
+     "group_id": "fruit"
+    },
+    {
+     "id": "dates",
+     "label": "dates",
+     "group_id": "fruit"
+    },
+    {
+     "id": "car",
+     "label": "car",
+     "group_id": "transport"
+    },
+    {
+     "id": "bus",
+     "label": "bus",
+     "group_id": "transport"
+    },
+    {
+     "id": "rickshaw",
+     "label": "rickshaw",
+     "group_id": "transport"
+    },
+    {
+     "id": "train",
+     "label": "train",
+     "group_id": "transport"
+    },
+    {
+     "id": "happy",
+     "label": "happy",
+     "group_id": "feelings"
+    },
+    {
+     "id": "joyful",
+     "label": "joyful",
+     "group_id": "feelings"
+    },
+    {
+     "id": "glad",
+     "label": "glad",
+     "group_id": "feelings"
+    },
+    {
+     "id": "sad",
+     "label": "sad",
+     "group_id": "feelings"
+    },
+    {
+     "id": "karachi",
+     "label": "Karachi",
+     "group_id": "cities"
+    },
+    {
+     "id": "lahore",
+     "label": "Lahore",
+     "group_id": "cities"
+    },
+    {
+     "id": "riyadh",
+     "label": "Riyadh",
+     "group_id": "cities"
+    },
+    {
+     "id": "islamabad",
+     "label": "Islamabad",
+     "group_id": "cities"
+    }
+   ],
+   "notes": [
+    {
+     "word_id": "sad",
+     "text": "Notice \"sad\" sits with the happy words even though it means the opposite. They're used in the same kinds of sentences (\"I feel \u2026\"), so the AI places them close together."
+    }
+   ]
+  }
+ },
+ "mcq": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "mcq",
+  "personalized": false,
+  "data": {
+   "question": "",
+   "options": [
+    "",
+    ""
+   ],
+   "correct_index": 0,
+   "points": 10
+  }
+ },
+ "categorization": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "categorization",
+  "personalized": false,
+  "data": {
+   "buckets": [
+    {
+     "id": "5dd2e904-e11f-4563-bfc6-0c0882707c21",
+     "label": ""
+    },
+    {
+     "id": "b51ee822-817b-4d25-ae4a-dbb3048f127d",
+     "label": ""
+    }
+   ],
+   "items": [
+    {
+     "id": "7788818e-9a27-45cb-9cc8-4d4fae98d805",
+     "label": "",
+     "correct_bucket_id": "5dd2e904-e11f-4563-bfc6-0c0882707c21"
+    }
+   ],
+   "points_per_match": 5
+  }
+ },
+ "sequencing": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "sequencing",
+  "personalized": false,
+  "data": {
+   "items": [
+    {
+     "id": "1407ddd3-53aa-4637-96dc-e78ffccf4e11",
+     "label": ""
+    },
+    {
+     "id": "e6226660-a5b2-481c-b449-a6fdb08317ee",
+     "label": ""
+    }
+   ],
+   "correct_order": [
+    "1407ddd3-53aa-4637-96dc-e78ffccf4e11",
+    "e6226660-a5b2-481c-b449-a6fdb08317ee"
+   ],
+   "points": 15
+  }
+ },
+ "fill_blank": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "fill_blank",
+  "personalized": false,
+  "data": {
+   "template": "",
+   "blanks": [
+    {
+     "id": "blank1",
+     "options": [
+      "",
+      ""
+     ],
+     "correct_index": 0
+    }
+   ],
+   "points_per_blank": 5
+  }
+ },
+ "workplace_scenario": {
+  "id": "00000000-0000-4000-8000-000000000000",
+  "type": "workplace_scenario",
+  "personalized": true,
+  "data": {
+   "component_prompt": "",
+   "metadata_fields": [
+    "domain",
+    "department",
+    "future_goal"
+   ]
+  }
+ }
+}

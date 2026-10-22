@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/VerticalRoadmapBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/VerticalRoadmapBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import { useEffect, useRef, useState } from "react";
@@ -121,7 +121,7 @@ export default function VerticalRoadmapBlock({
                     isSeen ? "opacity-100" : "opacity-50"
                   }`}
                 >
-                  <div className="font-montserrat text-[15px] font-bold leading-snug text-slate-900">{event.date}</div>
+                  <div className="font-montserrat text-[14px] font-bold leading-snug text-slate-900">{event.date}</div>
                   <div className={`mt-1 ${BLOCK_BODY_TEXT}`}>
                     <Markdown content={event.text} variant="lesson" />
                   </div>

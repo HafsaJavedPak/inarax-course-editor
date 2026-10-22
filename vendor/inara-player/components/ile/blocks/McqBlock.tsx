@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/McqBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/McqBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import { useState } from "react";
@@ -82,7 +82,7 @@ export default function McqBlock({ block }: { block: Extract<LessonBlock, { type
       doneLabel={doneLabel}
     >
       <div className="flex flex-col gap-1.5">
-        <div className="font-montserrat text-[18px] font-bold leading-snug text-slate-900">{block.data.question}</div>
+        <div className="font-montserrat text-[15px] font-bold leading-snug text-slate-900">{block.data.question}</div>
         {multi ? <div className="text-sm text-slate-500">{t("mcqSelectAll")}</div> : null}
       </div>
       <div role={multi ? "group" : "radiogroup"} className="flex flex-col gap-2.5">
@@ -124,7 +124,7 @@ export default function McqBlock({ block }: { block: Extract<LessonBlock, { type
               aria-checked={isPicked}
               disabled={complete}
               onClick={() => toggle(index)}
-              className={`flex w-full items-center gap-3.5 rounded-xl border-[1.5px] px-3.5 py-3 text-start text-[15px] leading-snug transition-colors ${row} ${
+              className={`flex w-full items-center gap-3.5 rounded-xl border-[1.5px] px-3.5 py-3 text-start text-[14px] leading-snug transition-colors ${row} ${
                 complete ? "cursor-default" : "cursor-pointer"
               }`}
             >

@@ -22,6 +22,7 @@ import { TrashIcon } from "@/components/tiptap-icons/trash-icon"
 import { ActiveEditorProvider } from "@/components/lesson-editor/active-editor"
 import { AddBlockMenu, BlockEditor } from "@/components/lesson-editor/block-editor"
 import { AssistantPanel } from "@/components/ai/assistant-panel"
+import { IntroPanel } from "@/components/lesson-editor/intro-panel"
 import { JsonPanel } from "@/components/lesson-editor/json-panel"
 import { SaveBar, type SaveStatus } from "@/components/lesson-editor/save-bar"
 import { usePublish } from "@/components/lesson-editor/use-publish"
@@ -596,6 +597,8 @@ export function LessonEditor({
                   }}
                 />
               )}
+
+              {!showJson && <IntroPanel key={generation} intro={lesson.intro} onChange={(intro) => dispatch({ type: "setIntro", intro })} />}
 
               {selected && !showJson && (
                 <div className="le-section" key={`${generation}-${selected.id}`}>

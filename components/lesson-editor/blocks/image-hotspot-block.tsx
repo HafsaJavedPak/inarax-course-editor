@@ -183,6 +183,18 @@ export function ImageHotspotBlock({
         onChange={(caption) => onChange({ ...data, caption })}
         placeholder="Shown under the image"
       />
+      <label className="le-check">
+        <input
+          type="checkbox"
+          checked={data.mode === "find"}
+          onChange={(e) => {
+            const { mode, ...rest } = data
+            void mode
+            onChange(e.target.checked ? { ...rest, mode: "find" } : rest)
+          }}
+        />
+        <span>Hide the pins: learners have to find each spot by clicking on the image</span>
+      </label>
 
       {data.hotspots.length > 0 && (
         <ol className="hs-list" ref={listRef}>
