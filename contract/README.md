@@ -1,4 +1,4 @@
-# Course Publishing Protocol, version 2.5
+# Course Publishing Protocol, version 2.6
 
 How the course editor publishes courses to a host platform. The editor owns this
 contract; a host implements it in whatever stack it uses (Next.js, FastAPI, …).
@@ -18,6 +18,14 @@ The source of truth is `lib/protocol/wire.ts` (messages) and
 generated files and `npm run contract:check` fails when they are stale.
 `npm run verify-host` checks a running host against this document (see
 [Conformance](#conformance)).
+
+**Changes in 2.6:** an admin can open **any course on the host in the editor**, however it was made
+(the host's own admin, a bulk import, a script writing to its database). Two read-only endpoints
+([Courses on the host](#courses-on-the-host)) give the editor a course as the host has it; the launch
+token can name a course to open (`open_course`); and a copy taken from the host carries the host's `version`
+stamp, which the editor sends back as `course.base_version` so a publish never overwrites a change made on the
+host in the meantime (409). All of it is additive and advertised by `capabilities.adopt`, so either side can be
+upgraded first.
 
 **Changes in 2.5:** no new field. The block type `workplace_scenario` (a *personalized* block) is
 now authorable, so a host that accepts it lists it in `content.block_types`, and an editor sends
@@ -213,7 +221,7 @@ host (user already signed in)                 editor
 ```
 token   = "v2." + b64url(payload) + "." + b64url(Ed25519(host private key, "course-editor-launch.v2." + b64url(payload)))
 payload = {"v":2, "kid", "iss", "aud":"course-editor", "sub", "email", "name",
-           "role":"admin"|"creator", "orgs"?, "staff"?, "iat", "exp", "jti"}
+           "role":"admin"|"creator", "orgs"?, "staff"?, "open_course"?, "iat", "exp", "jti"}
 orgs    = [{"id": "<organization id>", "name": "<display name>", "role": "admin"|"creator",
             "review_trusted"?: boolean,                       // 2.2
             "departments"?: [{"id", "name", "role": "member"|"manager"|null}, …]}, …]  // 2.2
@@ -486,6 +494,43 @@ host kept an archived copy (for example because of payment records).
 `404 not_found` if the host doesn't have the course; the editor treats that as
 success.
 
+## Courses on the host
+
+*Since 2.6. A host that offers it says `capabilities.adopt: true` in its manifest.*
+
+An admin should be able to edit any course of their organization in the editor, whoever or whatever created it
+on the host. The first time they open one, the editor **adopts** it: it takes a copy that keeps the host's ids (course,
+module, lesson and placement-question ids), so publishing it later is the ordinary `PUT /v1/courses/{id}` and
+updates that very course. Two signed requests, both read-only; `actor` (a host user id, the launch token's `sub`) is
+in the query, which the signature covers:
+
+**`GET /v1/courses/{course_id}?actor={user_id}`** answers `200` with a snapshot (`schemas/course-snapshot.schema.json`):
+the course (`id`, `title`, `summary`, `cover_image_url`, `status` as in a package or `null` when the host
+retired it, linked `organizations` with their `access_mode`, learner `metadata`, `placement_size`, timestamps, and
+the `quiz_prompt` if it has one), the three `levels` with their `modules`, `lessons` and `placement` bank, `warnings`,
+`workspace` (the organization, among those the actor administers, the copy belongs in, or `null` for their own
+space) and a `version`. A lesson's `content` is its lesson content object, or `null` with a `problem`
+(`text_only`: not blocks, `no_content`) when the editor can't open it. Errors: `403 forbidden` when the actor
+may not use the editor or may not open this course, `404 not_found`.
+
+**`GET /v1/courses?actor={user_id}`** answers `200 {"protocol", "courses": [{"id","title","status","organizations","updated_at"}]}`:
+the courses that actor may open. `schemas/course-list.schema.json`.
+
+*Who may open a course* is the host's decision: a platform-wide admin, or an admin of one of the organizations the
+course is linked to. A creator writes their own courses in the editor and doesn't open others'.
+
+**`version`** is a stamp of everything a publish can overwrite (title, summary, cover, status, structure, lessons'
+content, placement, learner choices). It must be the same for the same content on every read, and different when
+any of that changes; timestamps, organization links and anything a publish leaves alone must not move it. The
+editor stores it and sends it back as `course.base_version` on its next publish. If the host's course no longer has
+that version, the host answers **`409 conflict`** with an error at `["course","base_version"]` and writes nothing; the
+editor then offers to refresh its copy from the host. A successful publish answers the new `version`. A package
+without `base_version` is never checked.
+
+**Opening from the host.** The launch token may carry `open_course`, a course id the person asked to open (for
+instance from a button on the host's course page). A host puts it in only when that person may open the course; the
+editor then brings the course across (if it hasn't got it) and opens it, instead of the usual landing page.
+
 ## Errors
 
 Every error is an RFC 9457 problem (`Content-Type: application/problem+json`,
@@ -522,7 +567,8 @@ lesson, section and block to fix.
 
 ## Conformance
 
-`npm run verify-host` runs the protocol checks against a live host:
+`npm run verify-host` runs the protocol checks against a live host (including, when it advertises `adopt`, the 2.6 course
+endpoints and the `base_version` check):
 
 ```bash
 PLATFORM_URL=http://localhost:3000/api/integrations/course-editor \

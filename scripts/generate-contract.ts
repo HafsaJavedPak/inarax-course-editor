@@ -21,6 +21,8 @@ import { signRequest, stringToSign } from "../lib/protocol/signing"
 import {
   AssetSchema,
   CoursePackageSchema,
+  CourseListingSchema,
+  CourseSnapshotSchema,
   DeleteResultSchema,
   LessonContentSchema,
   ManifestSchema,
@@ -38,6 +40,8 @@ const SCHEMAS: Record<string, z.ZodType> = {
   "lesson-content": LessonContentSchema,
   "publish-result": PublishResultSchema,
   "delete-result": DeleteResultSchema,
+  "course-snapshot": CourseSnapshotSchema,
+  "course-list": CourseListingSchema,
   asset: AssetSchema,
   manifest: ManifestSchema,
   problem: ProblemSchema,

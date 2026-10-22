@@ -75,6 +75,8 @@ export type LaunchClaims = {
   orgs?: LaunchOrg[]
   /** 1.2: a platform admin, who reviews courses in personal workspaces. Absent from 1.1 hosts. */
   staff?: boolean
+  /** 2.6: a course on the host (its id) the person asked to open; the editor brings it across if it doesn't have it. */
+  open_course?: string
   iat: number
   exp: number
   /** Unique per token; the editor refuses one it has seen. */
@@ -86,7 +88,7 @@ const b64url = (data: Buffer | string) => Buffer.from(data).toString("base64url"
 /** Mints a token. Hosts implement the same; the editor uses it in tests and fixtures. */
 export function signLaunchToken(
   claims: Pick<LaunchClaims, "iss" | "sub" | "email" | "name" | "role"> &
-    Partial<Pick<LaunchClaims, "orgs" | "staff" | "iat" | "exp" | "jti">>,
+    Partial<Pick<LaunchClaims, "orgs" | "staff" | "open_course" | "iat" | "exp" | "jti">>,
   key: SigningKey,
   now = Math.floor(Date.now() / 1000),
 ): string {
@@ -134,6 +136,9 @@ export async function verifyLaunchToken(token: string, hostKeys: KeyResolver, no
   }
   if (claims.orgs !== undefined && !validOrgs(claims.orgs)) return { ok: false, reason: "malformed orgs" }
   if (claims.staff !== undefined && typeof claims.staff !== "boolean") return { ok: false, reason: "malformed staff" }
+  if (claims.open_course !== undefined && (typeof claims.open_course !== "string" || !/^[0-9a-f-]{36}$/i.test(claims.open_course))) {
+    return { ok: false, reason: "malformed open_course" }
+  }
   if (!Number.isInteger(claims.iat) || !Number.isInteger(claims.exp)) return { ok: false, reason: "malformed times" }
   if (claims.exp - claims.iat > MAX_LAUNCH_TOKEN_LIFETIME_SECONDS || claims.exp <= claims.iat) return { ok: false, reason: "lifetime too long" }
   if (claims.iat > now + LAUNCH_CLOCK_SKEW_SECONDS) return { ok: false, reason: "issued in the future" }
