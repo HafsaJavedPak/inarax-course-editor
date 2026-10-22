@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/FillBlankBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/FillBlankBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -158,7 +158,7 @@ function BlankPill({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={toggle}
-        className={`inline-flex items-center gap-1.5 rounded-lg border-[1.5px] px-2.5 py-0.5 align-baseline text-[15px] font-semibold leading-7 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${tone} ${
+        className={`inline-flex items-center gap-1.5 rounded-lg border-[1.5px] px-2.5 py-0.5 align-baseline text-[14px] font-semibold leading-7 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${tone} ${
           disabled ? "cursor-default" : "cursor-pointer"
         }`}
       >
@@ -290,7 +290,7 @@ export default function FillBlankBlock({
         belongs at the end of. Each control is then wrapped in <bdi>, which isolates it so
         its own direction cannot interact with the runs either side of it.
       */}
-      <div dir={direction} className="text-[16px] leading-[2.6] text-slate-800">
+      <div dir={direction} className="text-[14px] leading-[2.6] text-slate-800">
         {parts.map((part, i) => {
           if (part.type === "text") return <span key={i}>{part.value}</span>;
           const blank = block.data.blanks.find((b) => b.id === part.id);

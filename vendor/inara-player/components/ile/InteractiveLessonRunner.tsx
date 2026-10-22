@@ -1,9 +1,11 @@
 "use client";
 
-// Copied from inara-next components/ile/InteractiveLessonRunner.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/InteractiveLessonRunner.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import BlockRenderer from "@/vendor/inara-player/components/ile/BlockRenderer";
+import McqSequence from "@/vendor/inara-player/components/ile/McqSequence";
+import { groupSectionBlocks } from "@/vendor/inara-player/lib/ile/block-groups";
 import SectionStepper from "@/vendor/inara-player/components/ile/SectionStepper";
 import LessonIntro, { hasLessonIntro } from "@/vendor/inara-player/components/ile/LessonIntro";
 import { useLessonProgress } from "@/vendor/inara-player/components/ile/LessonProgressProvider";
@@ -20,8 +22,11 @@ export default function InteractiveLessonRunner({
   showSectionNav = false,
   lessonTitle,
   moduleTitle,
+  positionLabel,
 }: {
   showSectionNav?: boolean;
+  /** e.g. "Module 1 · Lesson 2", shown above each part. */
+  positionLabel?: string;
   /** Shown in the intro header on the first part, when the lesson has an intro. */
   lessonTitle?: string;
   moduleTitle?: string;
@@ -63,6 +68,7 @@ export default function InteractiveLessonRunner({
         maxReachedSectionIndex={maxReachedSectionIndex}
         completedBlockIds={completedBlockIds}
         onSelectSection={goToSection}
+        positionLabel={positionLabel}
       />
 
       <div className="mx-auto w-full max-w-[44rem]">
@@ -70,16 +76,20 @@ export default function InteractiveLessonRunner({
           <LessonIntro content={content} lessonTitle={lessonTitle} moduleTitle={moduleTitle} />
         ) : null}
         {currentSection.title ? (
-          <h2 className="font-montserrat !mb-8 !mt-0 !text-[length:clamp(26px,3vw,34px)] font-bold leading-[1.2] tracking-tight text-slate-900">
+          <h2 className="font-montserrat !mb-8 !mt-0 !text-[length:clamp(18px,2.2vw,22px)] font-bold leading-[1.2] tracking-tight text-slate-900">
             {currentSection.title}
           </h2>
         ) : null}
 
         {/* Uniform gap between blocks; `space-y` replaces each block's own vertical margins. */}
         <div className="space-y-10">
-          {currentSection.blocks.map((block) => (
-            <BlockRenderer key={block.id} block={block} />
-          ))}
+          {groupSectionBlocks(currentSection.blocks).map((group) =>
+            group.kind === "mcqs" ? (
+              <McqSequence key={group.blocks[0].id} blocks={group.blocks} />
+            ) : (
+              <BlockRenderer key={group.block.id} block={group.block} />
+            ),
+          )}
         </div>
       </div>
 

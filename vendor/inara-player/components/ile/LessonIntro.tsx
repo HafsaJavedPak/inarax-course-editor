@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/LessonIntro.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/LessonIntro.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import { Check, Clock, Layers, Star } from "lucide-react";
@@ -39,13 +39,13 @@ export default function LessonIntro({
         </div>
       ) : null}
       {lessonTitle ? (
-        <h1 className="font-montserrat !m-0 !text-[length:clamp(32px,4vw,44px)] font-extrabold leading-[1.1] tracking-tight text-slate-900">
+        <h1 className="font-montserrat !m-0 !text-[length:clamp(22px,2.6vw,28px)] font-extrabold leading-[1.1] tracking-tight text-slate-900">
           {lessonTitle}
         </h1>
       ) : null}
-      {subtitle ? <div className="text-[19px] leading-[1.6] text-slate-600">{subtitle}</div> : null}
+      {subtitle ? <div className="text-[15px] leading-[1.6] text-slate-600">{subtitle}</div> : null}
 
-      <div className="flex flex-wrap gap-x-6 gap-y-2 text-[15px] font-medium text-slate-600">
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-[14px] font-medium text-slate-600">
         {minutes ? (
           <span className="flex items-center gap-2">
             <Clock className="h-[18px] w-[18px] text-slate-400" aria-hidden />
@@ -67,7 +67,7 @@ export default function LessonIntro({
           <div className="mb-3 text-base font-bold text-slate-900">{t("introObjectives")}</div>
           <ul className="!m-0 flex list-none flex-col gap-2.5 !p-0">
             {objectives.map((objective, i) => (
-              <li key={i} className="!m-0 flex items-start gap-3 text-[17px] leading-[1.5] text-slate-800">
+              <li key={i} className="!m-0 flex items-start gap-3 text-[14px] leading-[1.5] text-slate-800">
                 <Check className="mt-1 h-[18px] w-[18px] shrink-0 text-indigo-600" strokeWidth={2.5} aria-hidden />
                 <span>{objective}</span>
               </li>

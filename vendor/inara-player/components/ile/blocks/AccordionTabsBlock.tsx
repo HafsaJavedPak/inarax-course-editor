@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/AccordionTabsBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/AccordionTabsBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import { useEffect, useId, useState } from "react";
@@ -112,7 +112,7 @@ export default function AccordionTabsBlock({
                   >
                     {index + 1}
                   </span>
-                  <span className="font-montserrat flex-1 text-[16px] font-bold leading-snug text-slate-900">
+                  <span className="font-montserrat flex-1 text-[14px] font-bold leading-snug text-slate-900">
                     {section.title}
                   </span>
                   <ChevronDown
@@ -136,7 +136,7 @@ export default function AccordionTabsBlock({
                     inert={!isOpen}
                     className="overflow-hidden"
                   >
-                    <div className="px-4 pb-5 sm:ps-[3.875rem] [&_.break-words>*:first-child]:!mt-0 [&_.break-words>*:last-child]:!mb-0 [&_.break-words>.md-paragraph:last-child]:!mb-0 [&_.break-words>.md-paragraph]:!mb-4 [&_.lesson-callout:first-child]:!mt-0 [&_.lesson-callout]:!my-5 [&_.md-paragraph]:!text-[16px] [&_.md-paragraph]:!leading-[1.7] [&_li]:!text-[16px]">
+                    <div className="px-4 pb-5 sm:ps-[3.875rem] [&_.break-words>*:first-child]:!mt-0 [&_.break-words>*:last-child]:!mb-0 [&_.break-words>.md-paragraph:last-child]:!mb-0 [&_.break-words>.md-paragraph]:!mb-4 [&_.lesson-callout:first-child]:!mt-0 [&_.lesson-callout]:!my-5 [&_.md-paragraph]:!text-[14px] [&_.md-paragraph]:!leading-[1.7] [&_li]:!text-[14px]">
                       <Markdown content={section.body} variant="lesson" />
                     </div>
                   </div>
@@ -199,7 +199,7 @@ export default function AccordionTabsBlock({
           role="tabpanel"
           aria-labelledby={`${domId}-tab-${block.data.sections.indexOf(activeSection)}`}
           tabIndex={0}
-          className="mt-4 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 [&_.break-words>*:first-child]:!mt-0 [&_.break-words>*:last-child]:!mb-0 [&_.break-words>.md-paragraph:last-child]:!mb-0 [&_.break-words>.md-paragraph]:!mb-4 [&_.lesson-callout:first-child]:!mt-0 [&_.lesson-callout]:!my-5 [&_.md-paragraph]:!text-[16px] [&_.md-paragraph]:!leading-[1.7] [&_li]:!text-[16px]"
+          className="mt-4 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 [&_.break-words>*:first-child]:!mt-0 [&_.break-words>*:last-child]:!mb-0 [&_.break-words>.md-paragraph:last-child]:!mb-0 [&_.break-words>.md-paragraph]:!mb-4 [&_.lesson-callout:first-child]:!mt-0 [&_.lesson-callout]:!my-5 [&_.md-paragraph]:!text-[14px] [&_.md-paragraph]:!leading-[1.7] [&_li]:!text-[14px]"
         >
           <Markdown content={activeSection.body} variant="lesson" />
         </div>

@@ -1,4 +1,4 @@
-// Copied from inara-next lib/ile/scoring.ts @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next lib/ile/scoring.ts @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 /**
@@ -27,6 +27,7 @@ const GRADED_TYPES = new Set<LessonBlock["type"]>([
   "categorization",
   "sequencing",
   "fill_blank",
+  "color_sort",
 ]);
 
 /** Explore blocks are completion-only — flat points, no first-try concept. */
@@ -41,6 +42,26 @@ const EXPLORE_TYPES = new Set<LessonBlock["type"]>([
   "image_switcher",
   "vertical_roadmap",
   "add_next_layer",
+  "context_window_slider",
+  "cliche_highlighter",
+  "tokenizer_playground",
+  "be_the_model",
+  "workflow_simulator",
+  "agent_simulator",
+  "dual_chatbot",
+  "data_sandbox",
+  "checklist",
+  "free_response",
+  "quick_question",
+  "tile_reveal",
+  "slider_set",
+  "scenario_sort",
+  "spot_the_errors",
+  "decision_tree",
+  "prompt_builder",
+  "filter_compare",
+  "train_model",
+  "meaning_map",
 ]);
 
 /**
@@ -60,7 +81,8 @@ export type BlockResult = {
   /** Attempts taken; 1 = first try. Client-asserted (first-try multiplier only). */
   attempts?: number;
   /** The learner's submitted answer, validated server-side. Shape per block type:
-   *  mcq {selectedIndex}, sequencing {order}, categorization {placements}, fill_blank {selections}. */
+   *  mcq {selectedIndex}, sequencing {order}, categorization {placements}, fill_blank {selections},
+   *  color_sort {picks}. */
   answer?: unknown;
 };
 
@@ -75,6 +97,8 @@ export function blockMaxPoints(block: LessonBlock): number {
       return block.data.points_per_match * block.data.items.length;
     case "fill_blank":
       return block.data.points_per_blank * block.data.blanks.length;
+    case "color_sort":
+      return block.data.points_per_item * block.data.items.length;
     case "accordion_tabs":
       return isUnscoredTabs(block) ? 0 : EXPLORE_POINTS;
     case "image_hotspot":
@@ -87,12 +111,35 @@ export function blockMaxPoints(block: LessonBlock): number {
     case "format_switcher":
     case "image_switcher":
     case "add_next_layer":
+    case "context_window_slider":
+    case "cliche_highlighter":
+    case "tokenizer_playground":
+    case "be_the_model":
+    case "workflow_simulator":
+    case "agent_simulator":
+    case "dual_chatbot":
+    case "data_sandbox":
+    case "checklist":
+    case "free_response":
+    case "train_model":
+    case "quick_question":
+    case "slider_set":
+    case "scenario_sort":
+    case "spot_the_errors":
+    case "decision_tree":
+    case "prompt_builder":
       return EXPLORE_POINTS;
     case "vertical_roadmap":
-      return 0; // optional reading, like tabs: never gates, so never scores
+    case "filter_compare":
+    case "meaning_map":
+    case "tile_reveal":
+      return 0; // optional, like tabs: never gates, so never scores
     case "rich_text":
     case "image":
     case "workplace_scenario":
+    case "card_grid":
+    case "compare_columns":
+    case "project_export":
       return 0;
   }
 }
@@ -148,6 +195,11 @@ export function isBlockAnswerCorrect(block: LessonBlock, answer: unknown): boole
       const selections = (answer as { selections?: Record<string, unknown> })?.selections;
       if (!selections || typeof selections !== "object") return false;
       return block.data.blanks.every((b) => selections[b.id] === b.correct_index);
+    }
+    case "color_sort": {
+      const picks = (answer as { picks?: Record<string, unknown> })?.picks;
+      if (!picks || typeof picks !== "object") return false;
+      return block.data.items.every((item) => picks[item.id] === item.category_id);
     }
     default:
       return false; // non-graded blocks have no answer key

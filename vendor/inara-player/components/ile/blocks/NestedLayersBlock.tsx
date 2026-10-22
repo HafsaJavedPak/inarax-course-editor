@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/NestedLayersBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/NestedLayersBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import { useEffect, useState, type ReactNode } from "react";
@@ -101,15 +101,23 @@ export default function NestedLayersBlock({
       hint={t("layersHint")}
       complete={complete}
     >
-      <div className="mx-auto w-full max-w-lg">{renderLayer(0)}</div>
-      {activeLayer ? (
-        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-5" aria-live="polite">
-          <div className="font-montserrat text-[18px] font-bold leading-snug text-slate-900">{activeLayer.label}</div>
-          <div className={BLOCK_BODY_TEXT}>
-            <Markdown content={activeLayer.body} variant="lesson" />
+      {/* Layers and the explanation sit side by side from `md` up, so the learner reads about
+          a layer without losing sight of where it sits; a phone stacks them. */}
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:items-start">
+        <div className="mx-auto w-full max-w-lg">{renderLayer(0)}</div>
+        {activeLayer ? (
+          <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-5 md:sticky md:top-20" aria-live="polite">
+            <div className="font-montserrat text-[15px] font-bold leading-snug text-slate-900">{activeLayer.label}</div>
+            <div className={BLOCK_BODY_TEXT}>
+              <Markdown content={activeLayer.body} variant="lesson" />
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <div className="hidden rounded-xl border border-dashed border-slate-200 p-5 text-sm text-slate-500 md:block">
+            {t("layersHint")}
+          </div>
+        )}
+      </div>
     </BlockCard>
   );
 }

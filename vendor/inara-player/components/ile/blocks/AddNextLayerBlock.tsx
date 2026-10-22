@@ -1,9 +1,9 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/AddNextLayerBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/AddNextLayerBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import Markdown from "@/vendor/inara-player/components/Markdown";
 import type { LessonBlock } from "@/vendor/inara-player/lib/lesson-content/schema";
@@ -11,6 +11,7 @@ import { useLessonProgress } from "@/vendor/inara-player/components/ile/LessonPr
 import { useLessonText } from "@/vendor/inara-player/components/ile/LessonLanguageProvider";
 import { BlockCard } from "@/vendor/inara-player/components/ile/blocks/BlockCard";
 import { EXPLORE_POINTS } from "@/vendor/inara-player/lib/ile/scoring";
+import { COLOR_CLASSES } from "@/vendor/inara-player/lib/ile/palette";
 
 /** One shade per level, foundation lightest, so the stack reads as built upward. */
 const LEVEL_STYLES = [
@@ -40,6 +41,13 @@ export default function AddNextLayerBlock({
   const shown = complete ? layers.length : added;
   // Tapping a layer in the stack re-reads it; adding a layer jumps to the new one.
   const [selected, setSelected] = useState<number | null>(null);
+  // The layer that was just added animates in. Kept apart from `complete` so the final
+  // layer still animates when adding it finishes the block.
+  const [justAdded, setJustAdded] = useState<number | null>(null);
+  const layerButtons = useRef<Array<HTMLButtonElement | null>>([]);
+  // Adding the final layer removes the Add button, so focus moves to the new layer
+  // instead of dropping to the page.
+  const focusAfterAdd = useRef<number | null>(null);
   const current = Math.min(selected ?? shown - 1, shown - 1);
   const layer = layers[current];
 
@@ -47,9 +55,19 @@ export default function AddNextLayerBlock({
     if (added >= layers.length && !complete) markBlockComplete(block.id);
   }, [added, layers.length, block.id, complete, markBlockComplete]);
 
+  useEffect(() => {
+    if (focusAfterAdd.current === null) return;
+    layerButtons.current[focusAfterAdd.current]?.focus();
+    focusAfterAdd.current = null;
+  }, [added]);
+
   const addNext = () => {
-    setAdded((n) => Math.min(n + 1, layers.length));
+    const next = Math.min(added + 1, layers.length);
+    if (next === added) return;
+    setAdded(next);
+    setJustAdded(next - 1);
     setSelected(null);
+    if (next === layers.length) focusAfterAdd.current = next - 1;
   };
 
   return (
@@ -65,13 +83,19 @@ export default function AddNextLayerBlock({
             }
             const isCurrent = i === current;
             return (
-              <li key={l.id} className={i === shown - 1 && i > 0 && !complete ? "ile-layer-in" : undefined}>
+              <li key={l.id} className={i === justAdded ? "ile-layer-in" : undefined}>
                 <button
+                  ref={(el) => {
+                    layerButtons.current[i] = el;
+                  }}
                   type="button"
                   onClick={() => setSelected(i)}
                   aria-pressed={isCurrent}
                   aria-label={`${t("layerOf", { n: i + 1, total: layers.length })}: ${l.label}`}
-                  className={`flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-semibold transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${levelStyle(i)} ${
+                  className={`flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm font-semibold transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
+                    // An author's colour per layer, else shades of indigo, darker as the stack grows.
+                    l.color ? `border ${COLOR_CLASSES[l.color].tint}` : levelStyle(i)
+                  } ${
                     isCurrent ? "shadow-md ring-2 ring-indigo-600 ring-offset-2" : "hover:shadow-sm"
                   }`}
                 >
@@ -88,8 +112,8 @@ export default function AddNextLayerBlock({
             <div className="text-xs font-bold uppercase tracking-[0.1em] text-indigo-600 rtl:tracking-normal">
               {t("layerOf", { n: current + 1, total: layers.length })}
             </div>
-            <div className="font-montserrat text-[19px] font-bold leading-snug text-slate-900">{layer.label}</div>
-            <div className="[&_.break-words>*:first-child]:!mt-0 [&_.break-words>*:last-child]:!mb-0 [&_.break-words>.md-paragraph:last-child]:!mb-0 [&_.break-words>.md-paragraph]:!mb-4 [&_.md-paragraph]:!text-[16px] [&_.md-paragraph]:!leading-[1.65] [&_li]:!text-[16px]">
+            <div className="font-montserrat text-[16px] font-bold leading-snug text-slate-900">{layer.label}</div>
+            <div className="[&_.break-words>*:first-child]:!mt-0 [&_.break-words>*:last-child]:!mb-0 [&_.break-words>.md-paragraph:last-child]:!mb-0 [&_.break-words>.md-paragraph]:!mb-4 [&_.md-paragraph]:!text-[14px] [&_.md-paragraph]:!leading-[1.65] [&_li]:!text-[14px]">
               <Markdown content={layer.body} variant="lesson" />
             </div>
             {shown < layers.length ? (
