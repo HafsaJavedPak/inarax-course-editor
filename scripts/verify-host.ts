@@ -17,6 +17,8 @@ import { generateSigningKey, parsePrivateKeys, type SigningKey } from "../lib/pr
 import { signRequest, sha256Hex } from "../lib/protocol/signing"
 import {
   AssetSchema,
+  CourseListingSchema,
+  CourseSnapshotSchema,
   DeleteResultSchema,
   ManifestSchema,
   PROTOCOL_VERSION,
@@ -286,6 +288,55 @@ async function main() {
   await check("an unsupported protocol major is refused with 422 unsupported_protocol", async () => {
     expectProblem(await send("PUT", coursePath, { json: { ...pkg, protocol: "99.0" } }), 422, "unsupported_protocol")
   })
+
+  if (m.capabilities.adopt) {
+    console.log("\nOpening platform courses (protocol 2.6)")
+    const actor = encodeURIComponent(actorId)
+    let version = ""
+    await check("GET /v1/courses/{id}?actor= answers the course as a snapshot, with the lessons we published", async () => {
+      const res = await send("GET", `${coursePath}?actor=${actor}`)
+      expect(res.status === 200, `HTTP ${res.status}: ${JSON.stringify(res.body).slice(0, 400)}`)
+      const snapshot = CourseSnapshotSchema.parse(res.body)
+      expect(snapshot.course.id === courseId, "wrong course id")
+      const sent = pkg.levels.flatMap((l) => l.modules.flatMap((mod) => mod.lessons.filter((x) => x.content !== null).length)).reduce((a, b) => a + b, 0)
+      const got = snapshot.levels.flatMap((l) => l.modules.flatMap((mod) => mod.lessons.filter((x) => x.content !== null).length)).reduce((a, b) => a + b, 0)
+      expect(got === sent, `expected ${sent} lessons with content, got ${got}`)
+      version = snapshot.version
+      return `version ${version}`
+    })
+    await check("the version doesn't change while nothing does", async () => {
+      const again = CourseSnapshotSchema.parse((await send("GET", `${coursePath}?actor=${actor}`)).body)
+      expect(again.version === version, "the version moved without a change")
+    })
+    await check("GET /v1/courses?actor= lists the course", async () => {
+      const res = await send("GET", `/v1/courses?actor=${actor}`)
+      expect(res.status === 200, `HTTP ${res.status}`)
+      expect(CourseListingSchema.parse(res.body).courses.some((c) => c.id === courseId), "the course isn't listed")
+    })
+    await check("an actor who may not use the editor is refused with 403, on both", async () => {
+      const nobody = encodeURIComponent(id())
+      expectProblem(await send("GET", `${coursePath}?actor=${nobody}`), 403, "forbidden")
+      expectProblem(await send("GET", `/v1/courses?actor=${nobody}`), 403, "forbidden")
+    })
+    await check("an unknown course is 404", async () => {
+      expectProblem(await send("GET", `/v1/courses/${id()}?actor=${actor}`), 404, "not_found")
+    })
+    await check("a publish with an out-of-date base_version is refused with 409 conflict, writing nothing", async () => {
+      expectProblem(await send("PUT", coursePath, { json: { ...pkg, course: { ...pkg.course, base_version: "out-of-date" } } }), 409, "conflict")
+      const after = CourseSnapshotSchema.parse((await send("GET", `${coursePath}?actor=${actor}`)).body)
+      expect(after.version === version, "a refused publish changed the course")
+    })
+    await check("a publish with the current base_version is accepted, and answers the new version", async () => {
+      const res = await send("PUT", coursePath, { json: { ...pkg, course: { ...pkg.course, base_version: version } } })
+      expect(res.status === 200, `HTTP ${res.status}: ${JSON.stringify(res.body).slice(0, 400)}`)
+      const result = PublishResultSchema.parse(res.body)
+      expect(typeof result.version === "string", "a host that offers 2.6 courses answers `version` on publish")
+      const now = CourseSnapshotSchema.parse((await send("GET", `${coursePath}?actor=${actor}`)).body)
+      expect(result.version === now.version, "the version in the publish answer isn't the course's version")
+    })
+  } else {
+    console.log("\nOpening platform courses: host doesn't offer it (capabilities.adopt); skipped")
+  }
 
   if (m.capabilities.delete) {
     await check("DELETE removes the course", async () => {
