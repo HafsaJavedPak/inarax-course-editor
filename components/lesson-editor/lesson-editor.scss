@@ -1353,3 +1353,81 @@ button.le-issue-count {
   font-size: 0.6875rem;
   line-height: 1.25rem;
 }
+
+// Generic form fields (spec-form.tsx)
+.le-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--le-success);
+  }
+}
+
+.le-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 1rem;
+}
+
+.le-group {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--le-border);
+  border-radius: var(--tt-radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-width: 0;
+
+  legend {
+    padding: 0 0.375rem;
+  }
+}
+
+.le-item-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.le-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  white-space: pre;
+}
+
+.le-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--le-border);
+  border-radius: var(--tt-radius-md);
+}
+
+.le-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+
+  th,
+  td {
+    padding: 0.25rem 0.375rem;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--le-muted);
+  }
+
+  td input {
+    min-width: 6rem;
+  }
+}

@@ -42,6 +42,8 @@ import {
   McqBlock,
   SequencingBlock,
 } from "@/components/lesson-editor/blocks/assess-blocks"
+import { BlockSpecForm } from "@/components/lesson-editor/spec-form"
+import { SPEC_FORMS } from "@/lib/block-forms"
 import { BlockPreview } from "@/components/lesson-editor/block-preview"
 
 import {
@@ -96,6 +98,9 @@ function BlockBody({
       return <ImageSwitcherBlock data={block.data} onChange={(data) => onChange({ ...block, data })} />
     case "vertical_roadmap":
       return <VerticalRoadmapBlock data={block.data} onChange={(data) => onChange({ ...block, data })} />
+    default:
+      // Everything else is drawn from its form definition (lib/block-forms).
+      return <BlockSpecForm fields={SPEC_FORMS[block.type].fields} data={block.data} onChange={(data) => onChange({ ...block, data })} />
   }
 }
 

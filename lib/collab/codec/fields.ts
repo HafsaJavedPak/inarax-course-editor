@@ -14,7 +14,7 @@
 // block types (e.g. the platform's workplace_scenario) keep their data as one
 // plain value and travel through untouched.
 
-import type { AuthorableBlockType } from "@/lib/lesson"
+import type { BlockDataMap } from "@/lib/lesson"
 
 export type ItemSpec = { text?: readonly string[] }
 
@@ -29,7 +29,7 @@ export type BlockSpec = {
 
 const labelBody: ItemSpec = { text: ["label", "body"] }
 
-export const BLOCK_FIELDS: Readonly<Record<AuthorableBlockType, BlockSpec>> = {
+export const BLOCK_FIELDS: Readonly<Record<keyof BlockDataMap, BlockSpec>> = {
   rich_text: { text: ["markdown"] },
   image: { text: ["alt", "caption"] },
   image_hotspot: { text: ["alt", "caption"], lists: { hotspots: { text: ["title", "info"] } } },
@@ -52,5 +52,5 @@ export const BLOCK_FIELDS: Readonly<Record<AuthorableBlockType, BlockSpec>> = {
 }
 
 export function blockSpec(type: string): BlockSpec | null {
-  return Object.hasOwn(BLOCK_FIELDS, type) ? BLOCK_FIELDS[type as AuthorableBlockType] : null
+  return Object.hasOwn(BLOCK_FIELDS, type) ? BLOCK_FIELDS[type as keyof BlockDataMap] : null
 }

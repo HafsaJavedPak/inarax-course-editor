@@ -5,6 +5,8 @@
 // Block data
 // ---------------------------------------------------------------------------
 
+import { SPEC_BLOCK_TYPES, SPEC_FORMS, isSpecBlockType, type Rec, type SpecBlockType } from "@/lib/block-forms"
+
 export type RichTextData = { markdown: string }
 export type ImageData = { image_url: string; alt: string; caption?: string }
 export type Hotspot = { id: string; x: number; y: number; title: string; info: string }
@@ -127,10 +129,15 @@ export type BlockDataMap = {
   add_next_layer: AddNextLayerData
 }
 
-export type AuthorableBlockType = keyof BlockDataMap
+/** Blocks edited through a generic form (lib/block-forms): their data is plain JSON checked against the host schema. */
+export type SpecBlockDataMap = { [K in SpecBlockType]: Rec }
+
+export type AuthorableBlockType = keyof BlockDataMap | SpecBlockType
+
+type AllBlockData = BlockDataMap & SpecBlockDataMap
 
 export type TypedBlock<T extends AuthorableBlockType = AuthorableBlockType> = {
-  [K in T]: { id: string; type: K; personalized: boolean; data: BlockDataMap[K] }
+  [K in T]: { id: string; type: K; personalized: boolean; data: AllBlockData[K] }
 }[T]
 
 /**
@@ -170,12 +177,11 @@ export type LessonSummary = {
 // Block catalog
 // ---------------------------------------------------------------------------
 
-export type BlockCategory = "content" | "explore" | "assess"
+export type BlockCategory = "content" | "explore" | "assess" | "personalized"
 
-export const BLOCK_CATALOG: Record<
-  AuthorableBlockType,
-  { label: string; category: BlockCategory; description: string }
-> = {
+type CatalogEntry = { label: string; category: BlockCategory; description: string }
+
+const HAND_WRITTEN_CATALOG: Record<keyof BlockDataMap, CatalogEntry> = {
   rich_text: { label: "Rich text", category: "content", description: "Prose, lists, code, tables" },
   image: { label: "Image", category: "content", description: "A hosted image with caption" },
   image_hotspot: { label: "Image hotspots", category: "explore", description: "Image with optional pins to click" },
@@ -194,10 +200,18 @@ export const BLOCK_CATALOG: Record<
   fill_blank: { label: "Fill in the blanks", category: "assess", description: "Choose the missing words" },
 }
 
+export const BLOCK_CATALOG: Record<AuthorableBlockType, CatalogEntry> = {
+  ...HAND_WRITTEN_CATALOG,
+  ...(Object.fromEntries(
+    SPEC_BLOCK_TYPES.map((type) => [type, { label: SPEC_FORMS[type].label, category: SPEC_FORMS[type].category, description: SPEC_FORMS[type].description }]),
+  ) as Record<SpecBlockType, CatalogEntry>),
+}
+
 export const BLOCK_CATEGORIES: { id: BlockCategory; label: string }[] = [
   { id: "content", label: "Content" },
   { id: "explore", label: "Explore" },
   { id: "assess", label: "Assess" },
+  { id: "personalized", label: "Personalized" },
 ]
 
 export function isAuthorableBlock(block: LessonBlock): block is TypedBlock {
@@ -236,8 +250,9 @@ export function nextInnerId(prefix: string, existing: { id: string }[]) {
 const labeledItems = (prefix: string, count: number): LabeledItem[] =>
   Array.from({ length: count }, (_, i) => ({ id: `${prefix}${i + 1}`, label: "", body: "" }))
 
-export function createBlockData<T extends AuthorableBlockType>(type: T): BlockDataMap[T] {
-  const data: { [K in AuthorableBlockType]: () => BlockDataMap[K] } = {
+export function createBlockData<T extends AuthorableBlockType>(type: T): AllBlockData[T] {
+  if (isSpecBlockType(type)) return SPEC_FORMS[type].starter() as AllBlockData[T]
+  const data: { [K in keyof BlockDataMap]: () => BlockDataMap[K] } = {
     rich_text: () => ({ markdown: "" }),
     image: () => ({ image_url: "", alt: "", caption: "" }),
     image_hotspot: () => ({ image_url: "", alt: "", caption: "", hotspots: [] }),
@@ -287,11 +302,12 @@ export function createBlockData<T extends AuthorableBlockType>(type: T): BlockDa
       ],
     }),
   }
-  return data[type]() as BlockDataMap[T]
+  return data[type as keyof BlockDataMap]() as AllBlockData[T]
 }
 
 export function createBlock<T extends AuthorableBlockType>(type: T): TypedBlock<T> {
-  return { id: newId(), type, personalized: false, data: createBlockData(type) } as TypedBlock<T>
+  const personalized = isSpecBlockType(type) && "personalized" in SPEC_FORMS[type] && SPEC_FORMS[type].personalized === true
+  return { id: newId(), type, personalized, data: createBlockData(type) } as TypedBlock<T>
 }
 
 export function createSection(title = ""): LessonSection {
@@ -346,7 +362,8 @@ export function parseLesson(input: unknown): { lesson: Lesson } | { error: strin
       if (isAuthorableBlock(b)) {
         // Fill in missing fields so the form editors can rely on the shape.
         const data = b.data && typeof b.data === "object" ? b.data : {}
-        blocks.push({ ...b, id, data: { ...createBlockData(b.type), ...data } } as TypedBlock)
+        // Form-driven blocks keep their data exactly as stored: their starter has blank required fields that must not be added to real content.
+        blocks.push({ ...b, id, data: isSpecBlockType(b.type) ? data : { ...createBlockData(b.type), ...data } } as TypedBlock)
       } else {
         blocks.push({ ...b, id })
       }

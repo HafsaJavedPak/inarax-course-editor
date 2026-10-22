@@ -1,6 +1,8 @@
 // Content validation, following json-guide/engine-reference.md §8 plus the
 // authoring-prompt quality rules that can be checked mechanically.
 
+import { SPEC_FORMS, isSpecBlockType } from "@/lib/block-forms"
+import { validateSpecBlock } from "@/lib/block-forms/validate"
 import {
   BLOCK_LIMITS,
   isAuthorableBlock,
@@ -39,6 +41,8 @@ function hasDuplicates(ids: string[]) {
 /** Messages for one block; ids and cross-block uniqueness are checked by validateLesson. */
 export function validateBlock(block: TypedBlock): { level: LessonIssue["level"]; message: string }[] {
   const issues: { level: LessonIssue["level"]; message: string }[] = []
+  if (isSpecBlockType(block.type)) return validateSpecBlock(block, SPEC_FORMS[block.type].fields)
+
   const error = (message: string) => issues.push({ level: "error", message })
   const warn = (message: string) => issues.push({ level: "warning", message })
 
@@ -271,7 +275,8 @@ export function validateLesson(lesson: Lesson): LessonIssue[] {
       blockIds.add(block.id)
 
       if (!isAuthorableBlock(block)) continue
-      if (block.personalized) add("error", '"personalized" must be false', block.id)
+      const mayBePersonalized = isSpecBlockType(block.type) && "personalized" in SPEC_FORMS[block.type]
+      if (block.personalized && !mayBePersonalized) add("error", '"personalized" must be false', block.id)
       for (const issue of validateBlock(block)) add(issue.level, issue.message, block.id)
     }
   }
