@@ -1,12 +1,12 @@
 // Before the first publish: would publishing the imported course change anything on the platform?
 //
-//   npm run verify:link -- course.json --owner <host users.uuid>
+//   npm run verify:link -- course.json --owner <host users.uuid> [--write-package package.json]
 //
 // Converts the export the same way import:host-course does, builds the exact package the editor would send, and
 // compares it with the export (lib/host-import/verify.ts). Reads the export only; no network, no database.
 // Exit code 0: a publish would change nothing but the review status. 1: it would rewrite something.
 
-import { readFileSync } from "node:fs"
+import { readFileSync, writeFileSync } from "node:fs"
 
 import { ConvertError, convertHostCourse } from "../lib/host-import/convert"
 import { compareWithPlatform } from "../lib/host-import/verify"
@@ -15,6 +15,8 @@ import { buildPackage } from "../lib/platform/adapters/protocol/package"
 
 const args = process.argv.slice(2)
 const file = args.find((a, i) => !a.startsWith("--") && !(i > 0 && args[i - 1].startsWith("--")))
+const packageAt = args.indexOf("--write-package")
+const packageOut = packageAt === -1 ? undefined : args[packageAt + 1]
 const ownerAt = args.indexOf("--owner")
 const owner = ownerAt === -1 ? undefined : args[ownerAt + 1]
 if (!file || !owner || !isUuid(owner)) {
@@ -26,6 +28,10 @@ try {
   const exported = JSON.parse(readFileSync(file, "utf8"))
   const { course, lessons } = convertHostCourse(exported, { ownerId: owner })
   const pkg = buildPackage({ course, lessons, coverImageUrl: course.cover_image_url, actor: { id: owner } })
+  if (packageOut) {
+    writeFileSync(packageOut, JSON.stringify(pkg))
+    console.log(`Wrote the package to ${packageOut}`)
+  }
   const differences = compareWithPlatform(pkg, exported)
   const changes = differences.filter((d) => d.kind !== "info")
 
