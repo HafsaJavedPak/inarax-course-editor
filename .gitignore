@@ -43,7 +43,7 @@ next-env.d.ts
 
 
 # ignoe uploaded images
-uploads/
+/uploads/
 
 # Which platform record belongs to which editor record; specific to this
 # installation and platform environment (lib/platform/link-store.ts)
