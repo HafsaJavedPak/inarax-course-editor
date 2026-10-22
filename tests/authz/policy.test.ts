@@ -68,6 +68,41 @@ describe("course access", () => {
     expect(allowed(otherCreator, orgCourse)).toEqual([])
   })
 
+  describe("a course taken from the platform has no author, so its organization's admins and platform staff stand in for one", () => {
+    const adopted = { ...orgCourse, ownerId: "whoever-opened-it", adopted: true }
+    const otherOrgAdmin = subject("admin-elsewhere", [{ tenantId: "elsewhere", role: "admin" }])
+
+    it("an admin of its organization does everything the owner does, plus reviews", () => {
+      expect(allowed(orgAdmin, adopted)).toEqual(without("course.release"))
+    })
+
+    it("so does platform staff, except that they alone release it", () => {
+      expect(allowed(staff, adopted)).toEqual(ALL)
+    })
+
+    it("the admin who opened it and a second admin of the organization have the same rights", () => {
+      const opener = subject("whoever-opened-it", [{ tenantId: ORG, role: "admin" }])
+      expect(allowed(opener, adopted)).toEqual(allowed(orgAdmin, adopted))
+    })
+
+    it("an admin of another organization, a creator in this one and a stranger get nothing", () => {
+      expect(allowed(otherOrgAdmin, adopted)).toEqual([])
+      expect(allowed(otherCreator, adopted)).toEqual([])
+      expect(allowed(stranger, adopted)).toEqual([])
+    })
+
+    it("the same admin still doesn't submit or restore a course a creator wrote (writing and reviewing stay apart)", () => {
+      const written = { ...orgCourse, adopted: false }
+      expect(can(orgAdmin, "course.submit", written)).toBe(false)
+      expect(can(orgAdmin, "course.restore", written)).toBe(false)
+      expect(can(orgAdmin, "course.ai.apply", written)).toBe(false)
+    })
+
+    it("the sample course is never anyone's to submit, whatever it is marked", () => {
+      expect(can(orgAdmin, "course.submit", { ...adopted, sample: true })).toBe(false)
+    })
+  })
+
   it("platform staff review and publish organizations' courses too", () => {
     expect(allowed(staff, orgCourse)).toEqual(without("course.submit", "course.restore", "course.ai.apply"))
   })

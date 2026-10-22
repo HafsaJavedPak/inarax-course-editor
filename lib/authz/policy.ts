@@ -42,6 +42,12 @@ export type CourseResource = {
   departmentId?: string | null
   /** A copy of the sample course (lib/sample-course). */
   sample?: boolean
+  /**
+   * Taken from the platform rather than written here. It has no author, so the admins of its organization and platform
+   * staff act as its authors: edit, submit, restore, use AI on it, as the owner does. Courses written in the editor keep
+   * the separation between writing and reviewing.
+   */
+  adopted?: boolean
 }
 
 export type CourseAction =
@@ -112,7 +118,8 @@ export function grantRole(subject: Subject, course: CourseResource): GrantRole |
 
 export function can(subject: Subject, action: CourseAction, course: CourseResource): boolean {
   const role = roleIn(subject, course.tenantId)
-  const author = isAuthor(subject, course, role)
+  // A course taken from the platform has no author: its organization's admins and platform staff stand in for one.
+  const author = isAuthor(subject, course, role) || (course.adopted === true && !course.sample && (isOrgAdmin(course, role) || subject.staff))
   const reviewer = isReviewer(subject, course, role)
   const grant = grantRole(subject, course)
   // A manager of the course's department oversees it: reads it, sees its history, shares it, takes it down.

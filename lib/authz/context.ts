@@ -65,6 +65,7 @@ export function resourceOf(record: CourseRecord): CourseResource {
     ownerId: record.course.owner_id,
     departmentId: record.departmentId,
     sample: record.sample,
+    adopted: record.adopted,
   }
 }
 
