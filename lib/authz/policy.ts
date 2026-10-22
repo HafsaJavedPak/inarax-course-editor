@@ -64,6 +64,8 @@ export type CourseAction =
   | "course.restore"
   /** Change the course's settings (title, summary, pricing, limits …); editors change only the outline and lessons. */
   | "course.settings"
+  /** Decide whether the organization sponsors the course (its members enroll without purchasing). An org admin in their org, or platform staff; organization courses only. */
+  | "course.sponsor"
   /** Give, change and remove access (grants, invitations). */
   | "course.share"
   /** Request an AI job for this course (generate text, images …). The output is only a suggestion. */
@@ -143,6 +145,9 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
     case "course.takedown":
       // The author, a co-owner, an org admin in their org, a manager of its department, or platform staff.
       return (author || coOwner || isOrgAdmin(course, role) || manager || subject.staff) && !course.sample
+    case "course.sponsor":
+      // Only an organization has members to sponsor; the decision is the admin's (or the platform's), never the author's.
+      return (isOrgAdmin(course, role) || subject.staff) && course.tenantKind === "org" && !course.sample
     case "course.share":
       // The owner, a co-owner, an org admin in their org, a manager of its department, or platform staff.
       return author || coOwner || isOrgAdmin(course, role) || manager || subject.staff

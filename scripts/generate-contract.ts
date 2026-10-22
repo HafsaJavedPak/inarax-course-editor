@@ -123,6 +123,7 @@ function examplePackage(): CoursePackage {
       pricing: { type: "free" },
       organization: null,
       department: null,
+      access_mode: "individual",
       metadata: { domains: ["Generic"], future_goals: ["AI Engineer"], departments: ["Generic"], require_future_goal: false },
     },
     review: { status: "in_review", note: null, changes: [] },

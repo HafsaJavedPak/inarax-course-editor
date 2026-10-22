@@ -36,6 +36,15 @@ describe("buildPackage", () => {
     expect(org.course.organization).toEqual({ host_org_id: "acme-uuid" })
   })
 
+  it("sends the access mode only when it was decided (protocol 2.4)", () => {
+    const build = (accessMode?: "sponsored" | "individual" | null) =>
+      buildPackage({ course: sampleCourse(), lessons: new Map(), coverImageUrl: null, actor: { id: "me" }, accessMode })
+    expect("access_mode" in build().course).toBe(false)
+    expect("access_mode" in build(null).course).toBe(false)
+    expect(build("sponsored").course.access_mode).toBe("sponsored")
+    expect(CoursePackageSchema.safeParse(build("individual")).success).toBe(true)
+  })
+
   it("sends null content for lessons it has nothing to publish for", () => {
     const pkg = buildPackage({ course: sampleCourse(), lessons: new Map(), coverImageUrl: null, actor: { id: "me" } })
     expect(pkg.levels[0].modules[0].lessons[0].content).toBeNull()

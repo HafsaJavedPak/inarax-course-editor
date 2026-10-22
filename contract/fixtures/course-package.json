@@ -1,5 +1,5 @@
 {
-  "protocol": "2.3",
+  "protocol": "2.4",
   "course": {
     "id": "7f72e600-3425-490c-b530-0179826cb206",
     "revision": 12,
@@ -18,6 +18,7 @@
     },
     "organization": null,
     "department": null,
+    "access_mode": "individual",
     "metadata": {
       "domains": [
         "Generic"

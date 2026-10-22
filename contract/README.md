@@ -1,4 +1,4 @@
-# Course Publishing Protocol, version 2.3
+# Course Publishing Protocol, version 2.4
 
 How the course editor publishes courses to a host platform. The editor owns this
 contract; a host implements it in whatever stack it uses (Next.js, FastAPI, …).
@@ -18,6 +18,11 @@ The source of truth is `lib/protocol/wire.ts` (messages) and
 generated files and `npm run contract:check` fails when they are stale.
 `npm run verify-host` checks a running host against this document (see
 [Conformance](#conformance)).
+
+**Changes in 2.4:** `course.access_mode` (`sponsored` or `individual`) says whether the
+organization sponsors the course, so its members enroll without purchasing (see
+[Access mode](#access-mode)). It is optional; a package without it leaves the host's setting
+as it is, so either side can be upgraded first.
 
 **Changes in 2.3:** `course.metadata` carries what a learner picks when they start the
 course (see [Learner choices](#learner-choices)). It is optional; a package without
@@ -348,6 +353,13 @@ editor refuses to submit one without a domain (or, when goals are required, with
 add the labels they lack, remove labels that are no longer listed, and keep (with a warning) any
 label a learner has already chosen. `departments` here are the learner's own team choice, not the
 organization departments of `course.department`.
+
+<a id="access-mode"></a>**Access mode (2.4).** `course.access_mode` is `"sponsored"` or `"individual"`.
+It is decided in the editor by an organization admin of the course's organization or by platform
+staff, and only for organization courses (a personal course never sends it). A host applies it to
+the course's link with the package's organization (inara-next: `course_organizations.access_mode`),
+on every publish, including while a live course holds back other edits, since it is not content.
+Absent means "leave the host's setting as it is".
 
 **Publishing (2.2; `approved` in 2.0 and 2.1).** When a package says
 `review.status = published`, hosts should make the course live for the

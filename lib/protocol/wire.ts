@@ -11,7 +11,7 @@
 import { z } from "zod"
 
 /** major.minor. A host accepts any package whose major it supports. */
-export const PROTOCOL_VERSION = "2.3"
+export const PROTOCOL_VERSION = "2.4"
 export const PROTOCOL_MAJOR = 2
 
 /** Paths, relative to the host's base URL (PLATFORM_URL). */
@@ -147,6 +147,12 @@ export const CoursePackageSchema = z.object({
      * publisher may use it. Since 2.2.
      */
     department: z.object({ host_department_id: z.string().min(1).max(200) }).nullable().default(null),
+    /**
+     * Whether the organization sponsors the course, so its members enroll without purchasing
+     * (decided in the editor by an org admin or platform staff). Since 2.4; absent: the host's
+     * setting stays as it is.
+     */
+    access_mode: z.enum(["sponsored", "individual"]).optional(),
     /**
      * What a learner picks when they start the course: the domains and future goals they
      * choose from, optional departments, and whether a future goal is required. The host

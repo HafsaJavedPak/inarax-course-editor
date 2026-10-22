@@ -7,6 +7,7 @@
 // implement in any language. No host-specific code lives in the editor.
 
 import type { Course } from "@/lib/course"
+import type { AccessMode } from "@/lib/db/schema"
 import type { Lesson } from "@/lib/lesson"
 
 export type PublishInput = {
@@ -20,6 +21,8 @@ export type PublishInput = {
   organization?: { hostOrgId: string } | null
   /** The host department of the course; null or missing for the whole organization. */
   department?: { hostDepartmentId: string } | null
+  /** Whether the organization sponsors the course; null or missing: not decided, the host keeps its setting. */
+  accessMode?: AccessMode | null
 }
 
 export type PublishSummary = {

@@ -65,6 +65,8 @@ export async function publishAndRecord(ctx: RequestContext, course: Course): Pro
       actor: { id: actor.id, name: actor.name, email: actor.email },
       organization,
       department,
+      // Sponsorship is an organization's: a personal course never sends it.
+      accessMode: organization ? (record?.accessMode ?? null) : null,
     })
     const summary = { ...published, warnings: [...skipped, ...published.warnings] }
     const publishedAt = new Date().toISOString()

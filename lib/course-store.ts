@@ -7,7 +7,7 @@ import { CourseSchema, getCourseLimits, type Course, type ReviewStage } from "@/
 import { pipelineTenant, stageAwaited } from "@/lib/review/pipeline"
 import { afterEdit, isLocked, type ReviewDecision, type WorkflowResult } from "@/lib/course-status"
 import { getLessonStats, validateCourse, type LessonStats } from "@/lib/course-validate"
-import { collabDocuments, collabUpdates, courses, lessons, tenants, type RevisionKind, type TenantKind, type TenantSettings } from "@/lib/db/schema"
+import { collabDocuments, collabUpdates, courses, lessons, tenants, type AccessMode, type RevisionKind, type TenantKind, type TenantSettings } from "@/lib/db/schema"
 import { tenantFilter, withTenantScope, type Scope, type Tx } from "@/lib/db/tenant-db"
 import { findLessonRef } from "@/lib/course"
 import { notifyAccess } from "@/lib/collab/notify"
@@ -56,6 +56,8 @@ export type CourseRecord = {
   sample: boolean
   /** The department it belongs to, or null for the whole organization (lib/authz/departments.ts). */
   departmentId: string | null
+  /** Whether the organization sponsors it; null when nobody has decided (lib/authz/policy.ts course.sponsor). */
+  accessMode: AccessMode | null
 }
 
 export class RevisionConflictError extends Error {}
@@ -112,6 +114,7 @@ const recordColumns = {
   publishedRevisionId: courses.publishedRevisionId,
   sample: courses.sample,
   departmentId: courses.departmentId,
+  accessMode: courses.accessMode,
 }
 
 const toRecord = (row: Omit<CourseRecord, "course"> & { data: Course }): CourseRecord => ({
@@ -126,6 +129,7 @@ const toRecord = (row: Omit<CourseRecord, "course"> & { data: Course }): CourseR
   publishedRevisionId: row.publishedRevisionId,
   sample: row.sample,
   departmentId: row.departmentId,
+  accessMode: row.accessMode,
 })
 
 /** The indexed columns kept next to the full course. */
@@ -270,6 +274,18 @@ export async function setCourseDepartment(scope: Scope, courseId: string, depart
     const updated = await tx
       .update(courses)
       .set({ departmentId })
+      .where(and(eq(courses.id, courseId), tenantFilter(courses, scope)))
+      .returning({ id: courses.id })
+    return updated.length > 0
+  })
+}
+
+/** Sets whether the organization sponsors the course. Callers check `course.sponsor`; like the department it isn't content, so no revision. */
+export async function setCourseAccessMode(scope: Scope, courseId: string, accessMode: AccessMode): Promise<boolean> {
+  return withTenantScope(scope, async (tx) => {
+    const updated = await tx
+      .update(courses)
+      .set({ accessMode })
       .where(and(eq(courses.id, courseId), tenantFilter(courses, scope)))
       .returning({ id: courses.id })
     return updated.length > 0
