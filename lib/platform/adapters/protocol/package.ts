@@ -46,6 +46,7 @@ export function buildPackage({ course, lessons, coverImageUrl, actor, organizati
       pricing: course.pricing,
       organization: organization ? { host_org_id: organization.hostOrgId } : null,
       department: department ? { host_department_id: department.hostDepartmentId } : null,
+      ...(course.placement_size !== undefined ? { placement_size: course.placement_size } : {}),
       ...(accessMode ? { access_mode: accessMode } : {}),
       ...(course.metadata ? { metadata: course.metadata } : {}),
     },

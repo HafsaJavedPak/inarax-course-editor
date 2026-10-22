@@ -22,7 +22,9 @@ generated files and `npm run contract:check` fails when they are stale.
 **Changes in 2.4:** `course.access_mode` (`sponsored` or `individual`) says whether the
 organization sponsors the course, so its members enroll without purchasing (see
 [Access mode](#access-mode)). It is optional; a package without it leaves the host's setting
-as it is, so either side can be upgraded first.
+as it is, so either side can be upgraded first. `course.placement_size` (integer 1 to 50, or
+`null`) is how many placement questions a learner is asked per level, drawn at random from the
+level's bank (see [Placement size](#placement-size)); also optional.
 
 **Changes in 2.3:** `course.metadata` carries what a learner picks when they start the
 course (see [Learner choices](#learner-choices)). It is optional; a package without
@@ -360,6 +362,12 @@ staff, and only for organization courses (a personal course never sends it). A h
 the course's link with the package's organization (inara-next: `course_organizations.access_mode`),
 on every publish, including while a live course holds back other edits, since it is not content.
 Absent means "leave the host's setting as it is".
+
+<a id="placement-size"></a>**Placement size (2.4).** `course.placement_size` is the number of questions each
+learner is asked per level, drawn at random from that level's bank (`levels[].placement`). `null`
+means the platform's default (inara-next: 5, as 1 easy + 2 medium + 2 hard, or 10 medium/hard for
+`professional` courses); absent means "leave the host's setting as it is". The editor requires each
+level with lessons to have at least that many questions. A host with a smaller bank asks what it has.
 
 **Publishing (2.2; `approved` in 2.0 and 2.1).** When a package says
 `review.status = published`, hosts should make the course live for the

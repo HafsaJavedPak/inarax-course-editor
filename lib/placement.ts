@@ -62,7 +62,8 @@ export function placementLevels(course: Pick<Course, "levels">): LevelId[] {
  * Everything that stops the course's placement quiz from being complete.
  * These block submitting for review (via validateCourse) and accepting.
  */
-export function placementIssues(course: Pick<Course, "levels">): PlacementIssue[] {
+export function placementIssues(course: Pick<Course, "levels" | "placement_size">): PlacementIssue[] {
+  const size = course.placement_size ?? null
   const issues: PlacementIssue[] = []
   for (const levelId of placementLevels(course)) {
     const label = LEVELS.find((l) => l.id === levelId)!.label
@@ -76,6 +77,13 @@ export function placementIssues(course: Pick<Course, "levels">): PlacementIssue[
     })
 
     const counts = countByDifficulty(questions)
+    if (size !== null) {
+      // The course sets its own number: the bank needs at least that many, of any difficulty.
+      if (questions.length < size) {
+        issues.push({ levelId, message: `${label} placement quiz needs at least ${size} questions; add ${size - questions.length} more` })
+      }
+      continue
+    }
     const missing = PLACEMENT_DIFFICULTIES.filter((d) => counts[d] < PLACEMENT_MINIMUM[d])
     if (missing.length) {
       issues.push({
@@ -89,8 +97,9 @@ export function placementIssues(course: Pick<Course, "levels">): PlacementIssue[
   return issues
 }
 
-/** "1 easy, 2 medium and 2 hard" */
-export function requirementText(): string {
+/** "1 easy, 2 medium and 2 hard", or "N" when the course sets its own number of questions per level. */
+export function requirementText(size: number | null = null): string {
+  if (size !== null) return String(size)
   const parts = PLACEMENT_DIFFICULTIES.map((d) => `${PLACEMENT_MINIMUM[d]} ${d}`)
   return `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`
 }

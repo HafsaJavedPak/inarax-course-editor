@@ -19,6 +19,7 @@
     "organization": null,
     "department": null,
     "access_mode": "individual",
+    "placement_size": null,
     "metadata": {
       "domains": [
         "Generic"

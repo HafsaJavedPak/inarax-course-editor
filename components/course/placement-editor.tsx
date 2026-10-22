@@ -32,12 +32,15 @@ export function PlacementEditor({
   levelId,
   questions,
   required,
+  size,
   dispatch,
 }: {
   levelId: LevelId
   questions: PlacementQuestion[]
   /** False when the level has no lessons yet (no one can be placed there). */
   required: boolean
+  /** The course's own questions per level (course settings); null: the platform default, with its split by difficulty. */
+  size: number | null
   dispatch: (action: CourseAction) => void
 }) {
   const label = LEVELS.find((l) => l.id === levelId)!.label
@@ -45,21 +48,30 @@ export function PlacementEditor({
 
   // The difficulty still furthest below its minimum, for the next new question.
   const nextDifficulty =
-    PLACEMENT_DIFFICULTIES.find((d) => counts[d] < PLACEMENT_MINIMUM[d]) ?? ("medium" as PlacementDifficulty)
+    size !== null
+      ? ("medium" as PlacementDifficulty)
+      : (PLACEMENT_DIFFICULTIES.find((d) => counts[d] < PLACEMENT_MINIMUM[d]) ?? ("medium" as PlacementDifficulty))
 
   return (
     <section className="course-level placement" aria-label={`${label} placement quiz`}>
       <header className="placement-head">
         <p className="le-muted">
           Learners answer these before starting the course, so they start at the right level. Each level with lessons
-          needs at least {requirementText()} questions; add more so learners don&apos;t all see the same ones.
+          needs at least {requirementText(size)} questions; add more so learners don&apos;t all see the same ones.
+          {size !== null && " Each learner is asked this many per level, drawn at random from the bank (change it in the course settings)."}
         </p>
-        <ul className="placement-targets" aria-label="Questions by difficulty">
-          {PLACEMENT_DIFFICULTIES.map((d) => (
-            <li key={d} data-met={counts[d] >= PLACEMENT_MINIMUM[d]}>
-              {DIFFICULTY_LABELS[d]} {counts[d]}/{PLACEMENT_MINIMUM[d]}
+        <ul className="placement-targets" aria-label={size !== null ? "Questions in the bank" : "Questions by difficulty"}>
+          {size !== null ? (
+            <li data-met={questions.length >= size}>
+              Questions {questions.length}/{size}
             </li>
-          ))}
+          ) : (
+            PLACEMENT_DIFFICULTIES.map((d) => (
+              <li key={d} data-met={counts[d] >= PLACEMENT_MINIMUM[d]}>
+                {DIFFICULTY_LABELS[d]} {counts[d]}/{PLACEMENT_MINIMUM[d]}
+              </li>
+            ))
+          )}
         </ul>
         {!required && (
           <p className="le-muted">{label} has no lessons yet, so its placement quiz isn&apos;t required.</p>

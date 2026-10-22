@@ -397,6 +397,7 @@ export function CourseBuilder({
               levelId={selectedLevel}
               questions={level.placement ?? []}
               required={placementRequired}
+              size={course.placement_size ?? null}
               dispatch={dispatch}
             />
           ) : (

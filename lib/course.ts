@@ -173,6 +173,12 @@ export function metadataProblems(metadata: CourseMetadata | null): string[] {
 }
 
 /**
+ * How many placement questions a learner is asked per level, drawn at random from the level's
+ * bank. null or absent: the platform's default (5; the host asks 1 easy + 2 medium + 2 hard).
+ */
+export const PLACEMENT_SIZE = { default: 5, min: 1, max: 50 } as const
+
+/**
  * Course info as stored. Reading saved courses uses these rules, so tightening
  * the form's rules below never makes an existing course file unreadable.
  */
@@ -192,6 +198,8 @@ export const CourseInfoStoredSchema = z.object({
   limits: CourseLimitsSchema.nullable().default(null),
   /** null = never set (courses made before this existed): nothing is sent to the host, and submitting asks for it. */
   metadata: CourseMetadataSchema.nullable().default(null),
+  /** Questions asked per level in the placement quiz; null/absent = the platform default (PLACEMENT_SIZE). Optional, so courses made before it keep the same content hash. */
+  placement_size: z.number().int().min(PLACEMENT_SIZE.min).max(PLACEMENT_SIZE.max).nullable().optional(),
 })
 export type CourseInfo = z.infer<typeof CourseInfoStoredSchema>
 
@@ -250,6 +258,13 @@ export const CourseInfoSchema = CourseInfoStoredSchema.extend({
       }),
     ])
     .default({ type: "free" }),
+  placement_size: z
+    .number({ error: "Enter a whole number" })
+    .int("Use a whole number")
+    .min(PLACEMENT_SIZE.min, `Ask at least ${PLACEMENT_SIZE.min} question per level`)
+    .max(PLACEMENT_SIZE.max, `Ask at most ${PLACEMENT_SIZE.max} questions per level`)
+    .nullable()
+    .optional(),
   metadata: CourseMetadataSchema.extend({
     domains: metadataList.min(1, "Add at least one domain"),
   })

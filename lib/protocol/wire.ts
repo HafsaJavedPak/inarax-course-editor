@@ -154,6 +154,12 @@ export const CoursePackageSchema = z.object({
      */
     access_mode: z.enum(["sponsored", "individual"]).optional(),
     /**
+     * How many placement questions a learner is asked per level, drawn at random from the
+     * level's bank. null: the platform's default; absent: the host's setting stays as it is.
+     * Since 2.4.
+     */
+    placement_size: z.number().int().min(1).max(50).nullable().optional(),
+    /**
      * What a learner picks when they start the course: the domains and future goals they
      * choose from, optional departments, and whether a future goal is required. The host
      * adds the labels it lacks and removes the ones no longer listed (unless a learner

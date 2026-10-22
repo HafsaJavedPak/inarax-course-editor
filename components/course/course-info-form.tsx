@@ -11,6 +11,7 @@ import {
   COURSE_TEXT_LIMITS,
   CourseInfoSchema,
   DEFAULT_COURSE_METADATA,
+  PLACEMENT_SIZE,
   METADATA_LIMITS,
   defaultLimits,
   fillLimits,
@@ -54,6 +55,7 @@ const FIELD_NAMES: [string, string][] = [
   ["metadata.domains", "Domains"],
   ["metadata.future_goals", "Future goals"],
   ["metadata.departments", "Departments"],
+  ["placement_size", "Placement questions per level"],
   ["pricing.amount", "Price"],
   ["pricing.currency", "Currency"],
   ["limits.words", "Words per lesson"],
@@ -423,6 +425,37 @@ export function CourseInfoForm({
           addLabel="Add department"
           itemLabel="department"
         />
+      </Card>
+
+      <Card
+        title="Placement quiz"
+        optional
+        description="Before starting, each learner answers a few questions per level so they start at the right level."
+      >
+        <div className="cf-field" {...field("placement_size")}>
+          <label className="cf-inline-number">
+            <Input
+              type="number"
+              min={PLACEMENT_SIZE.min}
+              max={PLACEMENT_SIZE.max}
+              step={1}
+              placeholder={String(PLACEMENT_SIZE.default)}
+              aria-label="Placement questions per level"
+              aria-invalid={errorFor("placement_size") ? true : undefined}
+              value={info.placement_size ?? ""}
+              onChange={(e) => set("placement_size", e.target.value === "" ? null : Number(e.target.value))}
+            />
+            questions per level
+          </label>
+          {errorFor("placement_size") ? (
+            <span className="le-field-error">{errorFor("placement_size")}</span>
+          ) : (
+            <span className="le-field-hint">
+              Drawn at random from each level&apos;s bank. Leave empty for the platform default ({PLACEMENT_SIZE.default}: 1 easy,
+              2 medium and 2 hard). Each level&apos;s bank needs at least this many questions.
+            </span>
+          )}
+        </div>
       </Card>
 
       <Card title="Pricing" optional description="Leave as free if you haven't decided.">
