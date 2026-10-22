@@ -5,6 +5,7 @@ import { courseForRoute, resourceOf } from "@/lib/authz/context"
 import { can } from "@/lib/authz/policy"
 import { ChangeRequestSchema } from "@/lib/course"
 import { allowMoreResubmissions, canReview, review, takedown } from "@/lib/course-status"
+import { decisionStage, pipelineTenant, stageAction } from "@/lib/review/pipeline"
 import { decideReview, takeDownCourse, updateCourseWorkflow } from "@/lib/course-store"
 import { publishedWorkflowResponse } from "@/lib/workflow-response"
 
@@ -22,7 +23,9 @@ const ReviewSchema = z.object({
 const forbidden = () => Response.json({ error: "You don't have permission to do that." }, { status: 403 })
 
 /**
- * A reviewer's decision (platform staff only). A decision must name the
+ * A reviewer's decision, at the stage the course is waiting on (lib/review/pipeline.ts):
+ * the organization stage is decided by an org admin of that organization (or platform
+ * staff), the platform stage by platform staff. A decision must name the
  * `revision_id` and `content_hash` the reviewer saw; if the course changed
  * since, nothing is decided (409 content_changed). `allow_resubmissions` lifts
  * the resubmission limit after a rejection; `takedown` takes a live course
@@ -56,10 +59,15 @@ export async function POST(request: Request, ctx: RouteContext<"/api/courses/[co
     return publishedWorkflowResponse(access, await takeDownCourse(access, courseId, access.userId, (current) => takedown(current, access.userId, note)))
   }
 
-  if (!canReview(record.course.status)) {
-    return Response.json({ error: "This course isn't waiting for a review decision." }, { status: 409 })
-  }
-  if (!can(access, "course.review", resource)) return forbidden()
+  const tenant = pipelineTenant({ kind: record.tenantKind, settings: record.settings })
+  const stage = canReview(record.course.status)
+    ? decisionStage(record.course.status, tenant, {
+        review: can(access, "course.review", resource),
+        release: can(access, "course.release", resource),
+      })
+    : null
+  if (!stage) return Response.json({ error: "This course isn't waiting for a review decision." }, { status: 409 })
+  if (!can(access, stageAction(stage), resource)) return forbidden()
 
   // Live edits not yet stored go first: decisions and submissions are about the stored content.
   try {
@@ -76,8 +84,8 @@ export async function POST(request: Request, ctx: RouteContext<"/api/courses/[co
   }
   return publishedWorkflowResponse(
     access,
-    await decideReview(access, courseId, access.userId, decision, { revisionId: revision_id, contentHash: content_hash }, (current) =>
-      review(current, decision, note, changes, access.userId),
+    await decideReview(access, courseId, access.userId, stage, decision, { revisionId: revision_id, contentHash: content_hash }, (current) =>
+      review(current, stage, tenant, decision, note, changes, access.userId),
     ),
   )
 }

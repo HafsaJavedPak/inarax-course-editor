@@ -20,7 +20,7 @@ const course = createCourse(
     length_hours: 1,
     lesson_size: "short",
     pricing: { type: "free" },
-    limits: null,
+    limits: null, metadata: null,
   },
   "alice",
 )
@@ -95,9 +95,16 @@ describe("the OpenAI adapter", () => {
 })
 
 describe("providerFor", () => {
-  it("knows the fake and openai adapters", () => {
-    expect(knownProviders().sort()).toEqual(["fake", "openai"])
+  it("knows the fake, openai and openai-media adapters", () => {
+    expect(knownProviders().sort()).toEqual(["fake", "openai", "openai-media"])
     expect(providerFor("fake").name).toBe("fake")
+  })
+
+  it("needs its own key for openai-media (the text key is for another service)", () => {
+    expect(() => providerFor("openai-media")).toThrow(/OPENAI_MEDIA_API_KEY/)
+    process.env.OPENAI_MEDIA_API_KEY = "sk-media"
+    expect(providerFor("openai-media").kinds).toEqual(["image", "video"])
+    delete process.env.OPENAI_MEDIA_API_KEY
   })
 
   it("needs a key for openai, and builds it when one is set", () => {

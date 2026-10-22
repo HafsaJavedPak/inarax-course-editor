@@ -2,6 +2,7 @@ import {
   DEFAULT_WORDS_PER_MINUTE,
   getCourseLimits,
   LEVELS,
+  metadataProblems,
   titleKey,
   type Course,
   type CourseLimits,
@@ -176,6 +177,7 @@ export function validateCourse(
     return { levelId: id, targetMinutes, plannedMinutes, status, lessons: lessonCount, sections: sectionCount }
   })
 
+  issues.push(...metadataProblems(course.metadata ?? null).map((message): CourseIssue => ({ level: "error", message })))
   issues.push(...duplicateTitleIssues(course))
   issues.push(
     ...placementIssues(course).map((i): CourseIssue => ({ level: "error", message: i.message, target: { levelId: i.levelId, placement: true } })),

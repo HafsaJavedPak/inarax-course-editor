@@ -33,8 +33,8 @@ export function authConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig {
 }
 
 /**
- * Paths anyone may load: signing in and out, the health check, images
- * (learners load them), the editor's public keys, and the host's signed events
+ * Paths anyone may load: signing in and out, the health check, the sample
+ * course's pictures, the editor's public keys, and the host's signed events
  * (they carry their own signature).
  */
 const PUBLIC_PREFIXES = [
@@ -42,7 +42,6 @@ const PUBLIC_PREFIXES = [
   "/sign-out",
   "/signed-out",
   "/health",
-  "/uploads/",
   "/images/",
   "/_next/",
   "/favicon",

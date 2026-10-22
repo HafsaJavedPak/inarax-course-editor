@@ -137,6 +137,42 @@ export const PricingSchema = z.discriminatedUnion("type", [
 ])
 
 /**
+ * What a learner picks when they start the course (the host's "Course metadata"): the
+ * domains and future goals they choose from, and optional departments. Domains are
+ * required: without one the learner can never save their choices and the course never
+ * opens for them. Future goals are required only while `require_future_goal` is on
+ * (then at least one must be listed). Departments are always optional.
+ */
+export const METADATA_LIMITS = { label: 100, perList: 20 } as const
+const metadataList = z.array(z.string().trim().min(1).max(METADATA_LIMITS.label)).max(METADATA_LIMITS.perList)
+export const CourseMetadataSchema = z.object({
+  domains: metadataList,
+  future_goals: metadataList,
+  departments: metadataList,
+  require_future_goal: z.boolean(),
+})
+export type CourseMetadata = z.infer<typeof CourseMetadataSchema>
+
+/** What a new course starts with: the same choices the platform's own courses are set up with. */
+export const DEFAULT_COURSE_METADATA: CourseMetadata = {
+  domains: ["Generic"],
+  future_goals: [],
+  departments: ["Generic"],
+  require_future_goal: false,
+}
+
+/** Problems that stop a course from being submitted (empty when the learner choices are usable). */
+export function metadataProblems(metadata: CourseMetadata | null): string[] {
+  if (!metadata) return ["Learner choices aren't set. Open the course settings and add at least one domain"]
+  const problems: string[] = []
+  if (metadata.domains.length === 0) problems.push("Add at least one domain in the course settings. Learners must pick one to start")
+  if (metadata.require_future_goal && metadata.future_goals.length === 0) {
+    problems.push("Add at least one future goal, or turn off “Require a future goal” in the course settings")
+  }
+  return problems
+}
+
+/**
  * Course info as stored. Reading saved courses uses these rules, so tightening
  * the form's rules below never makes an existing course file unreadable.
  */
@@ -154,6 +190,8 @@ export const CourseInfoStoredSchema = z.object({
   pricing: PricingSchema.default({ type: "free" }),
   /** null = use the defaults for `lesson_size` (courses created before limits existed). */
   limits: CourseLimitsSchema.nullable().default(null),
+  /** null = never set (courses made before this existed): nothing is sent to the host, and submitting asks for it. */
+  metadata: CourseMetadataSchema.nullable().default(null),
 })
 export type CourseInfo = z.infer<typeof CourseInfoStoredSchema>
 
@@ -212,19 +250,37 @@ export const CourseInfoSchema = CourseInfoStoredSchema.extend({
       }),
     ])
     .default({ type: "free" }),
+  metadata: CourseMetadataSchema.extend({
+    domains: metadataList.min(1, "Add at least one domain"),
+  })
+    .superRefine((m, ctx) => {
+      if (m.require_future_goal && m.future_goals.length === 0) {
+        ctx.addIssue({ code: "custom", path: ["future_goals"], message: "Add a future goal, or turn off “Require a future goal”" })
+      }
+      for (const key of ["domains", "future_goals", "departments"] as const) {
+        const seen = new Set<string>()
+        m[key].forEach((label, i) => {
+          const k = label.toLowerCase()
+          if (seen.has(k)) ctx.addIssue({ code: "custom", path: [key, i], message: "Each entry must be different" })
+          seen.add(k)
+        })
+      }
+    })
+    .default(DEFAULT_COURSE_METADATA),
 })
 
 // ---------------------------------------------------------------------------
 // Review workflow
 // ---------------------------------------------------------------------------
 
-export const COURSE_STATUSES = ["draft", "in_review", "changes_requested", "approved", "rejected", "unpublished"] as const
+export const COURSE_STATUSES = ["draft", "in_review", "changes_requested", "approved", "published", "rejected", "unpublished"] as const
 export type CourseStatus = (typeof COURSE_STATUSES)[number]
 
 /**
- * Review has two stages. The organization stage (org admin) makes a course
- * live for its organization; the platform stage (platform staff) publishes it
- * to the main host. Personal-workspace courses have only the platform stage.
+ * Review has two stages (which of them a course goes through: lib/review/pipeline.ts).
+ * The organization stage is decided by an org admin; the platform stage by platform
+ * admins. `approved` is a course that passed its organization and waits for the
+ * platform; `published` is live.
  */
 export const REVIEW_STAGES = ["org", "platform"] as const
 export type ReviewStage = (typeof REVIEW_STAGES)[number]

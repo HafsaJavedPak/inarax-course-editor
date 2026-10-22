@@ -18,6 +18,8 @@ export type PublishInput = {
   actor: { id: string; name?: string | null; email?: string | null }
   /** The host organization of the course's workspace; null for a personal workspace. */
   organization?: { hostOrgId: string } | null
+  /** The host department of the course; null or missing for the whole organization. */
+  department?: { hostDepartmentId: string } | null
 }
 
 export type PublishSummary = {

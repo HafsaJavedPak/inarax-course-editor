@@ -57,7 +57,7 @@ function content(edit: (c: CourseContent) => void = () => {}): CourseContent {
       length_hours: 2,
       lesson_size: "short",
       pricing: { type: "free" },
-      limits: null,
+      limits: null, metadata: null,
     },
     "alice",
   )

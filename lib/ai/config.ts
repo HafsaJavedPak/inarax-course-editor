@@ -10,6 +10,7 @@ import type { AiJobKind } from "@/lib/db/schema"
 //   AI_WORKER_URL        the worker's private address (wake / estimate)
 //   AI_WORKER_SECRET     bearer for /internal/ai/* (shared app ↔ worker)
 //   AI_DEFAULT_PROVIDER  which adapter a new job uses (default: fake, until C3)
+//   AI_MEDIA_PROVIDER    which adapter makes images and video (default: openai-media when OPENAI_MEDIA_API_KEY is set)
 //   AI_MONTHLY_BUDGET    default monthly USD cap per workspace (unset = unlimited)
 //   AI_CONCURRENCY       default max live AI jobs per workspace (default: 4)
 
@@ -27,7 +28,7 @@ export type AiConfig = {
   defaultConcurrency: number
 }
 
-export function aiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
+export function aiConfig(env: Readonly<Record<string, string | undefined>> = process.env): AiConfig {
   const enabled = ["1", "true", "on", "yes"].includes((env.AI_ENABLED ?? "").trim().toLowerCase())
   // An empty/unset value means "default", not zero — Number("") is 0, so treat it as absent.
   const budgetRaw = (env.AI_MONTHLY_BUDGET ?? "").trim()
@@ -51,7 +52,15 @@ export function aiEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
 /** The prompt-format version a job is generated with; recorded so provenance stays meaningful as prompts change. */
 export const PROMPT_VERSION = "v1"
 
-/** Which provider a new job of this kind uses. Routing policy (C3) will replace this. */
-export function providerForKind(_kind: AiJobKind, env: NodeJS.ProcessEnv = process.env): string {
-  return aiConfig(env).defaultProvider
+/**
+ * Which provider a new job of this kind uses. Routing policy (C3) will replace this. Images and video go to
+ * AI_MEDIA_PROVIDER, or to OpenAI's media adapter when OPENAI_MEDIA_API_KEY is set, otherwise to the default
+ * provider (the fake one in local work).
+ */
+export function providerForKind(kind: AiJobKind, env: Readonly<Record<string, string | undefined>> = process.env): string {
+  const config = aiConfig(env)
+  if (kind === "image" || kind === "video") {
+    return env.AI_MEDIA_PROVIDER?.trim() || (env.OPENAI_MEDIA_API_KEY?.trim() ? "openai-media" : config.defaultProvider)
+  }
+  return config.defaultProvider
 }

@@ -43,6 +43,7 @@ export function sampleCourseTemplate(image: (name: SampleImage) => string): Samp
       length_hours: 0.5,
       lesson_size: "short",
       pricing: { type: "free" },
+      metadata: { domains: ["Generic"], future_goals: [], departments: [], require_future_goal: false },
       // Fitted to this course, so it passes every submission check (the lesson size buttons are only presets).
       limits: {
         words: { min: 250, max: 900 },

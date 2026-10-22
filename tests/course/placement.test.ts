@@ -11,6 +11,9 @@ import { contentHash } from "@/lib/revisions/hash"
 
 import { sampleCourse, samplePlacement } from "../helpers/course"
 
+/** A personal workspace: its only review stage is the platform's. */
+const PERSONAL = { kind: "personal", reviewTrusted: false } as const
+
 const withPlacement = (course: Course, placement: PlacementQuestion[] | undefined): Course => ({
   ...course,
   levels: course.levels.map((l, i) => (i === 0 ? { ...l, placement } : l)),
@@ -74,13 +77,13 @@ describe("placement quiz requirement", () => {
 
   it("blocks accepting, but not sending back, a course whose placement quiz is incomplete", () => {
     const inReview = { ...withPlacement(sampleCourse(), undefined), status: "in_review" as const }
-    const accepted = review(inReview, "approved", "", [], "reviewer")
+    const accepted = review(inReview, "platform", PERSONAL, "approved", "", [], "reviewer")
     expect(accepted).toMatchObject({ status: 409, code: "placement_required" })
 
-    const sentBack = review(inReview, "changes_requested", "", [{ text: "Add placement questions" }], "reviewer")
+    const sentBack = review(inReview, "platform", PERSONAL, "changes_requested", "", [{ text: "Add placement questions" }], "reviewer")
     expect("course" in sentBack).toBe(true)
 
-    expect("course" in review({ ...sampleCourse(), status: "in_review" }, "approved", "", [], "reviewer")).toBe(true)
+    expect("course" in review({ ...sampleCourse(), status: "in_review" }, "platform", PERSONAL, "approved", "", [], "reviewer")).toBe(true)
   })
 })
 

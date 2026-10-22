@@ -10,17 +10,24 @@ import type { AiJobKind } from "@/lib/db/schema"
 
 // Keep these in sync with the adapters: fake.ts's default `cost` and openai.ts's
 // DEFAULT_PRICING / maxTokens. budget.test.ts pins these numbers.
-const FAKE_COSTS = { text: 0.02, image: 0.04 }
+const FAKE_COSTS = { text: 0.02, image: 0.04, video: 0.4 }
+// openai-media.ts's MEDIA_PRICING: an image, and a second of video (a video defaults to 4 seconds).
+const MEDIA_PRICING = { imagePerImage: 0.05, videoPerSecond: 0.1 }
+const VIDEO_SECONDS = [4, 8, 12]
 const OPENAI_PRICING = { inputPer1k: 0.00015, outputPer1k: 0.0006, maxTokens: 800 }
 const FALLBACK_COST = 0.02
 
 export type CostEstimate = { cost: number; currency: string }
 
 /** What a job of `kind` on `provider` will cost, in USD (a conservative figure). */
-export function estimateCost(provider: string, kind: AiJobKind): CostEstimate {
+export function estimateCost(provider: string, kind: AiJobKind, params: Record<string, unknown> = {}): CostEstimate {
   switch (provider) {
     case "fake":
-      return { cost: kind === "image" ? FAKE_COSTS.image : FAKE_COSTS.text, currency: "USD" }
+      return { cost: kind === "video" ? FAKE_COSTS.video : kind === "image" ? FAKE_COSTS.image : FAKE_COSTS.text, currency: "USD" }
+    case "openai-media": {
+      const seconds = VIDEO_SECONDS.includes(Number(params.seconds)) ? Number(params.seconds) : VIDEO_SECONDS[0]
+      return { cost: kind === "video" ? MEDIA_PRICING.videoPerSecond * seconds : MEDIA_PRICING.imagePerImage, currency: "USD" }
+    }
     case "openai":
       return {
         cost: OPENAI_PRICING.inputPer1k * 0.5 + OPENAI_PRICING.outputPer1k * (OPENAI_PRICING.maxTokens / 1000),

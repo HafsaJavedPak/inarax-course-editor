@@ -71,7 +71,7 @@ flowchart TD
     S4["4 · Builds levels, modules, lessons<br/>app/courses/[id] → CourseBuilder<br/>LevelTabs · course-state reducer · lib/course-validate"]:::ui
     S5["5 · Autosave structure (0.8 s)<br/>PUT /api/courses/[id]<br/>course-store.saveCourseContent (revision check)"]:::api
     S6["6 · Opens a lesson<br/>app/courses/[id]/lessons/[lessonId] → LessonEditor<br/>BlockEditor · block components · JsonPanel"]:::ui
-    S7["7 · Uploads an image (optional)<br/>ImageBlock / ImageHotspotBlock → lib/tiptap-utils.handleImageUpload<br/>POST /api/uploads → served by GET /uploads/[file]"]:::api
+    S7["7 · Uploads an image (optional)<br/>ImageBlock / ImageHotspotBlock → lib/tiptap-utils.handleImageUpload<br/>POST /api/uploads?course=… → stored per workspace and course, served by GET /uploads/[...path] to people who can read the course"]:::api
     S8["8 · Autosave lesson (1.5 s)<br/>PUT /api/courses/[id]/lessons/[lessonId]<br/>lib/lesson.parseLesson → course-store.saveCourseLesson + recordLessonEdit"]:::api
     S9["9 · Presses Save / Ctrl+S<br/>SaveBar → usePublish.publish<br/>POST /api/courses/[id]/publish"]:::api
     S10["10 · Publish to the platform<br/>lib/workflow-response.publishAndRecord<br/>→ lib/platform getPlatform().publishCourse<br/>→ adapters/protocol (package.ts · assets.ts → http-client.ts)"]:::store
@@ -258,7 +258,7 @@ flowchart LR
         R6["/courses/[id]/review<br/>POST (admin)"]
         R7["/courses/[id]/changes/[changeId]<br/>PATCH"]
         R8["/courses/[id]/export · /export<br/>GET zip"]
-        R9["/uploads POST<br/>/uploads/[file] GET"]
+        R9["/uploads POST<br/>/uploads/[...path] GET"]
     end
     subgraph Lib["lib/"]
         AUTH["auth.ts<br/>getCurrentUser"]
@@ -295,13 +295,24 @@ flowchart LR
 ```
 
 - `lib/course-store.ts` is the only module that writes course and lesson files. Uploads are written
-  by `app/api/uploads/route.ts`, and reads for the zip go through `course-export.ts`.
+  by `app/api/uploads/route.ts` (and AI-generated media by the AI worker) through the media store
+  (`lib/media/store.ts`: Firebase Storage or disk, under `tenants/<tenant>/<course>/`), read by
+  `app/uploads/[...path]/route.ts` after `lib/media/access.ts` allows it, and read for the zip by
+  `course-export.ts`.
 - `lib/platform/` is the only code that calls the platform. It knows only the protocol
   (`lib/protocol/`), never a host's URLs, ids or rules; the host is chosen by `PLATFORM_URL`.
 - `DELETE /api/courses/[id]` deletes the course on the platform first and keeps the local course if
   that fails.
 - `lib/course-status.ts` is used by both the API, to enforce the rules, and the UI, to decide which
-  buttons to show. So the review rules exist in exactly one place.
+  buttons to show. So the review rules exist in exactly one place. *Which* stages a course goes
+  through (personal: platform; trusted org: org; other orgs: org, then platform) is decided by the
+  pure `lib/review/pipeline.ts`, so nothing else compares roles or statuses itself. Statuses are
+  `draft`, `in_review`, `changes_requested`, `approved` (passed the organization, waiting for the
+  platform; not live), `published` (live), `rejected`, `unpublished`.
+- Tenancy: each organization is a workspace (tenant), mirrored from the host at sign-in together
+  with its **departments** (flat scopes; a department manager sees and shares that department's
+  courses but never approves them: `lib/authz/departments.ts`) and its **review trust**
+  (`tenants.settings.reviewTrusted`, set on the host by a platform admin).
 
 ---
 
@@ -397,7 +408,10 @@ sequenceDiagram
 | `lib/workflow-response.ts` | `publishAndRecord` (reads lessons, calls the platform); JSON responses for workflow routes | publish / submit / withdraw / review routes |
 | `lib/course-export.ts` | Zip building (fflate) | export routes |
 | `lib/storage.ts` | `DATA_DIR`, `COURSE_DIR`, `UPLOAD_DIR` paths | store, export, uploads |
-| `lib/uploads.ts` | `imageSrc`: serve own uploads from the current host | thumbnails, image blocks |
+| `lib/uploads.ts` | upload path parsing/building, `uploadScopeFromPath`, `imageSrc`: serve own uploads from the current host | thumbnails, image blocks, uploads, publishing |
+| `lib/media/` | `store.ts` (disk / Firebase Storage / memory), `access.ts` (who may read or add a file), `migrate.ts` (`npm run uploads:migrate`) | uploads route, AI worker, publishing, export |
+| `lib/ai/media.ts`, `lib/ai/providers/openai-media.ts` | store generated files; OpenAI image and video adapter | AI worker, accept |
+| `lib/authz/default-workspace.ts` | which workspace a new course goes to by default (the user's organization, else personal) | `currentWorkspace`, `POST /api/courses` |
 | `lib/auth.ts` | Current user from the sign-in session (`getCurrentUser`, `requireAdminArea`) | routes, pages |
 | `lib/auth-gate.ts`, `proxy.ts` | Auth mode and who may open which path, checked on every request | proxy |
 | `lib/session.ts`, `lib/launch-replay.ts`, `lib/protocol/launch.ts` | Database sessions (8 h, 30 min idle, revocable), single-use launch tokens, the Ed25519 token format | `app/launch`, `lib/auth.ts` |

@@ -3,9 +3,10 @@
 import { useState } from "react"
 import Link from "next/link"
 
+import { LifecycleTrack } from "@/components/course/lifecycle-track"
 import { StatusBadge } from "@/components/course/status-badge"
 import { coursePaths } from "@/lib/admin-mode"
-import { describeChangeTarget, type ChangeRequest, type ChangeTarget, type Course } from "@/lib/course"
+import { describeChangeTarget, type ChangeRequest, type ChangeTarget, type Course, type ReviewStage } from "@/lib/course"
 import {
   eventAction,
   eventLabel,
@@ -18,6 +19,7 @@ import {
   STATUS_LABELS,
   type SubmitBlocker,
 } from "@/lib/course-status"
+import { lifecycleSteps, platformBehind } from "@/lib/review/lifecycle"
 
 /** The parts of a course the review workflow changes. */
 export type Workflow = Pick<Course, "status" | "review_history" | "change_requests" | "content_updated_at">
@@ -38,6 +40,9 @@ export function StatusPanel({
   isAdmin = false,
   canSubmit: maySubmit = true,
   mayTakeDown = false,
+  pipeline = ["platform"],
+  publishedAt = null,
+  platformEnabled = false,
 }: {
   course: Course
   workflow: Workflow
@@ -52,6 +57,11 @@ export function StatusPanel({
   canSubmit?: boolean
   /** The author, co-owner, org admin or staff: may take a live course down from the catalogue. */
   mayTakeDown?: boolean
+  /** The review stages this course goes through (lib/review/pipeline.ts). */
+  pipeline?: readonly ReviewStage[]
+  /** When it was last published to the platform (ISO); with `platformEnabled`, tells the lifecycle whether the platform has the decision. */
+  publishedAt?: string | null
+  platformEnabled?: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -196,13 +206,21 @@ export function StatusPanel({
               {busy ? "Withdrawing…" : "Withdraw to edit"}
             </button>
           )}
-          {!isAdmin && mayTakeDown && status === "approved" && (
+          {!isAdmin && mayTakeDown && status === "published" && (
             <button type="button" className="in-btn in-btn-secondary" disabled={busy} onClick={() => void takeDown()}>
               {busy ? "Taking down…" : "Take down"}
             </button>
           )}
         </div>
       </div>
+
+      <LifecycleTrack
+        steps={lifecycleSteps({
+          pipeline,
+          status,
+          behind: platformEnabled && platformBehind({ status, published_at: publishedAt, review_history: history }),
+        })}
+      />
 
       {decision?.note && (
         <blockquote className="sp-note">

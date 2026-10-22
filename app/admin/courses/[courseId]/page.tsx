@@ -10,6 +10,9 @@ import { StatusBadge } from "@/components/course/status-badge"
 import { coursePaths } from "@/lib/admin-mode"
 import { describeChangeTarget, getCourseLimits, LEVELS, type ChangeTarget, type Course } from "@/lib/course"
 import { canReview, eventAction, eventLabel, resubmissionsAfterRejection } from "@/lib/course-status"
+import { LifecycleTrack } from "@/components/course/lifecycle-track"
+import { lifecycleSteps, platformBehind } from "@/lib/review/lifecycle"
+import { approvalOutcome, decisionStage, pipelineFor, pipelineTenant, stageAction } from "@/lib/review/pipeline"
 import { courseForPage, resourceOf } from "@/lib/authz/context"
 import { can } from "@/lib/authz/policy"
 import { ensureHead } from "@/lib/course-store"
@@ -33,7 +36,14 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
   const resubmits = resubmissionsAfterRejection(course.review_history)
   // Whether this reviewer may decide the course right now.
   const resource = resourceOf(record)
-  const canDecide = can(ctx, "course.review", resource) && canReview(course.status)
+  const tenant = pipelineTenant({ kind: record.tenantKind, settings: record.settings })
+  const stage = canReview(course.status)
+    ? decisionStage(course.status, tenant, { review: can(ctx, "course.review", resource), release: can(ctx, "course.release", resource) })
+    : null
+  const canDecide = stage !== null && can(ctx, stageAction(stage), resource)
+  // What accepting leads to (published, or approved and waiting for the platform), and whether this is an org admin pulling their approval back.
+  const approveOutcome = stage ? approvalOutcome(stage, tenant) : "published"
+  const revoking = course.status === "approved" && stage === "org"
   const canTakeDown = can(ctx, "course.takedown", resource)
   // The version on screen: a decision is recorded against exactly this content.
   const head = await ensureHead(ctx, course.id)
@@ -73,6 +83,16 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
             <DeleteCourseButton courseId={course.id} title={course.title} />
           </div>
         </div>
+
+        <section className="adm-card adm-track" aria-label="Release progress">
+          <LifecycleTrack
+            steps={lifecycleSteps({
+              pipeline: pipelineFor(tenant),
+              status: course.status,
+              behind: platformBehind(course),
+            })}
+          />
+        </section>
 
         <div className="adm-layout">
           <div className="adm-main">
@@ -202,8 +222,8 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
           </div>
 
           <aside className="adm-aside">
-            <DecisionPanel course={course} canDecide={canDecide} seen={head} historyHref={coursePaths(true).history(course.id)} />
-            {canTakeDown && course.status === "approved" && (
+            <DecisionPanel course={course} canDecide={canDecide} approveOutcome={approveOutcome} revoking={revoking} seen={head} historyHref={coursePaths(true).history(course.id)} />
+            {canTakeDown && course.status === "published" && (
               <TakeDownButton courseId={course.id} title={course.title} />
             )}
             {resubmits.reached && <AllowResubmissionsButton courseId={course.id} limit={resubmits.limit} />}

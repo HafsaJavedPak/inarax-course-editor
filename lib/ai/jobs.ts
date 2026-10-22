@@ -2,11 +2,14 @@ import "server-only"
 
 import { and, desc, eq, inArray, isNull, lt, lte, or, sql } from "drizzle-orm"
 
-import { applyTextToLesson } from "@/lib/ai/apply"
+import { applyImageToLesson, applyTextToLesson } from "@/lib/ai/apply"
+import type { JobResult } from "@/lib/ai/providers/port"
+import { discardJobMedia } from "@/lib/ai/media"
 import { assertWithinBudget, countLiveJobs, incrementReserved, lockBudget, releaseBudget, reconcileBudget, AiBudgetExceededError, type AiBudgetLimits } from "@/lib/ai/budget"
 import { notifyAi } from "@/lib/ai/notify"
 import { backoffMs } from "@/lib/ai/retry"
 import { applyAiEditTx } from "@/lib/course-store"
+import { configuredBaseUrl } from "@/lib/sample-course"
 import { AI_LIVE_STATES, aiJobAttempts, aiJobs, auditLog, type AiAttemptOutcome, type AiBudgetStatus, type AiJobKind, type AiJobState } from "@/lib/db/schema"
 import { withTenantScope, type Scope, type Tx } from "@/lib/db/tenant-db"
 
@@ -271,23 +274,45 @@ export type AcceptJobResult =
  * the only place AI output turns into content, and it never overwrites a newer
  * draft — a stale job is refused with the diff.
  */
-export async function acceptJob(scope: Scope, jobId: string, userId: string, options: { mode?: AcceptJobMode } = {}): Promise<AcceptJobResult> {
+export async function acceptJob(
+  scope: Scope,
+  jobId: string,
+  userId: string,
+  /** `origin` is this editor's address, for the full URL an image is placed with (images only). */
+  options: { mode?: AcceptJobMode; origin?: string } = {},
+): Promise<AcceptJobResult> {
   const mode = options.mode ?? "replace"
   return withTenantScope(scope, async (tx) => {
     const [job] = await tx.select().from(aiJobs).where(eq(aiJobs.id, jobId)).limit(1).for("update")
     if (!job) return { ok: false, code: "not_found", error: "Job not found" }
     if (job.state !== "ready") return { ok: false, code: "bad_state", error: `Only a ready job can be accepted (this one is ${job.state}).` }
-    if (!TEXT_KINDS.includes(job.kind)) return { ok: false, code: "unsupported_kind", error: `${job.kind} candidates aren't supported yet.` }
+    if (job.kind === "video") {
+      return { ok: false, code: "unsupported_kind", error: "A video can't be placed in a lesson yet: lessons have no video block. The file is kept with the course; open it from the assistant." }
+    }
+    if (job.kind !== "image" && !TEXT_KINDS.includes(job.kind)) return { ok: false, code: "unsupported_kind", error: `${job.kind} candidates aren't supported yet.` }
     if (!job.lessonId || !job.blockId) return { ok: false, code: "invalid_target", error: "This job has no block to write into." }
-    const text = (job.result as { text?: string } | null)?.text?.trim()
-    if (!text) return { ok: false, code: "invalid_result", error: "This job produced no text to apply." }
+    const result = job.result as JobResult | null
+    const text = result?.text?.trim()
+    const picture = result?.media?.find((m) => m.kind === "image")
+    if (job.kind === "image" ? !picture : !text) {
+      return { ok: false, code: "invalid_result", error: job.kind === "image" ? "This job produced no image to place." : "This job produced no text to apply." }
+    }
+    const prompt = typeof (job.params as { prompt?: unknown } | null)?.prompt === "string" ? (job.params as { prompt: string }).prompt.trim() : ""
 
     const applied = await applyAiEditTx(tx, scope, {
       courseId: job.courseId,
       lessonId: job.lessonId,
       editor: { id: userId, asReviewer: false },
       base: { baseRevisionId: job.baseRevisionId, baseContentHash: job.baseContentHash, baseLessonHash: job.baseLessonHash },
-      mutate: (lesson) => applyTextToLesson(lesson, job.blockId!, text, mode),
+      mutate: (lesson) =>
+        job.kind === "image"
+          ? applyImageToLesson(
+              lesson,
+              job.blockId!,
+              { url: new URL(picture!.path, options.origin ?? configuredBaseUrl()).toString(), alt: prompt.slice(0, 300) || "Generated image" },
+              mode,
+            )
+          : applyTextToLesson(lesson, job.blockId!, text!, mode),
     })
     if (!applied.ok) {
       return {
@@ -329,10 +354,10 @@ export async function acceptJob(scope: Scope, jobId: string, userId: string, opt
  * the job moves to `rejected`, terminal unless the creator retries it.
  */
 export async function rejectJob(scope: Scope, jobId: string, userId: string, reason?: string | null): Promise<JobActionResult> {
-  return withTenantScope(scope, async (tx) => {
+  const rejected: JobActionResult = await withTenantScope(scope, async (tx): Promise<JobActionResult> => {
     const [job] = await tx.select().from(aiJobs).where(eq(aiJobs.id, jobId)).limit(1).for("update")
-    if (!job) return { ok: false, error: "Job not found" }
-    if (job.state !== "ready") return { ok: false, error: `Only a ready job can be rejected (this one is ${job.state}).` }
+    if (!job) return { ok: false as const, error: "Job not found" }
+    if (job.state !== "ready") return { ok: false as const, error: `Only a ready job can be rejected (this one is ${job.state}).` }
     const now = new Date()
     const [updated] = await tx
       .update(aiJobs)
@@ -348,8 +373,11 @@ export async function rejectJob(scope: Scope, jobId: string, userId: string, rea
       detail: { reason: reason ?? null },
     })
     await notifyAi(tx, { kind: "job", job: jobId, tenant: job.tenantId, course: job.courseId, state: "rejected" })
-    return { ok: true, job: updated }
+    return { ok: true as const, job: updated }
   })
+  // A rejected picture or video is never used: remove its file (best effort; the job is already decided).
+  if (rejected.ok) await discardJobMedia(rejected.job.tenantId, rejected.job.courseId, rejected.job.result as JobResult | null)
+  return rejected
 }
 
 // ---------------------------------------------------------------------------

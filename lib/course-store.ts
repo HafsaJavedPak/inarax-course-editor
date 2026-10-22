@@ -3,7 +3,8 @@ import "server-only"
 import { and, desc, eq, inArray, sql } from "drizzle-orm"
 
 import { jobStaleness } from "@/lib/ai/staleness"
-import { CourseSchema, getCourseLimits, type Course } from "@/lib/course"
+import { CourseSchema, getCourseLimits, type Course, type ReviewStage } from "@/lib/course"
+import { pipelineTenant, stageAwaited } from "@/lib/review/pipeline"
 import { afterEdit, isLocked, type ReviewDecision, type WorkflowResult } from "@/lib/course-status"
 import { getLessonStats, validateCourse, type LessonStats } from "@/lib/course-validate"
 import { collabDocuments, collabUpdates, courses, lessons, tenants, type RevisionKind, type TenantKind, type TenantSettings } from "@/lib/db/schema"
@@ -12,6 +13,7 @@ import { findLessonRef } from "@/lib/course"
 import { notifyAccess } from "@/lib/collab/notify"
 import { lessonDocName } from "@/lib/collab/protocol"
 import { isUuid, parseLesson, type Lesson } from "@/lib/lesson"
+import { rewriteUploadUrls, type UploadRef } from "@/lib/uploads"
 import { contentHash, lessonHash } from "@/lib/revisions/hash"
 import {
   latestRevision,
@@ -52,6 +54,8 @@ export type CourseRecord = {
   publishedRevisionId: string | null
   /** A copy of the sample course (lib/sample-course): never reviewed or published. */
   sample: boolean
+  /** The department it belongs to, or null for the whole organization (lib/authz/departments.ts). */
+  departmentId: string | null
 }
 
 export class RevisionConflictError extends Error {}
@@ -107,6 +111,7 @@ const recordColumns = {
   headHash: courses.headHash,
   publishedRevisionId: courses.publishedRevisionId,
   sample: courses.sample,
+  departmentId: courses.departmentId,
 }
 
 const toRecord = (row: Omit<CourseRecord, "course"> & { data: Course }): CourseRecord => ({
@@ -120,6 +125,7 @@ const toRecord = (row: Omit<CourseRecord, "course"> & { data: Course }): CourseR
   headHash: row.headHash,
   publishedRevisionId: row.publishedRevisionId,
   sample: row.sample,
+  departmentId: row.departmentId,
 })
 
 /** The indexed columns kept next to the full course. */
@@ -253,9 +259,21 @@ async function resetLiveDocs(tx: Tx, courseId: string, lessonIds: string[]) {
 }
 
 /** Stores a brand-new course in a tenant, as its first revision. */
-export async function insertCourse(scope: Scope, tenantId: string, course: Course): Promise<Course> {
-  await withTenantScope(scope, (tx) => insertCourseTx(tx, scope, tenantId, course))
+export async function insertCourse(scope: Scope, tenantId: string, course: Course, options: { departmentId?: string | null } = {}): Promise<Course> {
+  await withTenantScope(scope, (tx) => insertCourseTx(tx, scope, tenantId, course, options))
   return course
+}
+
+/** Moves a course into a department (or out of every department with null). Callers check the choice (lib/authz/departments.ts mayAssignDepartment). */
+export async function setCourseDepartment(scope: Scope, courseId: string, departmentId: string | null): Promise<boolean> {
+  return withTenantScope(scope, async (tx) => {
+    const updated = await tx
+      .update(courses)
+      .set({ departmentId })
+      .where(and(eq(courses.id, courseId), tenantFilter(courses, scope)))
+      .returning({ id: courses.id })
+    return updated.length > 0
+  })
 }
 
 /**
@@ -268,9 +286,9 @@ export async function insertCourseTx(
   scope: Scope,
   tenantId: string,
   course: Course,
-  options: { lessons?: ReadonlyMap<string, Lesson>; sample?: boolean } = {},
+  options: { lessons?: ReadonlyMap<string, Lesson>; sample?: boolean; departmentId?: string | null } = {},
 ): Promise<void> {
-  await tx.insert(courses).values({ id: course.id, tenantId, ...columnsOf(course), sample: options.sample ?? false })
+  await tx.insert(courses).values({ id: course.id, tenantId, ...columnsOf(course), sample: options.sample ?? false, departmentId: options.departmentId ?? null })
   for (const [lessonId, lesson] of options.lessons ?? []) await writeLesson(tx, tenantId, course.id, lessonId, lesson)
   await commitContent(tx, scope, tenantId, course, { kind: "initial", actorId: course.owner_id })
 }
@@ -282,7 +300,7 @@ async function writeCourse(tx: Tx, course: Course) {
 /** The edit rules every content change follows (course locked in review; accepted content frozen for reviewers). */
 function assertEditable(course: Course, editor: Editor) {
   if (isLocked(course.status) && !editor.asReviewer) throw new CourseLockedError()
-  if (course.status === "approved" && editor.asReviewer) throw new ApprovedLockedError()
+  if ((course.status === "approved" || course.status === "published") && editor.asReviewer) throw new ApprovedLockedError()
 }
 
 const editKind = (editor: Editor): RevisionKind => (editor.asReviewer ? "reviewer_edit" : "edit")
@@ -388,7 +406,9 @@ export async function submitForReview(
       return result
     },
     async (tx, record) => {
-      await openRound(tx, { tenantId: record.tenantId, courseId, stage: "platform", revision: sealed!, by, note: note.trim() })
+      // The first stage of the course's pipeline (lib/review/pipeline.ts).
+      const stage = stageAwaited("in_review", pipelineTenant({ kind: record.tenantKind, settings: record.settings }))!
+      await openRound(tx, { tenantId: record.tenantId, courseId, stage, revision: sealed!, by, note: note.trim() })
     },
   )
 }
@@ -436,6 +456,7 @@ export async function decideReview(
   scope: Scope,
   courseId: string,
   by: string,
+  stage: ReviewStage,
   decision: ReviewDecision,
   seen: SeenContent,
   change: (course: Course) => WorkflowResult,
@@ -462,7 +483,7 @@ export async function decideReview(
       return result
     },
     async (tx, record) => {
-      await decideRound(tx, { tenantId: record.tenantId, courseId, stage: "platform", decision, by, revision: decided! })
+      await decideRound(tx, { tenantId: record.tenantId, courseId, stage, decision, by, revision: decided! })
     },
   )
 }
@@ -479,13 +500,12 @@ export async function recordPublish(scope: Scope, courseId: string, at: string, 
 
 /**
  * What publishing sends, as one sealed revision, and the status the host shows.
- * The strongest decision in force decides both: a platform release sends the
- * released revision with status `published`; else an organization approval
- * sends the approved revision with status `approved` (so a platform revoke
- * leaves the organization's version live). With no approval, the stored
- * content is sealed now and sent with its workflow status. (Courses accepted
- * before review rounds existed have no approval on record and publish what's
- * stored.)
+ * A course that is `approved` (waiting for the platform) or `published` sends
+ * exactly the revision its approval was made on, with the status it has. Any
+ * other course seals the stored content now and sends it with its workflow
+ * status, which tells the host to keep what is live (draft, in review …).
+ * (Courses accepted before review rounds existed have no approval on record
+ * and publish what's stored.)
  */
 export async function publishableContent(
   scope: Scope,
@@ -494,8 +514,9 @@ export async function publishableContent(
   return withTenantScope(scope, async (tx) => {
     const record = await selectCourse(tx, scope, courseId, true)
     if (!record) return null
-    const approval = await currentApproval(tx, courseId)
-    const status = approval ? "approved" : record.course.status
+    const status = record.course.status
+    const live = status === "approved" || status === "published"
+    const approval = live ? await currentApproval(tx, courseId) : null
     if (approval?.decidedRevisionId) {
       if (record.headHash !== approval.decidedHash) throw new ApprovalMismatchError()
       const accepted = await revisionContentTx(tx, courseId, approval.decidedRevisionId)
@@ -503,8 +524,8 @@ export async function publishableContent(
       const course = CourseSchema.parse({ ...record.course, ...accepted.course, status })
       return { course, lessons: accepted.lessons, revisionId: approval.decidedRevisionId }
     }
-    // An approved status with rounds on record but no usable approval is a mismatch.
-    if (status === "approved" && (await hasRounds(tx, courseId))) throw new ApprovalMismatchError()
+    // A live status with rounds on record but no usable approval is a mismatch.
+    if (live && (await hasRounds(tx, courseId))) throw new ApprovalMismatchError()
     await ensureHistory(tx, scope, record)
     const sealed = await sealLatest(tx, courseId)
     const head = await loadHead(tx, scope, record.course)
@@ -894,4 +915,60 @@ export async function getCourseLessonStats(scope: Scope, course: Course) {
 
 export async function getCourseReport(scope: Scope, course: Course) {
   return validateCourse(course, await getCourseLessonStats(scope, course))
+}
+
+// ---------------------------------------------------------------------------
+// Moving uploads (R1)
+// ---------------------------------------------------------------------------
+
+/** Statuses a course may have for its image addresses to be rewritten: nobody is reviewing it and nothing is live or approved. */
+const REWRITABLE_STATUSES = ["draft", "changes_requested", "rejected", "unpublished"] as const
+
+export type RewriteUploadsResult =
+  | { ok: true; changed: number; lessons: number }
+  | { ok: false; reason: "not_found" | "not_editable"; status?: string }
+
+/**
+ * Rewrites the upload addresses in a course and its lessons (`change` gets each upload URL and returns
+ * the new one, or null to keep it), as one recorded revision ("imported", by the owner). Only for
+ * courses nobody is reviewing and that aren't live: any content change would withdraw an approval,
+ * so the others are left alone (`not_editable`) for a later run. Used by scripts/uploads-migrate.ts
+ * with a platform-staff scope.
+ */
+export async function rewriteCourseUploads(
+  scope: Scope,
+  courseId: string,
+  change: (ref: UploadRef, url: string) => string | null,
+): Promise<RewriteUploadsResult> {
+  return withTenantScope(scope, async (tx) => {
+    const record = await selectCourse(tx, scope, courseId, true)
+    if (!record) return { ok: false, reason: "not_found" }
+    if (!(REWRITABLE_STATUSES as readonly string[]).includes(record.course.status)) {
+      return { ok: false, reason: "not_editable", status: record.course.status }
+    }
+
+    const rewrittenCourse = rewriteUploadUrls(JSON.stringify(record.course), change)
+    const rows = await tx.select({ id: lessons.id, data: lessons.data }).from(lessons).where(and(eq(lessons.courseId, courseId), tenantFilter(lessons, scope)))
+    const changedLessons: { id: string; lesson: Lesson }[] = []
+    let changed = rewrittenCourse.changed
+    for (const row of rows) {
+      const rewritten = rewriteUploadUrls(JSON.stringify(row.data), change)
+      if (rewritten.changed === 0) continue
+      const parsed = parseLesson(JSON.parse(rewritten.text))
+      if ("error" in parsed) continue // a lesson that doesn't parse is left as it is
+      changed += rewritten.changed
+      changedLessons.push({ id: row.id, lesson: parsed.lesson })
+    }
+    if (changed === 0) return { ok: true, changed: 0, lessons: 0 }
+
+    await ensureHistory(tx, scope, record)
+    if (rewrittenCourse.changed > 0) await writeCourse(tx, CourseSchema.parse(JSON.parse(rewrittenCourse.text)))
+    for (const { id, lesson } of changedLessons) await writeLesson(tx, record.tenantId, courseId, id, lesson)
+    await commitContent(tx, scope, record.tenantId, rewrittenCourse.changed > 0 ? CourseSchema.parse(JSON.parse(rewrittenCourse.text)) : record.course, {
+      kind: "imported",
+      actorId: record.course.owner_id,
+    })
+    await resetLiveDocs(tx, courseId, changedLessons.map((l) => l.id))
+    return { ok: true, changed, lessons: changedLessons.length }
+  })
 }

@@ -39,6 +39,8 @@ npm run dev        # http://localhost:3000
 | `EDITOR_PUBLIC_URL` | publishing images | This editor's public address, for images the host can't store |
 | `EDITOR_DATABASE_URL` | always | The editor's database: `postgres://…` (Render Postgres in production; not a superuser, or row-level security is skipped) or `pglite:./.data/pglite` for local work. See `.env.example` |
 | `DATA_DIR` | optional | Folder holding `uploads/` (and `course/` from before the database). Defaults to the project folder. On Render it's `/var/data`, a persistent disk. |
+| `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_STORAGE_BUCKET` | optional (all four) | Keep uploads and AI-generated media in private Firebase Storage (same service as inara-next) instead of on disk. The app and the AI worker both need them. |
+| `OPENAI_MEDIA_API_KEY` (+ `OPENAI_MEDIA_BASE_URL`, `OPENAI_IMAGE_MODEL`, `OPENAI_VIDEO_MODEL`, `AI_MEDIA_PROVIDER`) | optional | AI image and video generation (gpt-image, Sora). Worker side. |
 | `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | no longer used | Left over from direct database publishing; the editor never reads `DATABASE_URL`. Safe to remove from `.env.local`. |
 
 **Deploying:** `render.yaml` is a Render Blueprint. It needs a paid plan (for the persistent disk),
@@ -69,7 +71,12 @@ and `EDITOR_PUBLIC_URL` must be set in the Render dashboard. inara-next needs it
 > link (inara-next: in the sidebar, shown to creators and admins). The platform decides your role:
 > - **Creators** (an inara-next admin makes someone a Creator on Admin → Team Directory) see
 >   `/dashboard` and their own courses, and can submit them for review. `/admin` sends them back.
-> - **Admins** also get `/admin`: every course, and accept / reject / request changes.
+> - **Admins** (of an organization) also get `/admin`: that organization's courses, to approve /
+>   reject / request changes. **Platform admins** (`users.is_platform_admin` on the host) review
+>   personal-workspace courses and publish what untrusted organizations' admins approved; a trusted
+>   organization's admin approval publishes the course itself. Platform admins are granted in
+>   inara-next's `/admin/invitations` → Platform admins tab; trust is set in its Organizations
+>   tab; departments in its Departments tab.
 >
 > Opening the editor directly shows a "signed out" page. Without a platform
 > (`PLATFORM_ADAPTER=none`, local work) there is no sign-in: one local creator and an open `/admin`.
@@ -301,7 +308,10 @@ block.
 
 - Images only: PNG, JPEG, GIF, WebP, AVIF. **SVG is refused** on purpose, because it can carry scripts.
 - Maximum 5 MB.
-- Stored in `uploads/<uuid>.<ext>` and served from `/uploads/<file>`.
+- **Private to the workspace and course** (R1). Stored under `tenants/<tenant>/<course>/<uuid>.<ext>` (a course's file) or `tenants/<tenant>/workspace/…` (before the course exists), on disk or in Firebase Storage, and served at `/uploads/<tenant>/<course>/<file>` only to people who can read the course (session needed, private cache). `POST /api/uploads?course=<id>` or `?workspace=<id>` says where a file belongs.
+- Files from before this (`/uploads/<uuid>.<ext>`) still load for any signed-in user until you run `npm run uploads:migrate` (dry run first, then `-- --apply`). It copies each file into its course's folder and rewrites the course, but leaves courses in review or live for a later run (changing them would withdraw their approval).
+- **AI images and video**: the assistant panel's Image and Video tabs. The worker stores the result in the same private store. An accepted image becomes an image block; a video is kept and played in the panel but cannot be inserted yet (no video block in lessons).
+- Details: docs/course-editor/code-docs/media.html.
 
 ---
 
@@ -353,7 +363,7 @@ Set up local inara-next first: [platform-integration.md § 3, Local testing](pla
 - [ ] Approve a course, then move one of its lessons to another module → it moves on inara-next and learner progress stays.
 - [ ] Delete a course in the editor → it's gone from inara-next too.
 - [ ] Stop inara-next and press Save → the local save works and the publish shows "Couldn't reach the platform".
-- [ ] Image in a lesson, inara-next without Firebase, `EDITOR_PUBLIC_URL` set → "Published · 1 warning"; the image on inara-next points at `EDITOR_PUBLIC_URL/uploads/…`.
+- [ ] Image in a lesson, inara-next without Firebase, `EDITOR_PUBLIC_URL` set → "Published · 1 warning"; the image on inara-next points at `EDITOR_PUBLIC_URL/uploads/…`, which needs a signed-in editor session, so learners cannot load it (the warning says so). Fix the platform's image storage and publish again.
 
 **Preview** ([preview.md](preview.md))
 - [ ] Lesson editor → Preview → the lesson shows in inara-next's style; Continue, answering questions and points work; Edit returns with nothing lost, including unsaved changes.
@@ -366,6 +376,12 @@ Set up local inara-next first: [platform-integration.md § 3, Local testing](pla
 - [ ] Course Download → a zip containing `course/<id>/course.json`, the lesson files and the images used.
 - [ ] Dashboard "Download all" → a zip of every course.
 - [ ] Upload an SVG or a file over 5 MB → refused.
+- [ ] Upload an image in a course, open its address signed in as a colleague the course was not shared with, and as someone in another organization → 404. The author, the org admin and a reviewer see it.
+- [ ] With the four `FIREBASE_*` set: an upload appears in the bucket under `tenants/<tenant>/<course>/` and is not publicly readable.
+- [ ] `npm run uploads:migrate` on a copy of the live data: the dry run lists what it would move; `-- --apply` rewrites draft courses and leaves courses in review or live.
+- [ ] Assistant → Image: generate, the picture shows in the panel; **Insert below** adds an image block under the chosen block; **Replace picture** works only on an image block; **Discard** removes the file. Assistant → Video: it plays in the panel, there is no insert button.
+- [ ] With live co-editing on: add a rich-text block, type in it, ask the assistant and **Insert below** → the text appears (no "block no longer exists" or "changed since you asked").
+- [ ] As an organization creator, sign in and press New course without choosing a workspace → the course is in the organization workspace and its review goes to the org admin.
 
 ---
 
@@ -410,7 +426,7 @@ Set up local inara-next first: [platform-integration.md § 3, Local testing](pla
 | `POST /api/courses/[id]/review` | admin decision (also publishes) |
 | `PATCH /api/courses/[id]/changes/[changeId]` | tick off a requested change or add a note |
 | `GET /api/courses/[id]/export`, `GET /api/export` | zip downloads |
-| `POST /api/uploads`, `GET /uploads/[file]` | image upload / serving |
+| `POST /api/uploads?course=\|workspace=`, `GET /uploads/[...path]` | private image upload / authorized serving |
 | `POST /api/sample-course` | a fresh copy of the sample course, after the user deleted theirs |
 
 ### Database migrations (`db/migrations/`)

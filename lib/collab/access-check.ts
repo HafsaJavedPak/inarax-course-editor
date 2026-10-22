@@ -57,13 +57,21 @@ export async function checkLiveAccess(who: LiveIdentity, options: { allowLocal: 
     staff: identity.staff,
     memberships: identity.workspaces.map((w) => ({ tenantId: w.tenantId, role: w.role })),
     grants: identity.grants,
+    departments: identity.departments,
   }
   const record = await findCourse(
     { tenantIds: identity.workspaces.map((w) => w.tenantId), staff: identity.staff, courseIds: identity.grants.map((g) => g.courseId) },
     who.courseId,
   )
   if (!record) return { ok: false, reason: CLOSE_REASONS.revoked }
-  const resource: CourseResource = { courseId: record.course.id, tenantId: record.tenantId, tenantKind: record.tenantKind, ownerId: record.course.owner_id, sample: record.sample }
+  const resource: CourseResource = {
+    courseId: record.course.id,
+    tenantId: record.tenantId,
+    tenantKind: record.tenantKind,
+    ownerId: record.course.owner_id,
+    departmentId: record.departmentId,
+    sample: record.sample,
+  }
   if (!can(subject, "course.read", resource) || !findLessonRef(record.course, who.lessonId)) return { ok: false, reason: CLOSE_REASONS.revoked }
 
   const [person] = await withoutTenantScope((tx) => tx.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, who.userId)))

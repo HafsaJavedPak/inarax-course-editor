@@ -54,6 +54,7 @@ const KIND_INSTRUCTIONS: Record<AiJobKind, string> = {
     "Write multiple-choice questions, each with four options and a one-sentence explanation of the correct answer. Plain text.",
   outline: "Write a concise outline as a short markdown list.",
   image: "Unsupported: this adapter only produces text.",
+  video: "Unsupported: this adapter only produces text.",
 }
 
 function systemPrompt(kind: AiJobKind): string {

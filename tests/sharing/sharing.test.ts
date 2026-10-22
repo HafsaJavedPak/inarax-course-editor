@@ -335,6 +335,26 @@ describe("organizations and outside guests", () => {
     expect(await access(course)).toEqual({ read: 200, lesson: 403, outline: 403, history: 403 })
   })
 
+  it("platform staff are never outsiders: a creator can invite one even where the org allows no guests, and the grant applies", async () => {
+    await syncIdentity({ userId: "sam", email: "sam@mail.test", name: "Sam", staff: true, orgs: [] })
+    // The org allows no guests (an earlier test may have turned them on).
+    await signInAs("dave")
+    await setSharing(json("PATCH", { allow_guests: false, guest_max_role: "commenter" }), p({ workspace: tenant.orgX }))
+    await signInAs("alice")
+    const course = await newCourse("alice", tenant.orgX)
+
+    // An ordinary outsider is still refused (the org allows no guests)…
+    expect((await invitation(course, "carol@mail.test", "editor")).body.code).toBe("guests_not_allowed")
+    // …but platform staff are not.
+    const sent = await invitation(course, "sam@mail.test", "editor")
+    expect(sent.status).toBe(201)
+
+    await signInAs("sam")
+    expect((await accept(json("POST", { token: tokenOf(sent.body.delivered.link) }))).status).toBe(200)
+    const grants = (await loadIdentity("sam"))!.grants
+    expect(grants).toContainEqual({ courseId: course, tenantId: tenant.orgX, role: "editor", kind: "member" })
+  })
+
   it("org admins share any course in their org; the share list shows candidates only to those who may share", async () => {
     const course = await newCourse("alice", tenant.orgX)
     await signInAs("dave")

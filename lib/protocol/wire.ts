@@ -11,7 +11,7 @@
 import { z } from "zod"
 
 /** major.minor. A host accepts any package whose major it supports. */
-export const PROTOCOL_VERSION = "2.1"
+export const PROTOCOL_VERSION = "2.3"
 export const PROTOCOL_MAJOR = 2
 
 /** Paths, relative to the host's base URL (PLATFORM_URL). */
@@ -58,7 +58,7 @@ export type LessonContent = z.infer<typeof LessonContentSchema>
 // Course package: PUT /v1/courses/{course.id}
 // ---------------------------------------------------------------------------
 
-export const REVIEW_STATUSES = ["draft", "in_review", "changes_requested", "approved", "rejected", "unpublished"] as const
+export const REVIEW_STATUSES = ["draft", "in_review", "changes_requested", "approved", "published", "rejected", "unpublished"] as const
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number]
 
 export const PackageLessonSchema = z.object({
@@ -141,6 +141,26 @@ export const CoursePackageSchema = z.object({
      * default organization. Since 2.0.
      */
     organization: z.object({ host_org_id: z.string().min(1).max(200) }).nullable().default(null),
+    /**
+     * The department of that organization the course belongs to (its id from the launch
+     * token's `orgs[].departments`); null: the whole organization. The host checks the
+     * publisher may use it. Since 2.2.
+     */
+    department: z.object({ host_department_id: z.string().min(1).max(200) }).nullable().default(null),
+    /**
+     * What a learner picks when they start the course: the domains and future goals they
+     * choose from, optional departments, and whether a future goal is required. The host
+     * adds the labels it lacks and removes the ones no longer listed (unless a learner
+     * already chose them). Since 2.3; absent: the host's own metadata stays as it is.
+     */
+    metadata: z
+      .object({
+        domains: z.array(z.string().trim().min(1).max(255)).max(50),
+        future_goals: z.array(z.string().trim().min(1).max(255)).max(50),
+        departments: z.array(z.string().trim().min(1).max(255)).max(50),
+        require_future_goal: z.boolean(),
+      })
+      .optional(),
   }),
   review: z.object({
     status: z.enum(REVIEW_STATUSES),

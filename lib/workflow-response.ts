@@ -3,6 +3,7 @@ import type { Course } from "@/lib/course"
 import type { WorkflowResult } from "@/lib/course-status"
 import { ApprovalMismatchError, findCourse, publishableContent, recordPublish } from "@/lib/course-store"
 import { flushLiveCourse, LiveFlushError } from "@/lib/collab/live"
+import { hostDepartmentId } from "@/lib/departments"
 import type { Lesson } from "@/lib/lesson"
 import { validateLesson } from "@/lib/lesson-validate"
 import {
@@ -55,11 +56,15 @@ export async function publishAndRecord(ctx: RequestContext, course: Course): Pro
     // The course lands in the host organization of its workspace (personal workspaces: the host's default).
     const record = await findCourse(ctx, course.id)
     const organization = record?.tenantHostOrgId ? { hostOrgId: record.tenantHostOrgId } : null
+    // And in the host's department for it, when the course is in one.
+    const departmentHostId = await hostDepartmentId(record?.departmentId ?? null)
+    const department = departmentHostId ? { hostDepartmentId: departmentHostId } : null
     const published = await platform.publishCourse({
       course: content.course,
       lessons,
       actor: { id: actor.id, name: actor.name, email: actor.email },
       organization,
+      department,
     })
     const summary = { ...published, warnings: [...skipped, ...published.warnings] }
     const publishedAt = new Date().toISOString()

@@ -47,6 +47,12 @@ export type TenantSettings = {
   allow_guests?: boolean
   /** The highest role an outside guest may have. */
   guest_max_role?: GrantRole
+  /**
+   * Org workspaces: the host trusts this organization's admin approval to publish a
+   * course (organizations.review_trusted on the host, mirrored at sign-in by
+   * lib/authz/identity.ts). Read through lib/review/pipeline.ts, never directly.
+   */
+  reviewTrusted?: boolean
   /** Per-workspace AI budget and concurrency limits (lib/ai/budget.ts). */
   ai?: {
     /** The monthly spend cap in USD; null means the env default (which is unlimited). */
@@ -111,6 +117,46 @@ export const memberships = pgTable(
   (t) => [primaryKey({ columns: [t.tenantId, t.userId] }), index("memberships_user_idx").on(t.userId)],
 )
 
+/** member: belongs to the department. manager: also manages its courses and authors (lib/authz/departments.ts). */
+export const DEPARTMENT_ROLES = ["member", "manager"] as const
+export type DepartmentRole = (typeof DEPARTMENT_ROLES)[number]
+
+/**
+ * A department of an organization workspace: a scope inside the organization, never a
+ * tenant of its own. Owned by the host and mirrored at sign-in (lib/authz/identity.ts),
+ * like memberships, so it sits outside row-level security with the other identity tables.
+ */
+export const departments = pgTable(
+  "departments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** The department's id on the host. */
+    hostDepartmentId: text("host_department_id").notNull().unique(),
+    name: text("name").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("departments_tenant_idx").on(t.tenantId)],
+)
+
+/** A user's place in a department, mirrored from the host's launch token. */
+export const departmentMemberships = pgTable(
+  "department_memberships",
+  {
+    departmentId: uuid("department_id")
+      .notNull()
+      .references(() => departments.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: DEPARTMENT_ROLES }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.departmentId, t.userId] }), index("department_memberships_user_idx").on(t.userId)],
+)
+
 export const courses = pgTable(
   "courses",
   {
@@ -132,6 +178,11 @@ export const courses = pgTable(
     publishedRevisionId: uuid("published_revision_id"),
     /** A copy of the sample course (lib/sample-course): for learning the editor, never reviewed or published. */
     sample: boolean("sample").notNull().default(false),
+    /**
+     * The department (of the course's organization) it belongs to, or null for the whole
+     * organization. Not part of the course's content: changing it never touches revisions or approvals.
+     */
+    departmentId: uuid("department_id").references(() => departments.id, { onDelete: "set null" }),
   },
   (t) => [
     // Target of the lessons' composite foreign key.
@@ -497,7 +548,7 @@ export const idempotencyKeys = pgTable(
  * audio arrive later as new kinds with their own provider adapters, so this
  * list grows without a schema change.
  */
-export const AI_JOB_KINDS = ["explanation", "questions", "outline", "image"] as const
+export const AI_JOB_KINDS = ["explanation", "questions", "outline", "image", "video"] as const
 export type AiJobKind = (typeof AI_JOB_KINDS)[number]
 
 /**

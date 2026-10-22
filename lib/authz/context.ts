@@ -7,6 +7,7 @@ import { cache } from "react"
 import { ADMIN_MODE_HEADER } from "@/lib/admin-mode"
 import { authConfig, WORKSPACE_COOKIE } from "@/lib/auth-gate"
 import { getCurrentUser, type CurrentUser } from "@/lib/auth"
+import { defaultWorkspace } from "@/lib/authz/default-workspace"
 import { loadIdentity, syncIdentity, type CourseGrant, type Workspace } from "@/lib/authz/identity"
 import { can, canInTenant, reviewsAnything, type CourseAction, type CourseResource, type Subject } from "@/lib/authz/policy"
 import { findCourse, listCourses, listCoursesByIds, type CourseRecord } from "@/lib/course-store"
@@ -48,6 +49,7 @@ async function loadContext(): Promise<RequestContext> {
     memberships: identity.workspaces.map((w) => ({ tenantId: w.tenantId, role: w.role })),
     tenantIds: identity.workspaces.map((w) => w.tenantId),
     grants: identity.grants,
+    departments: identity.departments,
     courseIds: identity.grants.map((g) => g.courseId),
   }
 }
@@ -56,7 +58,14 @@ async function loadContext(): Promise<RequestContext> {
 export const getRequestContext = cache(loadContext)
 
 export function resourceOf(record: CourseRecord): CourseResource {
-  return { courseId: record.course.id, tenantId: record.tenantId, tenantKind: record.tenantKind, ownerId: record.course.owner_id, sample: record.sample }
+  return {
+    courseId: record.course.id,
+    tenantId: record.tenantId,
+    tenantKind: record.tenantKind,
+    ownerId: record.course.owner_id,
+    departmentId: record.departmentId,
+    sample: record.sample,
+  }
 }
 
 /** Everything the screens need to know about what this person may do with this course. */
@@ -95,14 +104,9 @@ export function permissionsFor(ctx: RequestContext, record: CourseRecord): Cours
   }
 }
 
-export function personalWorkspace(ctx: RequestContext): Workspace {
-  return ctx.workspaces.find((w) => w.kind === "personal")!
-}
-
-/** The workspace last opened (if the user still belongs to it), otherwise their personal one. */
+/** The workspace last opened (if the user still belongs to it), otherwise their organization's, otherwise their personal one. */
 export async function currentWorkspace(ctx: RequestContext): Promise<Workspace> {
-  const remembered = (await cookies()).get(WORKSPACE_COOKIE)?.value
-  return ctx.workspaces.find((w) => w.tenantId === remembered) ?? personalWorkspace(ctx)
+  return defaultWorkspace(ctx.workspaces, (await cookies()).get(WORKSPACE_COOKIE)?.value)
 }
 
 /**

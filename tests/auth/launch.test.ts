@@ -151,9 +151,14 @@ describe("gate", () => {
   })
 
   it("keeps sign-in, the signed-out page, images, public keys and host events public", () => {
-    for (const p of ["/launch", "/sign-out", "/signed-out", "/health", "/uploads/x.png", "/.well-known/jwks.json", "/api/platform/events"]) {
+    for (const p of ["/launch", "/sign-out", "/signed-out", "/health", "/images/x.png", "/.well-known/jwks.json", "/api/platform/events"]) {
       expect(gate(p, false, launchMode)).toEqual({ kind: "next" })
     }
+  })
+
+  it("keeps uploads private: no session cookie, no file (R1)", () => {
+    expect(gate("/uploads/t/c/x.png", false, launchMode)).toEqual({ kind: "redirect", to: "/signed-out" })
+    expect(gate("/uploads/t/c/x.png", true, launchMode)).toEqual({ kind: "next" })
   })
 
   it("sends people without a session cookie to sign in, and APIs get 401; the session itself is checked later", () => {

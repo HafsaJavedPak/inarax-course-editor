@@ -55,7 +55,7 @@ flowchart LR
   **no link files** and can't create duplicates by losing one.
 - **Images are content-addressed** (id = SHA-256 of the bytes). The editor asks the host whether it
   has an image and uploads it only if not. Hosts without file storage say so in their manifest and
-  the editor links images from `EDITOR_PUBLIC_URL`.
+  the editor links images from `EDITOR_PUBLIC_URL`. Editor uploads are private (a signed-in editor session is needed to load one), so such a link does not reach learners: a host without image storage cannot show editor images to learners.
 - **The host negotiates.** `GET /v1/manifest` says which protocol major it speaks, which block types
   it can show (lessons using others keep their last published version, with a warning), and its
   limits. It is cached for five minutes.
@@ -78,8 +78,10 @@ Rotating the host's key signs every editor user out.
 
 The signature identifies **the editor installation**. The package's `actor` is the person who pressed Save
 or made the decision: their **host** user id, name and email, from the launch token they signed in
-with. Hosts check it on every publish (inara-next: creators and admins may publish, only admins may
-approve, reject or request changes).
+with. Hosts check it on every publish (inara-next: creators and admins may publish; only reviewers
+decide: an admin of the course's own organization at the organization stage, a platform admin at
+either stage and alone for personal-workspace courses; an org admin may send `published` only while
+the organization is trusted on the host right now; a department must be one the publisher may use).
 
 ### Sign-in and roles
 
@@ -90,11 +92,14 @@ People sign in on the platform and open the editor from there (contract § Launc
    made **creators**, and **admins**).
 2. Clicking it makes the platform sign (with its own Ed25519 key) a 60-second, single-use launch
    token and POST it to the editor's `/launch` (`app/launch/route.ts`). The token lists the user's
-   organizations with their role in each (`orgs`), and whether they're platform staff (`staff`:
-   inara-next sets it for admins of the inaraX organization).
+   organizations with their role in each (`orgs`, each with `review_trusted` and the user's
+   `departments`; an org admin gets all of the organization's departments, others their own), and
+   whether they're platform staff (`staff`: inara-next's `users.is_platform_admin`; such a person
+   needs no organization membership).
 3. The editor checks it (`lib/protocol/launch.ts`, replay guard `lib/launch-replay.ts`), records the
-   user and **mirrors their organizations** as workspaces (`lib/authz/identity.ts`: an organization
-   missing from the token is one they left, and its workspace goes), then starts a **session stored
+   user and **mirrors their organizations** as workspaces, with their trust and departments
+   (`lib/authz/identity.ts`: an organization missing from the token is one they left, and its
+   workspace goes), then starts a **session stored
    in the database** (`lib/session.ts`): the cookie is a random token. A session ends on sign-out,
    after 8 hours, after 30 idle minutes, when the platform sends `user.access_changed` (role or
    organizations changed), or when the platform key that signed its launch is rotated away.
@@ -110,9 +115,10 @@ People sign in on the platform and open the editor from there (contract § Launc
 | Workspace | Role | Can |
 |---|---|---|
 | personal (everyone has one) | owner | Create courses, edit and publish their own, submit for review, withdraw |
-| | platform staff | Read, edit (as reviewer), accept, reject and request changes, in every personal workspace |
+| | platform staff | Read, edit (as reviewer), accept (publish), reject and request changes, in every personal workspace |
 | organization | creator | Create courses there; work on their own (others' courses are invisible) |
-| | admin | Everything on every course in that organization, including review; submit only their own |
+| | admin | Everything on every course in that organization, including the organization stage of review; submit only their own |
+| | department manager | Read, see history, share and take down the courses of their department; never edit, submit or approve |
 
 Reviewers edit from the review area (`/admin`): edits there are allowed during review and don't
 change the status. Someone who wrote a course and also reviews it (an org admin's own course) gets
@@ -167,14 +173,17 @@ How inara-next maps a package (for reference; the editor doesn't depend on it):
 | course / module / lesson UUID | `courses.uuid` / `modules.uuid` / `lessons.uuid` (same value) |
 | level 1–3 | `levels.level_number` 1–3 |
 | lesson content | the English canonical `generated_lessons.structured_content` |
-| `draft` / `in_review` / `changes_requested` / `approved` / `rejected` | course `DRAFT` / `UNDER_REVIEW` / `CHANGES_REQUESTED` / `PUBLISHED` (see below) / `REJECTED`; lessons `DRAFT` / `PENDING_REVIEW` / `REJECTED` (with comments) / `APPROVED` / `REJECTED` |
+| `draft` / `in_review` / `changes_requested` / `approved` / `published` / `rejected` | course `DRAFT` / `UNDER_REVIEW` / `CHANGES_REQUESTED` / `APPROVED` (hidden) / `PUBLISHED` (see below) / `REJECTED`; lessons `DRAFT` / `PENDING_REVIEW` / `REJECTED` (with comments) / `PENDING_REVIEW` / `APPROVED` / `REJECTED` |
+| `course.department.host_department_id` (`null`: whole organization) | validated only (belongs to the course's organization; the publisher is an org admin or a member); not stored on the host course |
 | `course.organization.host_org_id` (from the workspace; `null` for personal) | the course's organization link (`null`: `COURSE_EDITOR_ORGANIZATION_ID`, default inaraX) |
 
-**Approval goes live.** An `approved` package from an org admin or staff becomes `PUBLISHED`, so
-learners in that organization see it on `/courses`. Without a cover image it stays `APPROVED` and the
-host returns a warning naming what's missing. While a course is `PUBLISHED`, packages that aren't
-`approved` don't change its content (a warning says the live version stays until re-approval), so
-unreviewed edits never reach learners. `RETIRED` is set in inara-next only.
+**Publishing goes live (protocol 2.2).** A `published` package becomes `PUBLISHED`, so learners in
+that organization see it on `/courses`. `approved` means the organization's admin approved and a
+platform admin has yet to publish: the course is `APPROVED` and hidden. Without a cover image a
+`published` package stays `APPROVED` and the host returns a warning naming what's missing. While a
+course is `PUBLISHED`, packages that aren't `published` don't change its content (a warning says the
+live version stays until it is published again), so unreviewed edits never reach learners. A host
+reads `approved` in a pre-2.2 package as live (`published`), so it can be deployed before the editor. `RETIRED` is set in inara-next only.
 
 Moving a lesson or module now **moves** it on inara-next (learner progress stays), instead of the
 old delete-and-recreate.

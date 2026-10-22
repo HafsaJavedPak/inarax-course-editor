@@ -156,3 +156,42 @@
   gap: 8px;
   align-items: center;
 }
+
+.ai-kinds {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.ai-kind {
+  flex: 1;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--tt-border-color, #d4d4d8);
+  border-radius: 6px;
+  cursor: pointer;
+
+  &[data-active="true"] {
+    font-weight: 600;
+    background: var(--tt-brand-color-50, #eef2ff);
+    border-color: var(--tt-brand-color-500, #6366f1);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.ai-candidate-media {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  margin: 8px 0;
+  object-fit: contain;
+  background: #0001;
+  border-radius: 6px;
+}

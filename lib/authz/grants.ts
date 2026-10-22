@@ -280,13 +280,15 @@ export async function createInvitation(
       if (shared) throw new SharingError(409, "They already have access; change their role instead.", "already_shared")
     }
 
-    // Outside the workspace? Then the workspace's guest rules apply.
+    // Outside the workspace? Then the workspace's guest rules apply. Platform staff are never
+    // outside: they work in every workspace, so an organization's "no outsiders" rule isn't about them.
     const isMember =
       knownIds.length > 0 &&
-      (await tx
+      ((await tx
         .select({ userId: memberships.userId })
         .from(memberships)
-        .where(and(eq(memberships.tenantId, record.tenantId), inArray(memberships.userId, knownIds)))).length > 0
+        .where(and(eq(memberships.tenantId, record.tenantId), inArray(memberships.userId, knownIds)))).length > 0 ||
+        (await tx.select({ id: users.id }).from(users).where(and(inArray(users.id, knownIds), eq(users.staff, true)))).length > 0)
     const tenant = await tenantOf(tx, record.tenantId)
     const sharing = sharingSettings(tenant.kind, tenant.settings)
     if (!isMember && !sharing.allow_guests) {
@@ -413,7 +415,8 @@ export async function acceptInvitation(ctx: RequestContext, token: string): Prom
       throw new SharingError(403, "This invitation was sent to a different account.", "wrong_account")
     }
 
-    const isMember = ctx.tenantIds.includes(row.tenantId)
+    // Platform staff count as inside every workspace (see createInvitation).
+    const isMember = ctx.tenantIds.includes(row.tenantId) || ctx.staff
     if (!isMember) {
       const tenant = await tenantOf(tx, row.tenantId)
       if (!sharingSettings(tenant.kind, tenant.settings).allow_guests) {

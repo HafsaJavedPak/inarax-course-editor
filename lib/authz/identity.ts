@@ -3,10 +3,11 @@ import "server-only"
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm"
 import { headers } from "next/headers"
 
-import { auditLog, courseGrants, memberships, tenants, users, type GrantRole } from "@/lib/db/schema"
+import { auditLog, courseGrants, departmentMemberships, departments, memberships, tenants, users, type DepartmentRole, type GrantRole } from "@/lib/db/schema"
 import { withoutTenantScope, type Tx } from "@/lib/db/tenant-db"
 import { TRACE_HEADER } from "@/lib/trace"
 import { effectiveRole } from "@/lib/authz/sharing"
+import type { DepartmentMembership } from "@/lib/authz/departments"
 import { notifyAccess } from "@/lib/collab/notify"
 
 // Who belongs to which workspace. The host platform is the source of truth for
@@ -15,7 +16,17 @@ import { notifyAccess } from "@/lib/collab/notify"
 // workspace at their next sign-in. Personal workspaces exist only here.
 
 /** An organization the user belongs to on the host, with their role there. */
-export type HostOrg = { id: string; name: string; role: "admin" | "creator" }
+export type HostOrg = {
+  id: string
+  name: string
+  role: "admin" | "creator"
+  /** The host trusts this organization's admin approval to publish a course (lib/review/pipeline.ts). */
+  reviewTrusted?: boolean
+  /** The user's departments here; an organization admin gets all of them (role null for those they aren't in). Undefined: the host doesn't send them, leave what's stored. */
+  departments?: HostDepartment[]
+}
+
+export type HostDepartment = { id: string; name: string; role: DepartmentRole | null }
 
 export type IdentityInput = {
   userId: string
@@ -58,17 +69,39 @@ export async function syncIdentity(input: IdentityInput): Promise<void> {
     if (input.orgs !== null) {
       const orgTenantIds: string[] = []
       for (const org of input.orgs) {
+        // The host's review trust is merged into the settings, which also hold sharing and AI limits.
+        const reviewTrusted = org.reviewTrusted === true
         const [tenant] = await tx
           .insert(tenants)
-          .values({ kind: "org", name: org.name, hostOrgId: org.id })
-          .onConflictDoUpdate({ target: tenants.hostOrgId, set: { name: org.name } })
+          .values({ kind: "org", name: org.name, hostOrgId: org.id, settings: { reviewTrusted } })
+          .onConflictDoUpdate({
+            target: tenants.hostOrgId,
+            set: {
+              name: org.name,
+              settings: sql`coalesce(${tenants.settings}, '{}'::jsonb) || ${JSON.stringify({ reviewTrusted })}::jsonb`,
+            },
+          })
           .returning({ id: tenants.id })
         orgTenantIds.push(tenant.id)
         await tx
           .insert(memberships)
           .values({ tenantId: tenant.id, userId: input.userId, role: org.role, source: "host" })
           .onConflictDoUpdate({ target: [memberships.tenantId, memberships.userId], set: { role: org.role, source: "host" } })
+        if (org.departments !== undefined) await syncDepartments(tx, tenant.id, input.userId, org.role, org.departments)
       }
+      // Departments of organizations the user has left.
+      await tx.delete(departmentMemberships).where(
+        and(
+          eq(departmentMemberships.userId, input.userId),
+          inArray(
+            departmentMemberships.departmentId,
+            tx
+              .select({ id: departments.id })
+              .from(departments)
+              .where(orgTenantIds.length ? notInArray(departments.tenantId, orgTenantIds) : sql`true`),
+          ),
+        ),
+      )
       // Orgs the host no longer lists: the user has left them.
       await tx
         .delete(memberships)
@@ -92,6 +125,44 @@ export async function syncIdentity(input: IdentityInput): Promise<void> {
   })
 }
 
+/**
+ * Mirrors one organization's departments for this user. Their own places are replaced by
+ * the host's list. An organization admin is sent the organization's whole list, so it is the
+ * truth about which departments exist: ones the host no longer lists are removed (their
+ * courses go back to the whole organization). Everyone else only learns their own.
+ */
+async function syncDepartments(tx: Tx, tenantId: string, userId: string, orgRole: "admin" | "creator", listed: HostDepartment[]) {
+  const ids: string[] = []
+  const mine: string[] = []
+  for (const d of listed) {
+    const [row] = await tx
+      .insert(departments)
+      .values({ tenantId, hostDepartmentId: d.id, name: d.name })
+      .onConflictDoUpdate({ target: departments.hostDepartmentId, set: { name: d.name }, setWhere: eq(departments.tenantId, tenantId) })
+      .returning({ id: departments.id })
+    if (!row) continue
+    ids.push(row.id)
+    if (d.role) {
+      mine.push(row.id)
+      await tx
+        .insert(departmentMemberships)
+        .values({ departmentId: row.id, userId, role: d.role })
+        .onConflictDoUpdate({ target: [departmentMemberships.departmentId, departmentMemberships.userId], set: { role: d.role } })
+    }
+  }
+  // Places in this organization's departments the host no longer gives them.
+  await tx.delete(departmentMemberships).where(
+    and(
+      eq(departmentMemberships.userId, userId),
+      inArray(departmentMemberships.departmentId, tx.select({ id: departments.id }).from(departments).where(eq(departments.tenantId, tenantId))),
+      mine.length ? notInArray(departmentMemberships.departmentId, mine) : sql`true`,
+    ),
+  )
+  if (orgRole === "admin") {
+    await tx.delete(departments).where(and(eq(departments.tenantId, tenantId), ids.length ? notInArray(departments.id, ids) : sql`true`))
+  }
+}
+
 export type Workspace = { tenantId: string; kind: "personal" | "org"; name: string; role: "owner" | "admin" | "creator" }
 
 /** Access to one course through sharing, as it counts right now (dormant grants are left out). */
@@ -101,7 +172,9 @@ export type CourseGrant = { courseId: string; tenantId: string; role: GrantRole;
  * The user's record, workspaces (personal first, then orgs by name) and the
  * course grants in effect; null if they never signed in.
  */
-export async function loadIdentity(userId: string): Promise<{ staff: boolean; workspaces: Workspace[]; grants: CourseGrant[] } | null> {
+export async function loadIdentity(
+  userId: string,
+): Promise<{ staff: boolean; workspaces: Workspace[]; grants: CourseGrant[]; departments: DepartmentMembership[] } | null> {
   return withoutTenantScope(async (tx) => {
     const [user] = await tx.select({ staff: users.staff }).from(users).where(eq(users.id, userId))
     if (!user) return null
@@ -128,10 +201,17 @@ export async function loadIdentity(userId: string): Promise<{ staff: boolean; wo
       .where(eq(courseGrants.userId, userId))
     const grants: CourseGrant[] = []
     for (const g of stored) {
-      const role = effectiveRole(g, memberOf.has(g.tenantId), { kind: g.tenantKind, settings: g.settings })
+      // Platform staff count as inside every workspace, so their member grants apply.
+      const role = effectiveRole(g, memberOf.has(g.tenantId) || user.staff, { kind: g.tenantKind, settings: g.settings })
       if (role) grants.push({ courseId: g.courseId, tenantId: g.tenantId, role, kind: g.kind })
     }
-    return { staff: user.staff, workspaces, grants }
+    const departmentRows = await tx
+      .select({ tenantId: departments.tenantId, departmentId: departments.id, role: departmentMemberships.role })
+      .from(departmentMemberships)
+      .innerJoin(departments, eq(departments.id, departmentMemberships.departmentId))
+      .where(eq(departmentMemberships.userId, userId))
+    // Only departments of workspaces the user is still in count.
+    return { staff: user.staff, workspaces, grants, departments: departmentRows.filter((d) => memberOf.has(d.tenantId)) }
   })
 }
 

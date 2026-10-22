@@ -28,7 +28,7 @@ export function sampleCourse(overrides: Partial<Course> = {}): Course {
       length_hours: 2,
       lesson_size: "short",
       pricing: { type: "free" },
-      limits: null,
+      limits: null, metadata: { domains: ["Generic"], future_goals: [], departments: ["Generic"], require_future_goal: false },
     },
     "user_local_creator",
   )

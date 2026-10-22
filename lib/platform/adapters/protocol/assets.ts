@@ -13,25 +13,18 @@ import type { HttpClient } from "@/lib/platform/http-client"
 import { HttpError } from "@/lib/platform/http-client"
 import { sha256Hex } from "@/lib/protocol/signing"
 import { AssetSchema, PROTOCOL_PATHS, type Manifest } from "@/lib/protocol/wire"
+import { uploadContentType, uploadPath, uploadUrlsIn, type UploadRef } from "@/lib/uploads"
 
-// Images uploaded to this editor: absolute URLs ending in /uploads/<uuid>.<ext>.
-const UPLOAD_URL_RE = /https?:\/\/[^\s"'()<>]+?\/uploads\/([0-9a-f-]{36}\.(?:png|jpg|gif|webp|avif))/gi
-
-const CONTENT_TYPES: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  gif: "image/gif",
-  webp: "image/webp",
-  avif: "image/avif",
-}
+// Images uploaded to this editor: absolute URLs ending in an upload path (lib/uploads.ts):
+// /uploads/<tenant>/<course>/<uuid>.<ext>, or the legacy /uploads/<uuid>.<ext>.
 
 export type AssetPublisherOptions = {
   http: HttpClient
   manifest: Manifest
   /** This editor's public address, for images the host can't store. */
   publicBaseUrl?: string
-  /** Reads an upload's bytes by file name; null when the file is gone. */
-  readUpload: (name: string) => Promise<Uint8Array | null>
+  /** Reads an upload's bytes; null when the file is gone. */
+  readUpload: (ref: UploadRef) => Promise<Uint8Array | null>
 }
 
 export function createAssetPublisher({ http, manifest, publicBaseUrl, readUpload }: AssetPublisherOptions) {
@@ -40,27 +33,28 @@ export function createAssetPublisher({ http, manifest, publicBaseUrl, readUpload
   const missing = new Set<string>()
   const assets = manifest.capabilities.assets
 
-  const editorUrl = (name: string, original: string) =>
-    publicBaseUrl ? `${publicBaseUrl.replace(/\/+$/, "")}/uploads/${name}` : original
+  const editorUrl = (ref: UploadRef, original: string) =>
+    publicBaseUrl ? `${publicBaseUrl.replace(/\/+$/, "")}${uploadPath(ref)}` : original
 
-  async function copy(name: string, original: string): Promise<string> {
-    const contentType = CONTENT_TYPES[name.split(".").pop()!.toLowerCase()]
+  async function copy(ref: UploadRef, original: string): Promise<string> {
+    const name = ref.name
+    const contentType = uploadContentType(name) ?? "application/octet-stream"
     if (!assets) {
       notCopied.set(name, "the platform doesn't store images")
-      return editorUrl(name, original)
+      return editorUrl(ref, original)
     }
     if (!assets.content_types.includes(contentType)) {
       notCopied.set(name, `the platform doesn't accept ${contentType}`)
-      return editorUrl(name, original)
+      return editorUrl(ref, original)
     }
-    const bytes = await readUpload(name)
+    const bytes = await readUpload(ref)
     if (!bytes) {
       missing.add(name)
       return original
     }
     if (bytes.byteLength > assets.max_bytes) {
       notCopied.set(name, `larger than the platform's ${Math.floor(assets.max_bytes / 1024 / 1024)} MB limit`)
-      return editorUrl(name, original)
+      return editorUrl(ref, original)
     }
 
     const id = sha256Hex(bytes)
@@ -77,23 +71,23 @@ export function createAssetPublisher({ http, manifest, publicBaseUrl, readUpload
       if (error instanceof HttpError && (error.status === 401 || error.status === 403)) throw error
       const reason = error instanceof HttpError ? (error.problem?.title ?? `HTTP ${error.status || "no response"}`) : (error as Error).message
       notCopied.set(name, reason)
-      return editorUrl(name, original)
+      return editorUrl(ref, original)
     }
   }
 
   /** The URL to publish for `url`: the host's copy for editor uploads, unchanged otherwise. */
   function resolve(url: string): Promise<string> {
-    const match = [...url.matchAll(UPLOAD_URL_RE)][0]
-    if (!match) return Promise.resolve(url)
-    const name = match[1].toLowerCase()
-    if (!resolved.has(name)) resolved.set(name, copy(name, url))
+    const ref = uploadUrlsIn(url)[0]?.ref
+    if (!ref) return Promise.resolve(url)
+    const name = ref.name
+    if (!resolved.has(name)) resolved.set(name, copy(ref, url))
     return resolved.get(name)!
   }
 
   /** A copy of `value` (e.g. lesson content) with every editor upload URL replaced. */
   async function rewrite<T>(value: T): Promise<T> {
     let json = JSON.stringify(value)
-    for (const url of new Set([...json.matchAll(UPLOAD_URL_RE)].map((m) => m[0]))) {
+    for (const url of new Set(uploadUrlsIn(json).map((u) => u.url))) {
       json = json.split(url).join(await resolve(url))
     }
     return JSON.parse(json)
@@ -106,7 +100,7 @@ export function createAssetPublisher({ http, manifest, publicBaseUrl, readUpload
         ? `They're linked from this editor (${publicBaseUrl}) instead`
         : "They still point at the address they were uploaded on, which learners may not reach. Set EDITOR_PUBLIC_URL"
       const reasons = [...new Set(notCopied.values())].join("; ")
-      out.push(`${notCopied.size} image${notCopied.size === 1 ? "" : "s"} couldn't be copied to the platform (${reasons}). ${where}.`)
+      out.push(`${notCopied.size} image${notCopied.size === 1 ? "" : "s"} couldn't be copied to the platform (${reasons}). ${where}.${publicBaseUrl ? " Those links need a signed-in editor session, so learners can't load them: fix the platform's image storage and publish again." : ""}`)
     }
     if (missing.size) {
       out.push(`${missing.size} image${missing.size === 1 ? " is" : "s are"} missing from this editor's uploads folder and couldn't be copied: ${[...missing].join(", ")}.`)

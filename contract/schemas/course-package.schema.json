@@ -1,5 +1,5 @@
 {
-  "$id": "https://inara.dev/course-publishing-protocol/2.1/course-package.schema.json",
+  "$id": "https://inara.dev/course-publishing-protocol/2.3/course-package.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
@@ -119,6 +119,68 @@
               "type": "null"
             }
           ]
+        },
+        "department": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "host_department_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "required": [
+                "host_department_id"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "domains": {
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              }
+            },
+            "future_goals": {
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              }
+            },
+            "departments": {
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              }
+            },
+            "require_future_goal": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "domains",
+            "future_goals",
+            "departments",
+            "require_future_goal"
+          ]
         }
       },
       "required": [
@@ -144,6 +206,7 @@
             "in_review",
             "changes_requested",
             "approved",
+            "published",
             "rejected",
             "unpublished"
           ]

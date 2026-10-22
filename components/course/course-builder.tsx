@@ -31,6 +31,7 @@ import {
   type Course,
   type CourseModule,
   type LevelId,
+  type ReviewStage,
 } from "@/lib/course"
 import { getSubmitBlockers, isLocked } from "@/lib/course-status"
 import { coursePaths, modeHeaders } from "@/lib/admin-mode"
@@ -68,6 +69,7 @@ export function CourseBuilder({
   isAdmin = false,
   publishingEnabled = true,
   permissions,
+  pipeline,
 }: {
   initialCourse: Course
   initialReport: CourseReport
@@ -77,6 +79,8 @@ export function CourseBuilder({
   publishingEnabled?: boolean
   /** What this person may do (lib/authz/context.ts permissionsFor); everything when omitted. */
   permissions?: CoursePermissions
+  /** The review stages this course goes through, for the lifecycle track (lib/review/pipeline.ts); the platform's alone when omitted. */
+  pipeline?: readonly ReviewStage[]
 }) {
   const may = permissions ?? ALL_PERMISSIONS
   const [sharing, setSharing] = useState(false)
@@ -355,6 +359,9 @@ export function CourseBuilder({
             isAdmin={isAdmin}
             canSubmit={may.submit}
             mayTakeDown={may.takedown}
+            pipeline={pipeline}
+            publishedAt={publisher.publishedAt?.toISOString() ?? null}
+            platformEnabled={publisher.enabled}
           />
         )}
         {sharing && <ShareDialog courseId={course.id} onClose={() => setSharing(false)} />}

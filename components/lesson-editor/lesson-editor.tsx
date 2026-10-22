@@ -541,9 +541,9 @@ export function LessonEditor({
             {courseStatus === "in_review" ? "in review" : "in its current status"}.
           </p>
         )}
-        {!isAdmin && courseStatus === "approved" && (
+        {!isAdmin && (courseStatus === "approved" || courseStatus === "published") && (
           <p className="le-banner" data-tone="approved" role="status">
-            This course has been approved. Saving a change here moves it back to Draft, and it will need another review.
+            This course has been {courseStatus === "published" ? "published" : "approved"}. Saving a change here moves it back to Draft, and it will need another review.
           </p>
         )}
 
