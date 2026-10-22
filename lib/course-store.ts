@@ -58,6 +58,10 @@ export type CourseRecord = {
   departmentId: string | null
   /** Whether the organization sponsors it; null when nobody has decided (lib/authz/policy.ts course.sponsor). */
   accessMode: AccessMode | null
+  /** For a course taken from the host: the version it was last read or published as; null for one the editor made. */
+  hostVersion: string | null
+  /** Taken from the platform rather than written here: its organization's admins act as its authors (lib/authz/policy.ts). */
+  adopted: boolean
 }
 
 export class RevisionConflictError extends Error {}
@@ -115,6 +119,8 @@ const recordColumns = {
   sample: courses.sample,
   departmentId: courses.departmentId,
   accessMode: courses.accessMode,
+  hostVersion: courses.hostVersion,
+  adopted: courses.adopted,
 }
 
 const toRecord = (row: Omit<CourseRecord, "course"> & { data: Course }): CourseRecord => ({
@@ -130,6 +136,8 @@ const toRecord = (row: Omit<CourseRecord, "course"> & { data: Course }): CourseR
   sample: row.sample,
   departmentId: row.departmentId,
   accessMode: row.accessMode,
+  hostVersion: row.hostVersion,
+  adopted: row.adopted,
 })
 
 /** The indexed columns kept next to the full course. */
@@ -302,9 +310,18 @@ export async function insertCourseTx(
   scope: Scope,
   tenantId: string,
   course: Course,
-  options: { lessons?: ReadonlyMap<string, Lesson>; sample?: boolean; departmentId?: string | null } = {},
+  options: { lessons?: ReadonlyMap<string, Lesson>; sample?: boolean; departmentId?: string | null; hostVersion?: string | null; accessMode?: AccessMode | null; adopted?: boolean } = {},
 ): Promise<void> {
-  await tx.insert(courses).values({ id: course.id, tenantId, ...columnsOf(course), sample: options.sample ?? false, departmentId: options.departmentId ?? null })
+  await tx.insert(courses).values({
+    id: course.id,
+    tenantId,
+    ...columnsOf(course),
+    sample: options.sample ?? false,
+    departmentId: options.departmentId ?? null,
+    hostVersion: options.hostVersion ?? null,
+    accessMode: options.accessMode ?? null,
+    adopted: options.adopted ?? false,
+  })
   for (const [lessonId, lesson] of options.lessons ?? []) await writeLesson(tx, tenantId, course.id, lessonId, lesson)
   await commitContent(tx, scope, tenantId, course, { kind: "initial", actorId: course.owner_id })
 }
@@ -505,12 +522,20 @@ export async function decideReview(
 }
 
 /** Records a successful publish of `revisionId`. Like workflow changes, doesn't bump `revision`. */
-export async function recordPublish(scope: Scope, courseId: string, at: string, revisionId: string | null = null): Promise<void> {
+export async function recordPublish(
+  scope: Scope,
+  courseId: string,
+  at: string,
+  revisionId: string | null = null,
+  /** What the host's course is now (its `version`), for the next publish to be checked against. */
+  hostVersion?: string,
+): Promise<void> {
   await withTenantScope(scope, async (tx) => {
     const current = (await selectCourse(tx, scope, courseId, true))?.course
     if (!current) return
     await writeCourse(tx, { ...current, published_at: at })
     if (revisionId) await tx.update(courses).set({ publishedRevisionId: revisionId }).where(eq(courses.id, courseId))
+    if (hostVersion) await tx.update(courses).set({ hostVersion }).where(eq(courses.id, courseId))
   })
 }
 
