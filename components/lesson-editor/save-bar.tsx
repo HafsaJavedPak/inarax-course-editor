@@ -99,6 +99,18 @@ export function SaveBar({
       >
         {publishText}
       </span>
+      {typeof publish !== "string" && publish.code === "stale" && (
+        <button
+          type="button"
+          className="in-btn in-btn-sm"
+          onClick={() => {
+            if (window.confirm("Bring in the platform's version of this course? Your changes here stay in the History, and you can restore them from there.")) void publisher.refreshFromPlatform()
+          }}
+          title="The course was changed on the platform after you opened it here"
+        >
+          Refresh from the platform
+        </button>
+      )}
       <button
         type="button"
         className="in-btn in-btn-primary in-btn-sm"
