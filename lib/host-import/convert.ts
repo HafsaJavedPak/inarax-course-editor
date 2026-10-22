@@ -1,13 +1,17 @@
-// Turns one course exported from inara-next (npm run course-editor:export there)
-// into a course of this editor, keeping the platform's ids. Because the ids
-// are the platform's own, publishing from the editor later updates that very
-// course in place (PUT courses/{uuid}) rather than creating a copy.
+// Turns a course that lives on the platform into a course of this editor, keeping the platform's ids. Because the
+// ids are the platform's own, publishing from the editor later updates that very course in place (PUT courses/{uuid})
+// rather than creating a copy.
 //
-// Pure: no files, no database. scripts/import-host-course.ts does the I/O.
+// Two readers feed one builder:
+//   convertSnapshot     the platform's own answer (GET courses/{id}, protocol 2.6): what an admin opening a course uses
+//   convertHostCourse   an export file (inara-next `npm run course-editor:export`): the developer's one-off route
+//
+// Pure: no files, no database, no network.
 
-import { DEFAULT_WORDS_PER_MINUTE, LEVELS, PLACEMENT_SIZE, type Course, type CourseLimits, type LevelId, type PlacementQuestion } from "@/lib/course"
+import { CourseSchema, DEFAULT_WORDS_PER_MINUTE, LEVELS, PLACEMENT_SIZE, type Course, type CourseLimits, type LevelId, type PlacementQuestion } from "@/lib/course"
 import { getLessonStats } from "@/lib/course-validate"
 import { isUuid, parseLesson, type Lesson } from "@/lib/lesson"
+import type { CourseSnapshot } from "@/lib/protocol/wire"
 
 export class ConvertError extends Error {}
 
@@ -30,20 +34,40 @@ const fail = (message: string): never => {
 /** The levels of a course, by platform level_number 1..3 (Associate, Intermediate, Advanced). */
 const LEVEL_BY_NUMBER: Record<number, LevelId> = { 1: "associate", 2: "intermediate", 3: "advanced" }
 
+/** A platform course in the shape the builder needs, whichever reader made it. */
+export type SourceCourse = {
+  id: string
+  title: string
+  summary: string
+  coverImageUrl: string | null
+  status: Course["status"]
+  /** Exactly three, in the editor's level order. */
+  levels: { id: LevelId; title: string; modules: { id: string; title: string; lessons: { id: string; title: string; content: unknown }[] }[]; placement: PlacementQuestion[] }[]
+  metadata: { domains: string[]; future_goals: string[]; departments: string[]; require_future_goal: boolean }
+  placementSize: number | null
+  quizPrompt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** The platform's status words, in the editor's. A retired course isn't editable. */
+const STATUS_BY_HOST: Record<string, Course["status"]> = {
+  DRAFT: "draft",
+  UNDER_REVIEW: "in_review",
+  CHANGES_REQUESTED: "changes_requested",
+  APPROVED: "approved",
+  PUBLISHED: "published",
+  REJECTED: "rejected",
+}
+
+// ---------------------------------------------------------------------------
+// Reader 1: an export file (rows as the platform's database has them)
+// ---------------------------------------------------------------------------
+
 export function convertHostCourse(input: unknown, options: { ownerId: string; now?: string }): Converted {
   const root = isRec(input) && isRec(input.course) ? input.course : fail('Not an export: expected { "course": { … } }')
   const course = root as Rec
-  const notes: string[] = []
-  const now = options.now ?? new Date().toISOString()
 
-  const courseId = str(course.uuid)
-  if (!isUuid(courseId)) fail("The course has no valid uuid")
-  const title = str(course.title).trim()
-  const summary = str(course.description).trim()
-  if (title.length < 3) fail(`The course title “${title}” is too short for the editor (3 characters)`)
-  if (summary.length < 20) fail("The course description is shorter than 20 characters, which the editor requires as a summary")
-
-  // --- Levels, modules, lessons ------------------------------------------------
   const levelIdByHostId = new Map<number, LevelId>()
   for (const level of list(course.levels)) {
     const id = LEVEL_BY_NUMBER[Number(level.level_number)]
@@ -53,43 +77,22 @@ export function convertHostCourse(input: unknown, options: { ownerId: string; no
   const nameOfLevel = Object.fromEntries(list(course.levels).map((l) => [LEVEL_BY_NUMBER[Number(l.level_number)], str(l.name)])) as Record<LevelId, string>
 
   const byOrder = (a: Rec, b: Rec) => Number(a.order_index) - Number(b.order_index)
-  const lessons = new Map<string, Lesson>()
-  const wordCounts: number[] = []
-  const levels = LEVELS.map(({ id }) => ({ id, modules: [] as Course["levels"][number]["modules"], placement: [] as PlacementQuestion[] }))
-  const moduleTitles = new Set<string>()
+  const levels: SourceCourse["levels"] = LEVELS.map(({ id, label }) => ({ id, title: nameOfLevel[id] ?? label, modules: [], placement: [] }))
 
   for (const mod of [...list(course.modules)].sort(byOrder)) {
     const levelId = levelIdByHostId.get(Number(mod.level_id))
     if (!levelId) fail(`Module “${str(mod.title)}” is not in any level`)
-    const moduleId = str(mod.uuid)
-    if (!isUuid(moduleId)) fail(`Module “${str(mod.title)}” has no valid uuid`)
-    if (moduleTitles.has(str(mod.title).trim().toLowerCase())) fail(`Two modules are called “${str(mod.title)}”; the editor needs unique module titles`)
-    moduleTitles.add(str(mod.title).trim().toLowerCase())
-
-    const refs: { id: string; title: string }[] = []
-    const lessonTitles = new Set<string>()
-    for (const lesson of [...list(mod.lessons)].sort(byOrder)) {
-      const lessonId = str(lesson.uuid)
-      const lessonTitle = str(lesson.title).trim()
-      if (!isUuid(lessonId)) fail(`Lesson “${lessonTitle}” has no valid uuid`)
-      if (lessonTitles.has(lessonTitle.toLowerCase())) fail(`Module “${str(mod.title)}” has two lessons called “${lessonTitle}”`)
-      lessonTitles.add(lessonTitle.toLowerCase())
-
+    const lessons = [...list(mod.lessons)].sort(byOrder).map((lesson) => {
       const rows = list(lesson.generated_lessons)
       const row = rows.find((r) => r.is_canonical === true) ?? rows[0]
-      if (!row) fail(`Lesson “${lessonTitle}” has no content in the export`)
-      const parsed = parseLesson(row!.structured_content)
-      if ("error" in parsed) fail(`Lesson “${lessonTitle}” is not a block lesson the editor can open (${parsed.error}). Text-only lessons from the generation pipeline can't be imported`)
-      lessons.set(lessonId, (parsed as { lesson: Lesson }).lesson)
-      if (typeof row!.word_count === "number") wordCounts.push(row!.word_count)
-      refs.push({ id: lessonId, title: lessonTitle })
-    }
-    levels.find((l) => l.id === levelId)!.modules.push({ id: moduleId, title: str(mod.title).trim(), summary: "", lessons: refs })
+      if (!row) fail(`Lesson “${str(lesson.title).trim()}” has no content in the export`)
+      return { id: str(lesson.uuid), title: str(lesson.title).trim(), content: row!.structured_content }
+    })
+    levels.find((l) => l.id === levelId)!.modules.push({ id: str(mod.uuid), title: str(mod.title).trim(), lessons })
   }
-  if (lessons.size === 0) fail("The course has no lessons")
 
-  // --- Placement banks -----------------------------------------------------------
   let placementSize: number | null = null
+  const notes: string[] = []
   for (const quiz of list(course.placement_quizzes)) {
     const levelId = (Object.entries(nameOfLevel).find(([, name]) => name === str(quiz.level_name))?.[0] ?? null) as LevelId | null
     if (!levelId) {
@@ -118,13 +121,126 @@ export function convertHostCourse(input: unknown, options: { ownerId: string; no
     }
   }
 
-  // --- Learner choices -------------------------------------------------------------
   const labels = (type: string) => list(course.course_metadata).filter((m) => str(m.type) === type).map((m) => str(m.label).trim()).filter(Boolean)
-  const metadata = {
-    domains: labels("DOMAIN"),
-    future_goals: labels("FUTURE_GOAL"),
-    departments: labels("DEPARTMENT"),
-    require_future_goal: course.require_user_future_goal === true,
+  const now = options.now ?? new Date().toISOString()
+  const status = STATUS_BY_HOST[str(course.status)] ?? fail(`The platform's status is ${str(course.status) || "unknown"}; only a course that isn't retired can be edited`)
+  const source: SourceCourse = {
+    id: str(course.uuid),
+    title: str(course.title).trim(),
+    summary: str(course.description).trim(),
+    coverImageUrl: str(course.cover_image_url) || null,
+    status,
+    levels,
+    metadata: { domains: labels("DOMAIN"), future_goals: labels("FUTURE_GOAL"), departments: labels("DEPARTMENT"), require_future_goal: course.require_user_future_goal === true },
+    placementSize,
+    quizPrompt: str(course.quiz_prompt) || null,
+    createdAt: str(course.created_at) || now,
+    updatedAt: str(course.updated_at) || now,
+  }
+  const built = buildCourse(source, options)
+  built.notes.unshift(...notes)
+  return built
+}
+
+// ---------------------------------------------------------------------------
+// Reader 2: the platform's snapshot (protocol 2.6)
+// ---------------------------------------------------------------------------
+
+/** What stops a snapshot from being opened here, in words for the admin (empty when nothing does). */
+export function snapshotProblems(snapshot: CourseSnapshot): string[] {
+  const problems: string[] = []
+  if (snapshot.course.status === null) problems.push("The course is retired on the platform, so it can't be edited.")
+  const broken = snapshot.levels.flatMap((l) => l.modules.flatMap((m) => m.lessons.filter((x) => x.problem !== null).map((x) => ({ ...x, module: m.title }))))
+  if (broken.length) {
+    const text = broken.filter((x) => x.problem === "text_only").length
+    const empty = broken.length - text
+    problems.push(
+      `${broken.length} lesson${broken.length === 1 ? "" : "s"} can't be opened in the editor` +
+        (text ? `: ${text} ${text === 1 ? "is" : "are"} plain text from the generation pipeline rather than interactive blocks` : "") +
+        (empty ? `${text ? ", " : ": "}${empty} ${empty === 1 ? "has" : "have"} no content` : "") +
+        `. For example “${broken[0].title}” in “${broken[0].module}”.`,
+    )
+  }
+  return problems
+}
+
+export function convertSnapshot(snapshot: CourseSnapshot, options: { ownerId: string; now?: string }): Converted {
+  const problems = snapshotProblems(snapshot)
+  if (problems.length) fail(problems.join(" "))
+  const byKey = new Map(snapshot.levels.map((l) => [l.key, l]))
+  const source: SourceCourse = {
+    id: snapshot.course.id,
+    title: snapshot.course.title.trim(),
+    summary: snapshot.course.summary.trim(),
+    coverImageUrl: snapshot.course.cover_image_url || null,
+    status: snapshot.course.status!,
+    levels: LEVELS.map(({ id, label }) => {
+      const level = byKey.get(id)
+      return {
+        id,
+        title: level?.title ?? label,
+        modules: (level?.modules ?? []).map((m) => ({ id: m.id, title: m.title.trim(), lessons: m.lessons.map((x) => ({ id: x.id, title: x.title.trim(), content: x.content })) })),
+        placement: (level?.placement ?? []).map((q) => ({
+          id: q.id,
+          question: q.question,
+          options: q.options,
+          correct_index: q.correct_index,
+          difficulty: q.difficulty,
+          ...(q.explanation ? { explanation: q.explanation } : {}),
+        })),
+      }
+    }),
+    metadata: snapshot.course.metadata,
+    placementSize: snapshot.course.placement_size,
+    quizPrompt: snapshot.course.quiz_prompt,
+    createdAt: snapshot.course.created_at,
+    updatedAt: snapshot.course.updated_at,
+  }
+  const built = buildCourse(source, options)
+  built.notes.unshift(...snapshot.warnings)
+  return built
+}
+
+// ---------------------------------------------------------------------------
+// The builder
+// ---------------------------------------------------------------------------
+
+export function buildCourse(input: SourceCourse, options: { ownerId: string; now?: string }): Converted {
+  let source = input
+  const notes: string[] = []
+  const now = options.now ?? new Date().toISOString()
+
+  if (!isUuid(source.id)) fail("The course has no valid uuid")
+  if (source.title.length < 3) fail(`The course title “${source.title}” is too short for the editor (3 characters)`)
+  if (source.summary.length < 20) fail("The course description is shorter than 20 characters, which the editor requires as a summary")
+
+  const lessons = new Map<string, Lesson>()
+  const moduleTitles = new Set<string>()
+  const levels = source.levels.map((level) => ({
+    id: level.id,
+    placement: level.placement,
+    modules: level.modules.map((mod) => {
+      if (!isUuid(mod.id)) fail(`Module “${mod.title}” has no valid uuid`)
+      if (moduleTitles.has(mod.title.toLowerCase())) fail(`Two modules are called “${mod.title}”; the editor needs unique module titles`)
+      moduleTitles.add(mod.title.toLowerCase())
+      const lessonTitles = new Set<string>()
+      const refs = mod.lessons.map((lesson) => {
+        if (!isUuid(lesson.id)) fail(`Lesson “${lesson.title}” has no valid uuid`)
+        if (lessonTitles.has(lesson.title.toLowerCase())) fail(`Module “${mod.title}” has two lessons called “${lesson.title}”`)
+        lessonTitles.add(lesson.title.toLowerCase())
+        const parsed = parseLesson(lesson.content)
+        if ("error" in parsed) fail(`Lesson “${lesson.title}” is not a block lesson the editor can open (${parsed.error}). Text-only lessons from the generation pipeline can't be imported`)
+        lessons.set(lesson.id, (parsed as { lesson: Lesson }).lesson)
+        return { id: lesson.id, title: lesson.title }
+      })
+      return { id: mod.id, title: mod.title, summary: "", lessons: refs }
+    }),
+  }))
+  if (lessons.size === 0) fail("The course has no lessons")
+  for (const level of levels) {
+    for (const q of level.placement) {
+      if (!isUuid(q.id)) fail(`A placement question in ${level.id} has no valid uuid`)
+    }
   }
 
   // --- What the platform doesn't have: derived from the content ------------------------
@@ -158,8 +274,8 @@ export function convertHostCourse(input: unknown, options: { ownerId: string; no
   }
   const lessonSize = avgWords < 900 ? "short" : avgWords < 1600 ? "medium" : "long"
 
-  const audienceMatch = /\bfor (working professionals[^.\n]*|[^.\n]*learners[^.\n]*)\./i.exec(str(course.quiz_prompt))
-  const audience = audienceMatch ? audienceMatch[1].trim().replace(/^./, (c) => c.toUpperCase()) : `Learners of ${title}`
+  const audienceMatch = /\bfor (working professionals[^.\n]*|[^.\n]*learners[^.\n]*)\./i.exec(source.quizPrompt ?? "")
+  const audience = audienceMatch ? audienceMatch[1].trim().replace(/^./, (c) => c.toUpperCase()) : `Learners of ${source.title}`
   const objectives = levels.flatMap((l) => l.modules.map((m) => m.title)).slice(0, 12)
 
   notes.push(
@@ -167,43 +283,59 @@ export function convertHostCourse(input: unknown, options: { ownerId: string; no
     audienceMatch ? `audience taken from the course's quiz prompt: “${audience}”` : `audience is a placeholder (“${audience}”): set it in the course settings`,
     `learning_objectives are the module titles. Replace them with real objectives in the course settings; the platform keeps no objectives.`,
     "pricing is set to free: the editor sends it, but the platform doesn't read it when publishing",
-    `placement_size: ${placementSize === null ? "the platform default (not set on this course)" : String(placementSize)}`,
+    `placement_size: ${source.placementSize === null ? "the platform default (not set on this course)" : String(source.placementSize)}`,
   )
 
-  const cover = str(course.cover_image_url)
-  const published = str(course.status) === "PUBLISHED"
-  if (!published) notes.push(`The platform's status is ${str(course.status) || "unknown"}, not PUBLISHED: the course is imported as ${str(course.status) === "APPROVED" ? "approved" : "a draft"}`)
-  const status: Course["status"] = published ? "published" : str(course.status) === "APPROVED" ? "approved" : "draft"
-  const created = str(course.created_at) || now
-  const updated = str(course.updated_at) || now
+  // A cover the editor can't link to is left out, with a note, rather than making the course unreadable.
+  if (source.coverImageUrl && !/^https?:\/\/[^\s]+$/i.test(source.coverImageUrl)) {
+    notes.push(`The cover image address “${source.coverImageUrl.slice(0, 60)}” isn't a web address, so the copy has no cover. Set one in the course settings.`)
+    source = { ...source, coverImageUrl: null }
+  }
+
+  const status = source.status
+  const history: Course["review_history"] = [{ status: "draft", action: "created", at: source.createdAt, by: options.ownerId, note: "Imported from the platform", changes: [] }]
+  if (status !== "draft") {
+    history.push({
+      status,
+      action: status === "in_review" ? "submitted" : "decided",
+      at: source.updatedAt,
+      by: options.ownerId,
+      note: status === "published" ? "Already live on the platform when it was opened here" : `${status.replace(/_/g, " ")} on the platform when it was opened here`,
+      changes: [],
+    })
+  }
 
   const result: Course = {
-    id: courseId,
+    id: source.id,
     version: 1,
     owner_id: options.ownerId,
     revision: 0,
-    title,
-    summary,
+    title: source.title,
+    summary: source.summary,
     learning_objectives: objectives,
-    cover_image_url: cover || null,
+    cover_image_url: source.coverImageUrl,
     audience,
     length_hours: lengthHours,
     lesson_size: lessonSize,
     pricing: { type: "free" },
     limits,
-    metadata,
-    placement_size: placementSize,
-    levels: levels.map((l) => ({ id: l.id, modules: l.modules, placement: l.placement })),
+    metadata: source.metadata,
+    placement_size: source.placementSize,
+    levels,
     status,
-    review_history: [
-      { status: "draft", action: "created", at: created, by: options.ownerId, note: "Imported from inara-next", changes: [] },
-      ...(status === "draft" ? [] : [{ status, action: "decided" as const, at: updated, by: options.ownerId, note: "Already live on the platform at import", changes: [] }]),
-    ],
+    review_history: history,
     change_requests: [],
-    created_at: created,
-    updated_at: updated,
-    published_at: status === "published" ? updated : null,
+    created_at: source.createdAt || now,
+    updated_at: source.updatedAt || now,
+    published_at: status === "published" ? source.updatedAt : null,
     content_updated_at: null,
+  }
+
+  // The editor reads every course back through its own schema; a course it couldn't read must never be stored.
+  const readable = CourseSchema.safeParse(result)
+  if (!readable.success) {
+    const problems = readable.error.issues.map((i) => `${i.path.join(".") || "course"}: ${i.message}`).slice(0, 4)
+    fail(`The editor can't hold this course as it is on the platform (${problems.join("; ")}). Change it on the platform first.`)
   }
   return { course: result, lessons, notes }
 }
