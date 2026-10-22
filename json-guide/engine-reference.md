@@ -453,16 +453,17 @@ The student starts with the foundation and presses **Add the next layer** to sta
 
 ---
 
-### 5.17 `workplace_scenario` — RESERVED, do not author
+### 5.17 `workplace_scenario` — added by hand in the editor, do not generate
 
-There is an eleventh block type in the schema, `workplace_scenario`. It is the only block with
-`"personalized": true`, and it holds a prompt rather than content: the platform generates a
-scenario per learner group (their domain and department) and stores the result. It is added by
-the platform team through a separate process.
+There is an eleventh block type in this guide's schema, `workplace_scenario`. It is the only block with
+`"personalized": true`, and it holds a prompt rather than content: `data.component_prompt` says what to write
+(it may use `{{domain}}`, `{{department}}` and `{{future_goal}}`) and `data.metadata_fields` lists which of the
+learner's choices it may use. The platform writes the scenario per learner group (their domain and department) after the
+course is published and stores it as `data.generated`.
 
-**Never emit this block type, and never set `personalized` to anything but `false`.** A lesson
-containing one does not open for a learner until its personalized copy has been generated, so an
-accidental one makes the lesson unreachable.
+A person adds it in the editor with **Add block › Personalized**. **Never emit this block type in generated lesson
+JSON, and never write `data.generated`**: the text belongs to the platform. A lesson with this block doesn't open for a
+learner until its personalized copy has been generated, so a stray one makes the lesson unreachable.
 
 ---
 

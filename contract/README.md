@@ -1,4 +1,4 @@
-# Course Publishing Protocol, version 2.4
+# Course Publishing Protocol, version 2.5
 
 How the course editor publishes courses to a host platform. The editor owns this
 contract; a host implements it in whatever stack it uses (Next.js, FastAPI, …).
@@ -18,6 +18,14 @@ The source of truth is `lib/protocol/wire.ts` (messages) and
 generated files and `npm run contract:check` fails when they are stale.
 `npm run verify-host` checks a running host against this document (see
 [Conformance](#conformance)).
+
+**Changes in 2.5:** no new field. The block type `workplace_scenario` (a *personalized* block) is
+now authorable, so a host that accepts it lists it in `content.block_types`, and an editor sends
+lessons that contain it only to a host that does (see [Personalized blocks](#personalized-blocks)).
+A block carries the author's `component_prompt` and `metadata_fields`; the text learners read
+(`data.generated`) belongs to the host and is never sent by an editor. A host or editor on 2.4 is
+unaffected: a 2.4 host doesn't list the type, so a 2.5 editor keeps those lessons at their last
+published version and warns.
 
 **Changes in 2.4:** `course.access_mode` (`sponsored` or `individual`) says whether the
 organization sponsors the course, so its members enroll without purchasing (see
@@ -355,6 +363,14 @@ editor refuses to submit one without a domain (or, when goals are required, with
 add the labels they lack, remove labels that are no longer listed, and keep (with a warning) any
 label a learner has already chosen. `departments` here are the learner's own team choice, not the
 organization departments of `course.department`.
+
+<a id="personalized-blocks"></a>**Personalized blocks (2.5).** `workplace_scenario` has `personalized: true`
+and `data: { component_prompt, metadata_fields, generated? }`. The author writes `component_prompt` (it may use
+`{{domain}}`, `{{department}}` and `{{future_goal}}`) and picks `metadata_fields`. The host generates the text per
+learner group after publishing and stores it as `data.generated`. An editor must not send `generated`; a host may
+accept it only when it is identical to what the host already stores for that block id (an editor returning what it
+was given), and otherwise refuses the package with `422`. Changing a lesson's content may discard the host's
+generated copies for that lesson, so a host should treat an unchanged package as a no-op.
 
 <a id="access-mode"></a>**Access mode (2.4).** `course.access_mode` is `"sponsored"` or `"individual"`.
 It is decided in the editor by an organization admin of the course's organization or by platform

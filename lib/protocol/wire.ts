@@ -11,7 +11,7 @@
 import { z } from "zod"
 
 /** major.minor. A host accepts any package whose major it supports. */
-export const PROTOCOL_VERSION = "2.4"
+export const PROTOCOL_VERSION = "2.5"
 export const PROTOCOL_MAJOR = 2
 
 /** Paths, relative to the host's base URL (PLATFORM_URL). */
