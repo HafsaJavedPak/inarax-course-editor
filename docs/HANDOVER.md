@@ -69,7 +69,12 @@ and `EDITOR_PUBLIC_URL` must be set in the Render dashboard. inara-next needs it
 > link (inara-next: in the sidebar, shown to creators and admins). The platform decides your role:
 > - **Creators** (an inara-next admin makes someone a Creator on Admin → Team Directory) see
 >   `/dashboard` and their own courses, and can submit them for review. `/admin` sends them back.
-> - **Admins** also get `/admin`: every course, and accept / reject / request changes.
+> - **Admins** (of an organization) also get `/admin`: that organization's courses, to approve /
+>   reject / request changes. **Platform admins** (`users.is_platform_admin` on the host) review
+>   personal-workspace courses and publish what untrusted organizations' admins approved; a trusted
+>   organization's admin approval publishes the course itself. Platform admins are granted in
+>   inara-next's `/admin/invitations` → Platform admins tab; trust is set in its Organizations
+>   tab; departments in its Departments tab.
 >
 > Opening the editor directly shows a "signed out" page. Without a platform
 > (`PLATFORM_ADAPTER=none`, local work) there is no sign-in: one local creator and an open `/admin`.

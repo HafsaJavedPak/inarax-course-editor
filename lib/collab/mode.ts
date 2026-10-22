@@ -16,7 +16,7 @@ export function socketMode(subject: Subject, course: CourseResource, status: Cou
   if (!can(subject, "course.edit", course)) return { mode: "read", reason: "role" }
   if (asReviewer) {
     if (!can(subject, "course.review", course)) return { mode: "read", reason: "role" }
-    if (status === "approved") return { mode: "read", reason: "approved" }
+    if (status === "approved" || status === "published") return { mode: "read", reason: "approved" }
     return { mode: "edit" }
   }
   return status === "in_review" ? { mode: "read", reason: "in_review" } : { mode: "edit" }

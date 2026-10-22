@@ -117,6 +117,7 @@ function testPackage(manifest: Manifest, courseId: string, stamp: string): Cours
       lesson_size: "short",
       pricing: { type: "free" },
       organization: null,
+      department: null,
     },
     review: { status: "draft", note: null, changes: [] },
     levels: [

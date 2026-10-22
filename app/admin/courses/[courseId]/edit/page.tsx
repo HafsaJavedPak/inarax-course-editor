@@ -1,6 +1,7 @@
 import { CourseBuilder } from "@/components/course/course-builder"
 import { courseForPage } from "@/lib/authz/context"
 import { getCourseReport } from "@/lib/course-store"
+import { pipelineFor, pipelineTenant } from "@/lib/review/pipeline"
 import { publishingEnabled } from "@/lib/platform"
 
 /** Reviewer editing of a course: allowed in review, never changes the status. */
@@ -12,6 +13,7 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
       initialCourse={record.course}
       initialReport={await getCourseReport(ctx, record.course)}
       isAdmin
+      pipeline={pipelineFor(pipelineTenant({ kind: record.tenantKind, settings: record.settings }))}
       publishingEnabled={publishingEnabled()}
     />
   )

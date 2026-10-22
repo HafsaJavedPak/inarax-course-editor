@@ -43,18 +43,22 @@ export type SeenVersion = { revisionId: string; contentHash: string; number: num
 export function DecisionPanel({
   course,
   canDecide,
+  approveOutcome,
+  revoking,
   seen,
   historyHref,
 }: {
   course: Course
   canDecide: boolean
+  /** What accepting leads to: live (`published`), or `approved` and waiting for a platform admin. */
+  approveOutcome: "approved" | "published"
+  /** An org admin pulling back their approval of a course the platform hasn't published yet. */
+  revoking: boolean
   seen: SeenVersion | null
   historyHref: string
 }) {
   const router = useRouter()
   const [changedSince, setChangedSince] = useState(false)
-  // Reversing an earlier acceptance: requesting changes or rejecting takes the course down.
-  const revoking = course.status === "approved"
   const [decision, setDecision] = useState<ReviewDecision>(revoking ? "changes_requested" : "approved")
   const [note, setNote] = useState("")
   const [changes, setChanges] = useState<DraftChange[]>([newChange()])
@@ -83,7 +87,9 @@ export function DecisionPanel({
   const submit = async () => {
     const confirmText =
       decision === "approved"
-        ? `Accept “${course.title}”? It becomes live in the course catalogue.`
+        ? approveOutcome === "published"
+          ? `Accept “${course.title}”? It becomes live in the course catalogue.`
+          : `Approve “${course.title}”? A platform admin reviews it next and publishes it. Members can't see it until then.`
         : decision === "rejected"
           ? `Reject “${course.title}”? The creator will see your reason.`
           : `Send “${course.title}” back with ${filledChanges.length} requested change${filledChanges.length === 1 ? "" : "s"}?`

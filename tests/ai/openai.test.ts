@@ -20,7 +20,7 @@ const course = createCourse(
     length_hours: 1,
     lesson_size: "short",
     pricing: { type: "free" },
-    limits: null,
+    limits: null, metadata: null,
   },
   "alice",
 )

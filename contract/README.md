@@ -1,4 +1,4 @@
-# Course Publishing Protocol, version 2.1
+# Course Publishing Protocol, version 2.3
 
 How the course editor publishes courses to a host platform. The editor owns this
 contract; a host implements it in whatever stack it uses (Next.js, FastAPI, …).
@@ -18,6 +18,27 @@ The source of truth is `lib/protocol/wire.ts` (messages) and
 generated files and `npm run contract:check` fails when they are stale.
 `npm run verify-host` checks a running host against this document (see
 [Conformance](#conformance)).
+
+**Changes in 2.3:** `course.metadata` carries what a learner picks when they start the
+course (see [Learner choices](#learner-choices)). It is optional; a package without
+it leaves the host's metadata as it is, so either side can be upgraded first.
+
+**Changes in 2.2:** review has two stages, so the package's `review.status`
+gains `published`. Before 2.2 `approved` meant live; from 2.2 `approved` means
+*passed the organization's review, waiting for the platform* (not live) and
+`published` means live. A host reads `approved` in a package older than 2.2 as
+`published`, so a host can be upgraded before its editor. Each launch token
+organization may carry `review_trusted` (boolean, default false): the host
+trusts that organization's admin approval to publish on its own. The host
+checks it again when an organization admin sends `published`, and refuses when
+the organization isn't trusted (403). Only platform admins (`staff`) change it,
+on the host. Platform admins also review personal-workspace courses; they need
+no organization membership to open the editor. Organizations may also have
+**departments** (flat, no nesting): each launch token organization may list
+`departments`, and a package's `course.department` names the one a course
+belongs to (see [Launch](#launch-sign-in) and
+[PUT course](#put-v1coursescourse_id)). Both are optional: a 2.1 host ignores
+them, and an older host's token simply has none.
 
 **Changes in 2.1:** each package level may carry `placement`, the level's
 bank of multiple-choice placement questions (see
@@ -147,9 +168,13 @@ Check an implementation against `fixtures/signing.json`.
 is the person who triggered the publish: the `sub` (with name and email) of the
 launch token they signed in with, so it is the host's own user id. Hosts
 **should** check it on every publish, not just trust the editor: the actor must
-still be allowed to create courses, and only a host admin may move a course into
-`approved`, `rejected` or `changes_requested` (saving a course that is already
-in that state isn't a new decision). Refuse with `403 forbidden`.
+still be allowed to create courses, and only reviewers may move a course into
+`approved`, `published`, `rejected` or `changes_requested` (saving a course that
+is already in that state isn't a new decision). Reviewers are an admin of the
+course's own organization (the organization stage) and platform admins (either
+stage; the only reviewers of a personal-workspace course). `published` from an
+organization admin is only valid when the organization is trusted on the host
+right now. Refuse with `403 forbidden`.
 
 ## Launch (sign-in)
 
@@ -174,7 +199,9 @@ host (user already signed in)                 editor
 token   = "v2." + b64url(payload) + "." + b64url(Ed25519(host private key, "course-editor-launch.v2." + b64url(payload)))
 payload = {"v":2, "kid", "iss", "aud":"course-editor", "sub", "email", "name",
            "role":"admin"|"creator", "orgs"?, "staff"?, "iat", "exp", "jti"}
-orgs    = [{"id": "<organization id>", "name": "<display name>", "role": "admin"|"creator"}, …]
+orgs    = [{"id": "<organization id>", "name": "<display name>", "role": "admin"|"creator",
+            "review_trusted"?: boolean,                       // 2.2
+            "departments"?: [{"id", "name", "role": "member"|"manager"|null}, …]}, …]  // 2.2
 ```
 
 **Organizations (1.2).** `orgs` lists every organization in which the user is
@@ -189,6 +216,17 @@ platform's own admins. With `orgs` present the editor:
   this launch.
 - lets `staff` review courses in personal workspaces (what a host's admins did
   in 1.1).
+
+**Departments (2.2).** `orgs[].departments` lists the user's departments in
+that organization (at most 200, ids unique), with their `role` in each:
+`member`, or `manager`, who sees and shares the department's courses (never
+approves them). For an organization **admin** the host lists *all* of the
+organization's departments, giving `role: null` for those the admin isn't in,
+so the editor knows which exist and which courses may be assigned to them. The
+list replaces what the editor had for that organization at this launch: a
+department an admin's list no longer has is gone (its courses go back to the
+whole organization), and for everyone else a department missing from their list
+is one they no longer belong to. Absent `departments` leaves them as they were.
 
 Without `orgs` (a 1.1 host) the user has only their personal workspace, and
 `role: "admin"` makes them staff. Keep sending `role` (admin of any
@@ -295,10 +333,29 @@ organizations (the id from the launch token's `orgs`), and `null` for a
 personal workspace. Hosts link the course to that organization (refusing an
 actor who isn't a creator or admin there) or, for `null`, to their default.
 
-**Approval (2.0).** When an admin's package says `review.status = approved`,
-hosts should make the course live for learners (subject to their own publish
-requirements), and while a course is live, not apply content from packages
-that aren't approved, so unreviewed edits never reach learners.
+**Department (2.2).** `course.department` is `{ "host_department_id": "<id>" }`
+when the course belongs to one of the organization's departments (an id from the
+launch token's `orgs[].departments`), and `null` for the whole organization.
+Hosts should check the department belongs to the course's organization and that
+the publisher may use it (an organization admin, or a member of it), refusing
+with `403 forbidden` otherwise.
+
+<a id="learner-choices"></a>**Learner choices (2.3).** `course.metadata` is
+`{ "domains": [string], "future_goals": [string], "departments": [string], "require_future_goal": boolean }`.
+A learner picks one domain (required) and, while `require_future_goal` is true, one future goal; a
+department is always optional. A course with no domain can never be opened by a learner, so the
+editor refuses to submit one without a domain (or, when goals are required, without a goal). Hosts
+add the labels they lack, remove labels that are no longer listed, and keep (with a warning) any
+label a learner has already chosen. `departments` here are the learner's own team choice, not the
+organization departments of `course.department`.
+
+**Publishing (2.2; `approved` in 2.0 and 2.1).** When a package says
+`review.status = published`, hosts should make the course live for the
+organization's members (subject to their own publish requirements), and while a
+course is live, not apply content from packages that aren't `published`, so
+unreviewed edits never reach learners. `approved` is *not* live: it means the
+organization's admin approved and a platform admin has yet to publish; hosts
+keep the course hidden from learners.
 
 Makes the host's copy of the course match the package. `{course_id}` must equal
 `course.id`.
@@ -318,7 +375,7 @@ The package (`schemas/course-package.schema.json`, example in
     "pricing": { "type": "free" } | { "type": "paid", "amount": 49, "currency": "USD" }
   },
   "review": {
-    "status": "draft" | "in_review" | "changes_requested" | "approved" | "rejected",
+    "status": "draft" | "in_review" | "changes_requested" | "approved" | "published" | "rejected" | "unpublished",
     "note": "…" | null,            // the reviewer's note for this status
     "changes": [{ "id": "…", "text": "…", "done": false }]
   },
@@ -359,9 +416,9 @@ Semantics the host must implement:
   so the host can start them at the right level. It replaces whatever bank the
   host has for that level (`[]`: none); a missing `placement` leaves the
   host's bank alone. Only complete questions are sent. The editor won't let a
-  course become `approved` until every level with lessons has at least 1 easy,
-  2 medium and 2 hard questions, so hosts may treat the bank of an approved
-  package as reviewed. How many questions a learner sees and the pass mark
+  course become `approved` (or `published`) until every level with lessons has at
+  least 1 easy, 2 medium and 2 hard questions, so hosts may treat the bank of an
+  `approved` or `published` package as reviewed. How many questions a learner sees and the pass mark
   are the host's choice.
 - **Course pricing, length and audience** are informational; hosts may ignore
   them.

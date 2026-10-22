@@ -12,6 +12,7 @@ const FIELD_NAMES: Record<string, string> = {
   cover_image_url: "cover image",
   learning_objectives: "learning objectives",
   audience: "audience",
+  metadata: "learner choices",
 }
 
 /** One readable line per error. */

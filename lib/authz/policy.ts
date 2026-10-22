@@ -15,9 +15,12 @@
 //   sample course        its owner's own copy for learning the editor: nobody
 //                        reviews it, and it's never published
 //
-// Review is a single stage, decided by platform staff only: approving makes the
-// course live (published). Organization admins submit but do not approve.
+// Review has two stages (which of them a course goes through: lib/review/pipeline.ts).
+// The organization stage is decided by an org admin of that organization (or platform
+// staff); the platform stage by platform staff only. A course that is published
+// is live; one that is only approved is waiting for the platform.
 
+import { isDepartmentManager, type DepartmentMembership } from "@/lib/authz/departments"
 import type { GrantRole, MembershipRole, TenantKind } from "@/lib/db/schema"
 
 export type Subject = {
@@ -26,6 +29,8 @@ export type Subject = {
   memberships: readonly { tenantId: string; role: MembershipRole }[]
   /** Effective course grants (lib/authz/identity.ts loadIdentity). */
   grants?: readonly { courseId: string; role: GrantRole }[]
+  /** The user's departments (lib/authz/identity.ts loadIdentity); managers get oversight of their department's courses. */
+  departments?: readonly DepartmentMembership[]
 }
 
 export type CourseResource = {
@@ -33,6 +38,8 @@ export type CourseResource = {
   tenantId: string
   tenantKind: TenantKind
   ownerId: string
+  /** The department it belongs to, or none for the whole organization (lib/authz/departments.ts). */
+  departmentId?: string | null
   /** A copy of the sample course (lib/sample-course). */
   sample?: boolean
 }
@@ -45,8 +52,10 @@ export type CourseAction =
   | "course.export"
   /** Submit, withdraw, tick off requested changes: the author's side of review. */
   | "course.submit"
-  /** Approve, reject or request changes: platform staff only. */
+  /** The organization stage of review (approve, reject, request changes), and the review area: an org admin in their org, or platform staff. */
   | "course.review"
+  /** The platform stage: publish an approved course, or send it back. Platform staff only. */
+  | "course.release"
   /** Take a live course down from the catalogue. */
   | "course.takedown"
   /** See the course's history and compare versions. */
@@ -73,8 +82,18 @@ function isOrgAdmin(course: CourseResource, role: MembershipRole | null) {
   return role === "admin" && course.tenantKind === "org"
 }
 
-/** Reviewers (approve, reject, request changes): platform staff only. Sample courses are never reviewed. */
-function isReviewer(subject: Subject, course: CourseResource) {
+/**
+ * Reviewers of the organization stage and of the review area: an org admin in
+ * their org, or platform staff anywhere. Org admins get nothing from another
+ * organization. Sample courses are never reviewed.
+ */
+function isReviewer(subject: Subject, course: CourseResource, role: MembershipRole | null) {
+  if (course.sample) return false
+  return isOrgAdmin(course, role) || subject.staff
+}
+
+/** Decides the platform stage: platform staff only. */
+function isPublisher(subject: Subject, course: CourseResource) {
   return !course.sample && subject.staff
 }
 
@@ -92,16 +111,18 @@ export function grantRole(subject: Subject, course: CourseResource): GrantRole |
 export function can(subject: Subject, action: CourseAction, course: CourseResource): boolean {
   const role = roleIn(subject, course.tenantId)
   const author = isAuthor(subject, course, role)
-  const reviewer = isReviewer(subject, course)
+  const reviewer = isReviewer(subject, course, role)
   const grant = grantRole(subject, course)
+  // A manager of the course's department oversees it: reads it, sees its history, shares it, takes it down.
+  const manager = isDepartmentManager(subject, course, role)
   const coOwner = grant === "co_owner"
   const editor = grant === "editor"
 
   switch (action) {
     case "course.read":
-      return author || isOrgAdmin(course, role) || reviewer || grant !== null
+      return author || isOrgAdmin(course, role) || manager || reviewer || grant !== null
     case "course.history":
-      return author || isOrgAdmin(course, role) || reviewer || (grant !== null && grant !== "viewer")
+      return author || isOrgAdmin(course, role) || manager || reviewer || (grant !== null && grant !== "viewer")
     case "course.edit":
       return author || reviewer || coOwner || editor
     case "course.restore":
@@ -117,12 +138,14 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
       return author || reviewer
     case "course.review":
       return reviewer
+    case "course.release":
+      return isPublisher(subject, course)
     case "course.takedown":
-      // The author, a co-owner, an org admin in their org, or platform staff.
-      return (author || coOwner || isOrgAdmin(course, role) || subject.staff) && !course.sample
+      // The author, a co-owner, an org admin in their org, a manager of its department, or platform staff.
+      return (author || coOwner || isOrgAdmin(course, role) || manager || subject.staff) && !course.sample
     case "course.share":
-      // The owner, a co-owner, an org admin in their org, or platform staff.
-      return author || coOwner || isOrgAdmin(course, role) || subject.staff
+      // The owner, a co-owner, an org admin in their org, a manager of its department, or platform staff.
+      return author || coOwner || isOrgAdmin(course, role) || manager || subject.staff
     case "course.ai":
       // Whoever may edit may ask the AI; the result is a suggestion, not an edit.
       // (Whether the course is locked in review is enforced where the job is written.)
@@ -138,7 +161,8 @@ export function sharingPower(subject: Subject, course: CourseResource) {
   const role = roleIn(subject, course.tenantId)
   return {
     isOwner: isAuthor(subject, course, role),
-    isAdmin: isOrgAdmin(course, role),
+    // Managers share their department's courses the way an org admin does.
+    isAdmin: isOrgAdmin(course, role) || isDepartmentManager(subject, course, role),
     role: grantRole(subject, course),
   }
 }
@@ -152,7 +176,7 @@ export function canInTenant(subject: Subject, action: TenantAction, tenantId: st
   }
 }
 
-/** Whether the subject reviews anything at all (opens the review area): platform staff. */
+/** Whether the subject reviews anything at all (opens the review area): platform staff, or an org admin. */
 export function reviewsAnything(subject: Subject): boolean {
-  return subject.staff
+  return subject.staff || subject.memberships.some((m) => m.role === "admin")
 }

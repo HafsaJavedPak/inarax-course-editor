@@ -120,6 +120,20 @@
       "when": 1792330000000,
       "tag": "0016_ai_budgets_row_level_security",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792400000000,
+      "tag": "0017_approved_means_waiting",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792410000000,
+      "tag": "0018_departments",
+      "breakpoints": true
     }
   ]
 }

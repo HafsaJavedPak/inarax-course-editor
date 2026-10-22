@@ -28,7 +28,30 @@ export const LAUNCH_CLOCK_SKEW_SECONDS = 60
 export type LaunchRole = "admin" | "creator"
 
 /** An organization the user belongs to on the host, with their role in it (protocol 1.2). */
-export type LaunchOrg = { id: string; name: string; role: LaunchRole }
+/**
+ * 2.2: a department of an organization (flat, no nesting). `role` is the user's place in it,
+ * or null when it is listed only so an organization admin can assign courses to it.
+ */
+export type LaunchDepartment = { id: string; name: string; role: "member" | "manager" | null }
+
+/** Most departments one organization may list. */
+export const MAX_LAUNCH_DEPARTMENTS = 200
+
+export type LaunchOrg = {
+  id: string
+  name: string
+  role: LaunchRole
+  /**
+   * 2.2: the host trusts this organization's admin approval to publish a course.
+   * Absent from older hosts, which means "not trusted".
+   */
+  review_trusted?: boolean
+  /**
+   * 2.2: the user's departments in this organization; for an organization admin, all of the
+   * organization's departments. Absent from older hosts, which leaves what the editor has.
+   */
+  departments?: LaunchDepartment[]
+}
 
 /** Most orgs a token may list. */
 export const MAX_LAUNCH_ORGS = 200
@@ -132,8 +155,30 @@ function validOrgs(orgs: unknown): orgs is LaunchOrg[] {
         typeof o.name === "string" &&
         o.name.length > 0 &&
         o.name.length <= 200 &&
-        (o.role === "admin" || o.role === "creator"),
+        (o.role === "admin" || o.role === "creator") &&
+        (o.review_trusted === undefined || typeof o.review_trusted === "boolean") &&
+        (o.departments === undefined || validDepartments(o.departments)),
     ) &&
     new Set(orgs.map((o) => o.id)).size === orgs.length
+  )
+}
+
+function validDepartments(departments: unknown): departments is LaunchDepartment[] {
+  return (
+    Array.isArray(departments) &&
+    departments.length <= MAX_LAUNCH_DEPARTMENTS &&
+    departments.every(
+      (d) =>
+        typeof d === "object" &&
+        d !== null &&
+        typeof d.id === "string" &&
+        d.id.length > 0 &&
+        d.id.length <= 200 &&
+        typeof d.name === "string" &&
+        d.name.length > 0 &&
+        d.name.length <= 200 &&
+        (d.role === "member" || d.role === "manager" || d.role === null),
+    ) &&
+    new Set(departments.map((d) => d.id)).size === departments.length
   )
 }

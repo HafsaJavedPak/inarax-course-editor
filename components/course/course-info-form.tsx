@@ -10,6 +10,8 @@ import {
   COURSE_LENGTH_PRESETS,
   COURSE_TEXT_LIMITS,
   CourseInfoSchema,
+  DEFAULT_COURSE_METADATA,
+  METADATA_LIMITS,
   defaultLimits,
   fillLimits,
   LESSON_SIZES,
@@ -21,6 +23,7 @@ import {
 import { suggestedLessonsPerLevel } from "@/lib/course-validate"
 import { CURRENCIES, DEFAULT_CURRENCY } from "@/lib/currencies"
 import { imageSrc } from "@/lib/uploads"
+import { DepartmentSelect, type DepartmentOption } from "@/components/course/department-field"
 
 import "@/components/course/course-info-form.scss"
 
@@ -34,6 +37,7 @@ export const EMPTY_COURSE_INFO: CourseInfo = {
   lesson_size: "medium",
   pricing: { type: "free" },
   limits: defaultLimits("medium"),
+  metadata: DEFAULT_COURSE_METADATA,
 }
 
 /** First error message per field path, e.g. "pricing.amount" or "learning_objectives.1". */
@@ -47,6 +51,9 @@ const FIELD_NAMES: [string, string][] = [
   ["cover_image_url", "Cover image"],
   ["audience", "Audience"],
   ["length_hours", "Course length"],
+  ["metadata.domains", "Domains"],
+  ["metadata.future_goals", "Future goals"],
+  ["metadata.departments", "Departments"],
   ["pricing.amount", "Price"],
   ["pricing.currency", "Currency"],
   ["limits.words", "Words per lesson"],
@@ -78,10 +85,13 @@ export function CourseInfoForm({
   submitLabel = "Create course",
   savingLabel = "Creating…",
   workspace,
+  departments = [],
 }: {
   initial?: CourseInfo
   /** The workspace (tenant id) a new course is created in. */
   workspace?: string
+  /** The departments the creator may put a new course in; none: no department choice is shown. */
+  departments?: DepartmentOption[]
   /** Omit to create a new course (POST) and open its builder. */
   onSubmit?: (info: CourseInfo) => Promise<string | void>
   submitLabel?: string
@@ -92,6 +102,8 @@ export function CourseInfoForm({
   const [info, setInfo] = useState<CourseInfo>(() => ({
     ...initial,
     limits: initial.limits ?? defaultLimits(initial.lesson_size),
+    // Courses made before learner choices existed start from the platform's usual set.
+    metadata: initial.metadata ?? DEFAULT_COURSE_METADATA,
   }))
   // Errors show for a field once it has been left, and for every field after
   // the first submit attempt. Server-side errors are shown as they arrive.
@@ -99,6 +111,7 @@ export function CourseInfoForm({
   const [submitted, setSubmitted] = useState(false)
   const [serverErrors, setServerErrors] = useState<Errors>({})
   const [formError, setFormError] = useState<string | null>(null)
+  const [departmentId, setDepartmentId] = useState("")
   const [saving, setSaving] = useState(false)
 
   // What's typed (fields may be blank), and what will be used: blanks fall
@@ -112,7 +125,20 @@ export function CourseInfoForm({
 
   // What would be sent: untouched or cleared limits mean "use the defaults",
   // stored as null so the course follows its lesson size's defaults.
-  const prepared = { ...info, limits: customised ? effective : null }
+  const metadata = info.metadata ?? DEFAULT_COURSE_METADATA
+  const clean = (list: string[]) => list.map((l) => l.trim()).filter(Boolean)
+  const prepared = {
+    ...info,
+    limits: customised ? effective : null,
+    // Blank rows are ignored, not errors.
+    metadata: {
+      ...metadata,
+      domains: clean(metadata.domains),
+      future_goals: clean(metadata.future_goals),
+      departments: clean(metadata.departments),
+    },
+  }
+  const setMetadata = (patch: Partial<typeof metadata>) => set("metadata", { ...metadata, ...patch })
   // Cheap enough to check on every render, so errors always match what is typed.
   const parsed = CourseInfoSchema.safeParse(prepared)
   const allErrors = { ...collectErrors(parsed), ...serverErrors }
@@ -168,7 +194,10 @@ export function CourseInfoForm({
         if (error) setFormError(error)
         return
       }
-      const res = await fetch(workspace ? `/api/courses?workspace=${encodeURIComponent(workspace)}` : "/api/courses", {
+      const query = new URLSearchParams()
+      if (workspace) query.set("workspace", workspace)
+      if (departmentId) query.set("department", departmentId)
+      const res = await fetch(query.size ? `/api/courses?${query}` : "/api/courses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
@@ -341,6 +370,61 @@ export function CourseInfoForm({
         </div>
       </Card>
 
+      <Card
+        title="Learner choices"
+        description="What a learner picks when they start this course. Shown in the platform's Course metadata."
+      >
+        <MetadataList
+          field={field("metadata.domains")}
+          label="Domains"
+          required
+          hint="The area a learner works in, e.g. Finance or Healthcare. Add “Generic” if one fits everyone."
+          items={metadata.domains}
+          onChange={(domains) => setMetadata({ domains })}
+          itemError={(i) => (isShown("metadata.domains") ? allErrors[`metadata.domains.${i}`] : undefined)}
+          error={errorFor("metadata.domains")}
+          addLabel="Add domain"
+          itemLabel="domain"
+        />
+        <label className="cf-check">
+          <input
+            type="checkbox"
+            checked={metadata.require_future_goal}
+            onChange={(e) => setMetadata({ require_future_goal: e.target.checked })}
+          />
+          <span>
+            <strong>Require a future goal</strong>
+            <small>
+              When on, learners must pick a domain and a future goal. When off, only the domain is required and goals stay
+              optional.
+            </small>
+          </span>
+        </label>
+        <MetadataList
+          field={field("metadata.future_goals")}
+          label="Future goals"
+          required={metadata.require_future_goal}
+          hint="What the learner wants to become or achieve, e.g. AI Engineer."
+          items={metadata.future_goals}
+          onChange={(future_goals) => setMetadata({ future_goals })}
+          itemError={(i) => (isShown("metadata.future_goals") ? allErrors[`metadata.future_goals.${i}`] : undefined)}
+          error={errorFor("metadata.future_goals")}
+          addLabel="Add future goal"
+          itemLabel="future goal"
+        />
+        <MetadataList
+          field={field("metadata.departments")}
+          label="Departments"
+          hint="Optional: the learner's team, e.g. Sales. This is the learner's own choice and not the editor's department for the course."
+          items={metadata.departments}
+          onChange={(departments) => setMetadata({ departments })}
+          itemError={(i) => (isShown("metadata.departments") ? allErrors[`metadata.departments.${i}`] : undefined)}
+          error={errorFor("metadata.departments")}
+          addLabel="Add department"
+          itemLabel="department"
+        />
+      </Card>
+
       <Card title="Pricing" optional description="Leave as free if you haven't decided.">
         <div className="cf-segments" role="radiogroup" aria-label="Pricing">
           {(["free", "paid"] as const).map((type) => (
@@ -504,6 +588,10 @@ export function CourseInfoForm({
         </p>
       </Card>
 
+      {!onSubmit && departments.length > 0 && (
+        <DepartmentSelect departments={departments} value={departmentId} onChange={setDepartmentId} />
+      )}
+
       {formError && (
         <p className="cf-form-error" role="alert">
           {formError}
@@ -521,6 +609,62 @@ export function CourseInfoForm({
         </button>
       </div>
     </form>
+  )
+}
+
+function MetadataList({
+  field,
+  label,
+  required,
+  hint,
+  items,
+  onChange,
+  itemError,
+  error,
+  addLabel,
+  itemLabel,
+}: {
+  field: Record<string, unknown>
+  label: string
+  required?: boolean
+  hint: string
+  items: string[]
+  onChange: (items: string[]) => void
+  itemError: (index: number) => string | undefined
+  error?: string
+  addLabel: string
+  itemLabel: string
+}) {
+  return (
+    <div className="le-stack-tight" {...field}>
+      <FieldLabel required={required}>{label}</FieldLabel>
+      <ListEditor
+        items={items}
+        onChange={onChange}
+        getKey={(_, i) => String(i)}
+        createItem={() => ""}
+        addLabel={addLabel}
+        itemLabel={itemLabel}
+        maxItems={METADATA_LIMITS.perList}
+        renderItem={(value, i, update) => {
+          const message = itemError(i)
+          return (
+            <div className="cf-list-field">
+              <Input
+                value={value}
+                maxLength={METADATA_LIMITS.label}
+                placeholder={`${label.replace(/s$/, "")} ${i + 1}`}
+                aria-label={`${label.replace(/s$/, "")} ${i + 1}`}
+                aria-invalid={message ? true : undefined}
+                onChange={(e) => update(e.target.value)}
+              />
+              {message && <span className="le-field-error">{message}</span>}
+            </div>
+          )
+        }}
+      />
+      {error ? <span className="le-field-error">{error}</span> : <span className="le-field-hint">{hint}</span>}
+    </div>
   )
 }
 

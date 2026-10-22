@@ -301,7 +301,15 @@ flowchart LR
 - `DELETE /api/courses/[id]` deletes the course on the platform first and keeps the local course if
   that fails.
 - `lib/course-status.ts` is used by both the API, to enforce the rules, and the UI, to decide which
-  buttons to show. So the review rules exist in exactly one place.
+  buttons to show. So the review rules exist in exactly one place. *Which* stages a course goes
+  through (personal: platform; trusted org: org; other orgs: org, then platform) is decided by the
+  pure `lib/review/pipeline.ts`, so nothing else compares roles or statuses itself. Statuses are
+  `draft`, `in_review`, `changes_requested`, `approved` (passed the organization, waiting for the
+  platform; not live), `published` (live), `rejected`, `unpublished`.
+- Tenancy: each organization is a workspace (tenant), mirrored from the host at sign-in together
+  with its **departments** (flat scopes; a department manager sees and shares that department's
+  courses but never approves them: `lib/authz/departments.ts`) and its **review trust**
+  (`tenants.settings.reviewTrusted`, set on the host by a platform admin).
 
 ---
 

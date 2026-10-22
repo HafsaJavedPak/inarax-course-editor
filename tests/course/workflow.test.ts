@@ -17,6 +17,9 @@ import { buildPackage } from "@/lib/platform/adapters/protocol/package"
 
 import { sampleCourse } from "../helpers/course"
 
+/** A personal workspace: its only review stage is the platform's. */
+const PERSONAL = { kind: "personal", reviewTrusted: false } as const
+
 const CLEAN: CourseReport = { levels: [], issues: [], totalMinutes: 0, lessonStats: {} }
 const AUTHOR = "author-1"
 const REVIEWER = "reviewer-1"
@@ -30,7 +33,7 @@ const edited = (course: Course): Course => ({ ...course, content_updated_at: new
 
 function rejectedCourse(): Course {
   const submitted = ok(submit(sampleCourse({ owner_id: AUTHOR }), CLEAN, AUTHOR))
-  return ok(review(submitted, "rejected", "Lesson 2 is off topic", [], REVIEWER))
+  return ok(review(submitted, "platform", PERSONAL, "rejected", "Lesson 2 is off topic", [], REVIEWER))
 }
 
 describe("withdrawing", () => {
@@ -104,7 +107,7 @@ describe("resubmitting after a rejection", () => {
 describe("changes requested", () => {
   it("still require every change ticked after a withdraw", () => {
     const submitted = ok(submit(sampleCourse({ owner_id: AUTHOR }), CLEAN, AUTHOR))
-    const asked = ok(review(submitted, "changes_requested", "", [{ text: "Add a summary" }], REVIEWER))
+    const asked = ok(review(submitted, "platform", PERSONAL, "changes_requested", "", [{ text: "Add a summary" }], REVIEWER))
     const resubmitted = ok(submit({ ...asked, change_requests: asked.change_requests.map((c) => ({ ...c, done: true })) }, CLEAN, AUTHOR))
     const withdrawn = ok(withdraw({ ...resubmitted, change_requests: resubmitted.change_requests.map((c) => ({ ...c, done: false })) }, AUTHOR))
     expect(getSubmitBlockers(withdrawn, CLEAN).map((b) => b.message)).toContain("1 requested change is not ticked off yet")

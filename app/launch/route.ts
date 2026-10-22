@@ -1,5 +1,6 @@
-import { authConfig } from "@/lib/auth-gate"
+import { authConfig, WORKSPACE_COOKIE } from "@/lib/auth-gate"
 import { syncIdentity } from "@/lib/authz/identity"
+import { reviewsAnything } from "@/lib/authz/policy"
 import { hostKeys } from "@/lib/keys"
 import { claimTokenId } from "@/lib/launch-replay"
 import { publicOrigin, redirectTo } from "@/lib/redirect"
@@ -49,9 +50,17 @@ export async function POST(request: Request) {
   // The session remembers which platform key signed this launch: rotating that key ends it.
   const sessionToken = await createSession(claims.sub, claims.kid)
 
-  const reviewer = access.staff || access.orgs?.some((o) => o.role === "admin")
+  // Who lands in the review area is decided by the same rule that guards it (lib/authz/policy.ts).
+  const reviewer = reviewsAnything({
+    userId: claims.sub,
+    staff: access.staff,
+    memberships: (access.orgs ?? []).map((o) => ({ tenantId: o.id, role: o.role })),
+  })
   const response = seeOther(request, reviewer ? "/admin" : "/dashboard")
   response.cookies.set(SESSION_COOKIE, sessionToken, sessionCookieOptions(requestIsHttps(request)))
+  // Start from the default workspace (an organization's, if they have one): a remembered
+  // personal workspace would send an organization's creator's courses past their org admin.
+  response.cookies.delete(WORKSPACE_COOKIE)
   response.headers.set("Cache-Control", "no-store")
   response.headers.set("Referrer-Policy", "no-referrer")
   return response
@@ -63,6 +72,15 @@ export async function POST(request: Request) {
  * everything (as before), and nobody gets org workspaces.
  */
 function accessFrom(claims: LaunchClaims) {
-  if (claims.orgs !== undefined) return { staff: claims.staff ?? false, orgs: claims.orgs }
+  if (claims.orgs !== undefined) {
+    const orgs = claims.orgs.map((o) => ({
+      id: o.id,
+      name: o.name,
+      role: o.role,
+      reviewTrusted: o.review_trusted === true,
+      departments: o.departments,
+    }))
+    return { staff: claims.staff ?? false, orgs }
+  }
   return { staff: claims.role === "admin", orgs: null }
 }

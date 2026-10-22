@@ -20,7 +20,7 @@ export function CourseSettings({
 }) {
   const router = useRouter()
 
-  const { title, summary, learning_objectives, cover_image_url, audience, length_hours, lesson_size, pricing, limits } =
+  const { title, summary, learning_objectives, cover_image_url, audience, length_hours, lesson_size, pricing, limits, metadata } =
     course
   const initial: CourseInfo = {
     title,
@@ -32,6 +32,7 @@ export function CourseSettings({
     lesson_size,
     pricing,
     limits,
+    metadata,
   }
 
   const save = async (info: CourseInfo): Promise<string | void> => {
@@ -61,9 +62,9 @@ export function CourseSettings({
           This course is in review, so its settings can&apos;t be changed. Withdraw it from the course page to edit.
         </p>
       )}
-      {!isAdmin && course.status === "approved" && (
+      {!isAdmin && (course.status === "approved" || course.status === "published") && (
         <p className="cf-summary" role="status">
-          This course has been approved. Saving changes here moves it back to Draft, and it will need another review.
+          This course has been {course.status === "published" ? "published" : "approved"}. Saving changes here moves it back to Draft, and it will need another review.
         </p>
       )}
       <fieldset className="course-fieldset" disabled={locked}>

@@ -122,6 +122,8 @@ function examplePackage(): CoursePackage {
       lesson_size: "short",
       pricing: { type: "free" },
       organization: null,
+      department: null,
+      metadata: { domains: ["Generic"], future_goals: ["AI Engineer"], departments: ["Generic"], require_future_goal: false },
     },
     review: { status: "in_review", note: null, changes: [] },
     levels: [

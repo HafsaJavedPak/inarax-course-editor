@@ -1,5 +1,5 @@
 {
-  "protocol": "2.1",
+  "protocol": "2.3",
   "course": {
     "id": "7f72e600-3425-490c-b530-0179826cb206",
     "revision": 12,
@@ -16,7 +16,20 @@
     "pricing": {
       "type": "free"
     },
-    "organization": null
+    "organization": null,
+    "department": null,
+    "metadata": {
+      "domains": [
+        "Generic"
+      ],
+      "future_goals": [
+        "AI Engineer"
+      ],
+      "departments": [
+        "Generic"
+      ],
+      "require_future_goal": false
+    }
   },
   "review": {
     "status": "in_review",

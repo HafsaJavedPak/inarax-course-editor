@@ -16,10 +16,12 @@ export type PackageInput = {
   actor: { id: string; name?: string | null; email?: string | null }
   /** The host organization of the course's workspace; null or missing for a personal workspace. */
   organization?: { hostOrgId: string } | null
+  /** The host department of the course; null or missing for the whole organization. */
+  department?: { hostDepartmentId: string } | null
   now?: Date
 }
 
-export function buildPackage({ course, lessons, coverImageUrl, actor, organization, now = new Date() }: PackageInput): CoursePackage {
+export function buildPackage({ course, lessons, coverImageUrl, actor, organization, department, now = new Date() }: PackageInput): CoursePackage {
   // The reviewers' feedback that goes with the current status: their last
   // decision, when the course is still in the state they decided on. (A
   // withdrawn or reopened course is a draft and carries no reviewer note.)
@@ -40,6 +42,8 @@ export function buildPackage({ course, lessons, coverImageUrl, actor, organizati
       lesson_size: course.lesson_size,
       pricing: course.pricing,
       organization: organization ? { host_org_id: organization.hostOrgId } : null,
+      department: department ? { host_department_id: department.hostDepartmentId } : null,
+      ...(course.metadata ? { metadata: course.metadata } : {}),
     },
     review: {
       status: course.status,
