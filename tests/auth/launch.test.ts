@@ -156,6 +156,14 @@ describe("gate", () => {
     }
   })
 
+  it("keeps the ways into platform courses private and protected from cross-site writes (they're not under the host's public /api/platform/)", () => {
+    expect(gate("/api/host-courses", false, launchMode)).toMatchObject({ kind: "json", status: 401 })
+    expect(gate("/adopt/5b4d8ff0-9514-4d23-939c-cc3806517c0c", false, launchMode)).toEqual({ kind: "redirect", to: "/signed-out" })
+    expect(isCrossSiteWrite("POST", "/api/host-courses", "cross-site")).toBe(true)
+    expect(isCrossSiteWrite("POST", "/api/courses/x/refresh", "cross-site")).toBe(true)
+    expect(isCrossSiteWrite("PUT", "/api/courses/x/owner", "cross-site")).toBe(true)
+  })
+
   it("keeps uploads private: no session cookie, no file (R1)", () => {
     expect(gate("/uploads/t/c/x.png", false, launchMode)).toEqual({ kind: "redirect", to: "/signed-out" })
     expect(gate("/uploads/t/c/x.png", true, launchMode)).toEqual({ kind: "next" })
@@ -231,6 +239,19 @@ describe("POST /launch", () => {
     const res = await launch(new Request("http://localhost:10000/launch", { method: "POST", body, headers: { "x-forwarded-proto": "https" } }))
     expect(res.headers.get("location")).toBe("https://editor.onrender.com/dashboard")
     expect(res.headers.get("set-cookie")).toMatch(/Secure/i)
+  })
+
+  it("sends someone who asked for a platform course to bring it across and open it, ahead of the usual landing page", async () => {
+    const course = "5b4d8ff0-9514-4d23-939c-cc3806517c0c"
+    const asked = await post(signLaunchToken({ ...claims, sub: "course-admin", role: "admin", open_course: course }, HOST_KEY))
+    expect(asked.headers.get("location")).toBe(`https://editor.test/adopt/${course}`)
+    const plain = await post(signLaunchToken({ ...claims, sub: "course-admin-2", role: "admin" }, HOST_KEY))
+    expect(plain.headers.get("location")).toBe("https://editor.test/admin")
+  })
+
+  it("refuses a token whose open_course isn't a course id", async () => {
+    const res = await post(signLaunchToken({ ...claims, sub: "x", open_course: "../../admin" }, HOST_KEY))
+    expect(res.headers.get("location")).toBe("https://editor.test/signed-out?reason=invalid")
   })
 
   it("gives everyone a personal workspace; a host that sends no orgs makes its admins staff", async () => {

@@ -665,6 +665,84 @@ export async function restoreRevision(
   })
 }
 
+/**
+ * Brings a course taken from the platform up to date with the platform, as one new revision (kind "imported"): the
+ * platform's title, summary, cover, outline, lessons' content, placement, learner choices and status replace what is
+ * stored; what only the editor holds (objectives, audience, length, pricing, limits, owner, history, sharing) stays.
+ * Nothing is lost: the previous revisions stay in the history, and restoring one writes it forward again.
+ */
+export async function refreshFromHost(
+  scope: Scope,
+  courseId: string,
+  incoming: { course: Course; lessons: ReadonlyMap<string, Lesson> },
+  hostVersion: string,
+  by: string,
+): Promise<Course | null> {
+  return withTenantScope(scope, async (tx) => {
+    const record = await selectCourse(tx, scope, courseId, true)
+    if (!record) return null
+    await ensureHistory(tx, scope, record)
+    const current = record.course
+    const now = new Date().toISOString()
+    const next = CourseSchema.parse({
+      ...current,
+      title: incoming.course.title,
+      summary: incoming.course.summary,
+      cover_image_url: incoming.course.cover_image_url,
+      levels: incoming.course.levels,
+      metadata: incoming.course.metadata,
+      placement_size: incoming.course.placement_size,
+      status: incoming.course.status,
+      revision: current.revision + 1,
+      updated_at: now,
+      published_at: incoming.course.status === "published" ? now : current.published_at,
+      change_requests: [],
+      review_history: [
+        ...current.review_history,
+        { status: incoming.course.status, action: "synced", at: now, by, note: "Refreshed from the platform", changes: [] },
+      ],
+    })
+    await writeCourse(tx, next)
+
+    const stored = await tx
+      .select({ id: lessons.id, hash: lessons.hash })
+      .from(lessons)
+      .where(and(eq(lessons.courseId, courseId), tenantFilter(lessons, scope)))
+    const storedHash = new Map(stored.map((r) => [r.id, r.hash]))
+    const touched: string[] = []
+    for (const id of outlineLessonIds(next)) {
+      const lesson = incoming.lessons.get(id)
+      if (lesson) {
+        // A lesson that already matches the platform isn't rewritten, so open editors on it aren't disturbed.
+        if (storedHash.get(id) !== lessonHash(lesson)) {
+          await writeLesson(tx, record.tenantId, courseId, id, lesson)
+          touched.push(id)
+        }
+      } else if (storedHash.has(id)) {
+        await tx.delete(lessons).where(and(eq(lessons.courseId, courseId), eq(lessons.id, id)))
+        touched.push(id)
+      }
+    }
+    // Lessons the platform no longer has.
+    const wanted = new Set(outlineLessonIds(next))
+    for (const id of storedHash.keys()) {
+      if (!wanted.has(id)) {
+        await tx.delete(lessons).where(and(eq(lessons.courseId, courseId), eq(lessons.id, id)))
+        touched.push(id)
+      }
+    }
+    await resetLiveDocs(tx, courseId, touched)
+    await notifyAccess(tx, { kind: "course", course: courseId })
+
+    const revision = await commitContent(tx, scope, record.tenantId, next, { kind: "imported", actorId: by })
+    await tx
+      .update(courses)
+      .set({ hostVersion, ...(next.status === "published" ? { publishedRevisionId: revision.id } : {}) })
+      .where(eq(courses.id, courseId))
+    return next
+  })
+}
+
 /** Hands a course to another owner. Callers check who may (lib/authz/ownership). The new owner must be a member of the course's workspace. */
 export async function transferOwner(scope: Scope, courseId: string, newOwnerId: string, by: string): Promise<Course | null> {
   return withTenantScope(scope, async (tx) => {
