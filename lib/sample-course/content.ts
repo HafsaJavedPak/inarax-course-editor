@@ -88,7 +88,7 @@ const q = (
   explanation: string,
 ): SamplePlacementQuestion => ({ difficulty, question, options, correct_index: 0, explanation })
 
-/** Each level's placement questions: 1 easy, 2 medium and 2 hard, the least a level needs. */
+/** Each level's placement questions: a few of each difficulty (a level needs at least 1 easy, 1 medium and 1 hard). */
 function samplePlacement(): SampleCourseTemplate["placement"] {
   return {
     associate: [

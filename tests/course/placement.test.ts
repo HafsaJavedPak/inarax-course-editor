@@ -29,7 +29,7 @@ const question = (overrides: Partial<PlacementQuestion> = {}): PlacementQuestion
 })
 
 describe("placement quiz requirement", () => {
-  it("is met by 1 easy, 2 medium and 2 hard questions in every level with lessons", () => {
+  it("is met by 1 easy, 1 medium and 1 hard question in every level with lessons", () => {
     expect(placementIssues(sampleCourse())).toEqual([])
   })
 
@@ -38,7 +38,7 @@ describe("placement quiz requirement", () => {
     expect(issues).toEqual([
       {
         levelId: "associate",
-        message: "Associate placement quiz needs at least 1 easy, 2 medium and 2 hard questions; add 1 more medium, add 2 more hard",
+        message: "Associate placement quiz needs at least 1 easy, 1 medium and 1 hard questions; add 1 more hard",
       },
     ])
   })

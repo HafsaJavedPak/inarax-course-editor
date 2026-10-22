@@ -437,7 +437,7 @@ Semantics the host must implement:
   host has for that level (`[]`: none); a missing `placement` leaves the
   host's bank alone. Only complete questions are sent. The editor won't let a
   course become `approved` (or `published`) until every level with lessons has at
-  least 1 easy, 2 medium and 2 hard questions, so hosts may treat the bank of an
+  least 1 easy, 1 medium and 1 hard question, so hosts may treat the bank of an
   `approved` or `published` package as reviewed. How many questions a learner sees and the pass mark
   are the host's choice.
 - **Course pricing, length and audience** are informational; hosts may ignore

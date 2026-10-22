@@ -13,7 +13,7 @@ import {
 } from "@/lib/course"
 
 /** The fewest questions of each difficulty a level's bank needs. */
-export const PLACEMENT_MINIMUM: Record<PlacementDifficulty, number> = { easy: 1, medium: 2, hard: 2 }
+export const PLACEMENT_MINIMUM: Record<PlacementDifficulty, number> = { easy: 1, medium: 1, hard: 1 }
 export const PLACEMENT_MIN_OPTIONS = 2
 export const PLACEMENT_MAX_OPTIONS = 6
 
@@ -97,7 +97,7 @@ export function placementIssues(course: Pick<Course, "levels" | "placement_size"
   return issues
 }
 
-/** "1 easy, 2 medium and 2 hard", or "N" when the course sets its own number of questions per level. */
+/** "1 easy, 1 medium and 1 hard", or "N" when the course sets its own number of questions per level. */
 export function requirementText(size: number | null = null): string {
   if (size !== null) return String(size)
   const parts = PLACEMENT_DIFFICULTIES.map((d) => `${PLACEMENT_MINIMUM[d]} ${d}`)

@@ -451,8 +451,8 @@ export function CourseInfoForm({
             <span className="le-field-error">{errorFor("placement_size")}</span>
           ) : (
             <span className="le-field-hint">
-              Drawn at random from each level&apos;s bank. Leave empty for the platform default ({PLACEMENT_SIZE.default}: 1 easy,
-              2 medium and 2 hard). Each level&apos;s bank needs at least this many questions.
+              Optional. Leave empty and the platform asks up to {PLACEMENT_SIZE.default} questions per level, drawn at random from the
+              level&apos;s bank. Set a number to ask more or fewer: each level&apos;s bank then needs at least that many questions.
             </span>
           )}
         </div>
