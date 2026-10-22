@@ -260,6 +260,13 @@ export function validateLesson(lesson: Lesson): LessonIssue[] {
     issues.push({ sectionId: "", level: "error", message: "A lesson needs at least one section" })
   }
 
+  if (lesson.intro) {
+    const { subtitle, objectives } = lesson.intro
+    if (subtitle !== undefined && isBlank(subtitle)) issues.push({ sectionId: "", level: "error", message: "Intro subtitle can't be empty: clear it to remove the intro" })
+    if (objectives && objectives.length > 8) issues.push({ sectionId: "", level: "error", message: "An intro can have at most 8 outcomes" })
+    if (objectives?.some(isBlank)) issues.push({ sectionId: "", level: "error", message: "Intro outcomes can't be empty" })
+  }
+
   for (const section of lesson.sections) {
     const add = (level: LessonIssue["level"], message: string, blockId?: string) =>
       issues.push({ sectionId: section.id, blockId, level, message })

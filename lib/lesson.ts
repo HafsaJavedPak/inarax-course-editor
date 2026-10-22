@@ -161,10 +161,14 @@ export type LessonSection = {
   blocks: LessonBlock[]
 }
 
+/** Shown above the first part: a subtitle and outcomes ("By the end, you'll be able to…"). Both optional. */
+export type LessonIntro = { subtitle?: string; objectives?: string[] }
+
 export type Lesson = {
   version: 1
   format: "blocks"
   sections: LessonSection[]
+  intro?: LessonIntro
 }
 
 export type LessonSummary = {
