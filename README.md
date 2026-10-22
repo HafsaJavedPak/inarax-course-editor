@@ -46,7 +46,7 @@ With `PLATFORM_ADAPTER=none` (the default), everything works locally and Save on
 and how to check a host with `npm run verify-host`.
 
 Courses, lessons and workspaces are stored in Postgres (`EDITOR_DATABASE_URL`; see `.env.example`).
-Optional: `DATA_DIR` sets where uploaded images (`uploads/`) are stored. It defaults to this folder.
+Optional: `DATA_DIR` sets where uploaded images (`uploads/`) are stored on disk. It defaults to this folder. Set the four `FIREBASE_*` variables to keep uploads and AI-generated media in private Firebase Storage instead (see `.env.example`). Uploads are private to their workspace and course; `npm run uploads:migrate` moves files from before that.
 
 **Other commands:**
 

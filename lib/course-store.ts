@@ -13,6 +13,7 @@ import { findLessonRef } from "@/lib/course"
 import { notifyAccess } from "@/lib/collab/notify"
 import { lessonDocName } from "@/lib/collab/protocol"
 import { isUuid, parseLesson, type Lesson } from "@/lib/lesson"
+import { rewriteUploadUrls, type UploadRef } from "@/lib/uploads"
 import { contentHash, lessonHash } from "@/lib/revisions/hash"
 import {
   latestRevision,
@@ -914,4 +915,60 @@ export async function getCourseLessonStats(scope: Scope, course: Course) {
 
 export async function getCourseReport(scope: Scope, course: Course) {
   return validateCourse(course, await getCourseLessonStats(scope, course))
+}
+
+// ---------------------------------------------------------------------------
+// Moving uploads (R1)
+// ---------------------------------------------------------------------------
+
+/** Statuses a course may have for its image addresses to be rewritten: nobody is reviewing it and nothing is live or approved. */
+const REWRITABLE_STATUSES = ["draft", "changes_requested", "rejected", "unpublished"] as const
+
+export type RewriteUploadsResult =
+  | { ok: true; changed: number; lessons: number }
+  | { ok: false; reason: "not_found" | "not_editable"; status?: string }
+
+/**
+ * Rewrites the upload addresses in a course and its lessons (`change` gets each upload URL and returns
+ * the new one, or null to keep it), as one recorded revision ("imported", by the owner). Only for
+ * courses nobody is reviewing and that aren't live: any content change would withdraw an approval,
+ * so the others are left alone (`not_editable`) for a later run. Used by scripts/uploads-migrate.ts
+ * with a platform-staff scope.
+ */
+export async function rewriteCourseUploads(
+  scope: Scope,
+  courseId: string,
+  change: (ref: UploadRef, url: string) => string | null,
+): Promise<RewriteUploadsResult> {
+  return withTenantScope(scope, async (tx) => {
+    const record = await selectCourse(tx, scope, courseId, true)
+    if (!record) return { ok: false, reason: "not_found" }
+    if (!(REWRITABLE_STATUSES as readonly string[]).includes(record.course.status)) {
+      return { ok: false, reason: "not_editable", status: record.course.status }
+    }
+
+    const rewrittenCourse = rewriteUploadUrls(JSON.stringify(record.course), change)
+    const rows = await tx.select({ id: lessons.id, data: lessons.data }).from(lessons).where(and(eq(lessons.courseId, courseId), tenantFilter(lessons, scope)))
+    const changedLessons: { id: string; lesson: Lesson }[] = []
+    let changed = rewrittenCourse.changed
+    for (const row of rows) {
+      const rewritten = rewriteUploadUrls(JSON.stringify(row.data), change)
+      if (rewritten.changed === 0) continue
+      const parsed = parseLesson(JSON.parse(rewritten.text))
+      if ("error" in parsed) continue // a lesson that doesn't parse is left as it is
+      changed += rewritten.changed
+      changedLessons.push({ id: row.id, lesson: parsed.lesson })
+    }
+    if (changed === 0) return { ok: true, changed: 0, lessons: 0 }
+
+    await ensureHistory(tx, scope, record)
+    if (rewrittenCourse.changed > 0) await writeCourse(tx, CourseSchema.parse(JSON.parse(rewrittenCourse.text)))
+    for (const { id, lesson } of changedLessons) await writeLesson(tx, record.tenantId, courseId, id, lesson)
+    await commitContent(tx, scope, record.tenantId, rewrittenCourse.changed > 0 ? CourseSchema.parse(JSON.parse(rewrittenCourse.text)) : record.course, {
+      kind: "imported",
+      actorId: record.course.owner_id,
+    })
+    await resetLiveDocs(tx, courseId, changedLessons.map((l) => l.id))
+    return { ok: true, changed, lessons: changedLessons.length }
+  })
 }

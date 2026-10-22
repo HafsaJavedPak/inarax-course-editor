@@ -548,7 +548,7 @@ export const idempotencyKeys = pgTable(
  * audio arrive later as new kinds with their own provider adapters, so this
  * list grows without a schema change.
  */
-export const AI_JOB_KINDS = ["explanation", "questions", "outline", "image"] as const
+export const AI_JOB_KINDS = ["explanation", "questions", "outline", "image", "video"] as const
 export type AiJobKind = (typeof AI_JOB_KINDS)[number]
 
 /**

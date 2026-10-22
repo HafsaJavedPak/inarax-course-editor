@@ -1,6 +1,7 @@
 import type { Node as PMNode } from "@tiptap/pm/model"
 import type { Transaction } from "@tiptap/pm/state"
 import { clsx, type ClassValue } from "clsx"
+import { uploadScopeFromPath } from "@/lib/uploads"
 import {
   AllSelection,
   NodeSelection,
@@ -428,7 +429,10 @@ export const handleImageUpload = async (
       reject(new Error("Upload cancelled"))
     }
 
-    xhr.open("POST", "/api/uploads")
+    // The file belongs to the course (or, for a new course, the workspace) this page is working on.
+    const scope = uploadScopeFromPath(window.location.pathname)
+    const query = scope ? ("course" in scope ? `?course=${scope.course}` : `?workspace=${scope.workspace}`) : ""
+    xhr.open("POST", `/api/uploads${query}`)
     xhr.send(body)
   })
 }

@@ -12,6 +12,7 @@ import {
   reclaimExpiredJobs,
   type AiJobRow,
 } from "@/lib/ai/jobs"
+import { storeJobMedia } from "@/lib/ai/media"
 import { providerFor } from "@/lib/ai/providers"
 import type { ProviderPort, SourceRef } from "@/lib/ai/providers/port"
 import { classifyError } from "@/lib/ai/retry"
@@ -81,13 +82,15 @@ export async function runJob(job: AiJobRow, workerId: string, options: RunJobOpt
     }
 
     await markValidating(job, workerId)
-    const usable = Boolean(candidate.result.text) || Boolean(candidate.result.assetIds?.length)
+    const usable = Boolean(candidate.result.text) || Boolean(candidate.result.assetIds?.length) || Boolean(candidate.media?.length)
     if (!usable) {
       await markFailed(job, workerId, { code: "invalid_output", message: "The provider returned nothing usable.", retryable: false })
       console.error(`[ai] ${job.id} failed: invalid_output (nothing usable)`)
       return
     }
-    await markReady(job, workerId, { result: candidate.result, provenance: candidate.provenance, actualCost: candidate.usage?.cost ?? null })
+    // Pictures and videos are stored (private to the workspace) before the job is ready; the job keeps their paths.
+    const result = candidate.media?.length ? await storeJobMedia(job.tenantId, job.courseId, candidate.result, candidate.media) : candidate.result
+    await markReady(job, workerId, { result, provenance: candidate.provenance, actualCost: candidate.usage?.cost ?? null })
     console.log(`[ai] ${job.id} ready (${provider.name}, cost ${candidate.usage?.cost ?? "?"})`)
     // Spend changed: tell the platform (fire-and-forget; personal workspaces only).
     void reportAiSpendForTenant(job.tenantId)

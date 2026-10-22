@@ -5,7 +5,9 @@ import { aiBudgetLimits, AiBudgetExceededError } from "@/lib/ai/budget"
 import { aiEnabled, PROMPT_VERSION, providerForKind } from "@/lib/ai/config"
 import { estimateCost } from "@/lib/ai/estimate"
 import { createJob, listJobs } from "@/lib/ai/jobs"
+import { providerSupports } from "@/lib/ai/providers"
 import { jobView } from "@/lib/ai/view"
+import { flushLiveCourse, LiveFlushError } from "@/lib/collab/live"
 import { ensureHead, readCourseLesson } from "@/lib/course-store"
 import { AI_JOB_KINDS, AI_JOB_STATES, type AiJobState } from "@/lib/db/schema"
 import { idempotent } from "@/lib/http/idempotency"
@@ -53,6 +55,15 @@ export async function POST(request: Request, ctx: Ctx) {
     const parsed = CreateSchema.safeParse(JSON.parse(body || "null"))
     if (!parsed.success) return Response.json({ error: parsed.error.issues[0]?.message ?? "Invalid job" }, { status: 400 })
 
+    // While people edit live, the stored lesson lags behind the one on screen. The job's
+    // base (and the block it targets) must be what they see, so store the live edits first.
+    try {
+      await flushLiveCourse(courseId)
+    } catch (error) {
+      if (error instanceof LiveFlushError) return Response.json({ error: error.message }, { status: 503 })
+      throw error
+    }
+
     const head = await ensureHead(loaded.ctx, courseId)
     if (!head) return Response.json({ error: "Course not found" }, { status: 404 })
 
@@ -64,7 +75,14 @@ export async function POST(request: Request, ctx: Ctx) {
     }
 
     const provider = providerForKind(parsed.data.kind)
-    const estimate = estimateCost(provider, parsed.data.kind)
+    if (!providerSupports(provider, parsed.data.kind)) {
+      const media = parsed.data.kind === "image" || parsed.data.kind === "video"
+      return Response.json(
+        { error: media ? `Image and video generation isn't set up (set OPENAI_MEDIA_API_KEY, or AI_MEDIA_PROVIDER).` : `The AI provider (${provider}) can't make ${parsed.data.kind}.` },
+        { status: 503 },
+      )
+    }
+    const estimate = estimateCost(provider, parsed.data.kind, parsed.data.params)
 
     let created: Awaited<ReturnType<typeof createJob>>
     try {

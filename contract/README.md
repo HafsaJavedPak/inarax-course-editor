@@ -321,7 +321,7 @@ types and size (`422 validation_failed`, `413 payload_too_large`), and returns
 a URL learners can load. Storing the same id twice is a no-op.
 
 The editor uploads an image only when GET says the host doesn't have it, then
-puts the returned URL into the package. Hosts never fetch from the editor.
+puts the returned URL into the package. Hosts never fetch from the editor (its files are private to the author's workspace, so a host could not).
 
 Schema: `schemas/asset.schema.json`.
 

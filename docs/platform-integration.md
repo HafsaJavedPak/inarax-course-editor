@@ -55,7 +55,7 @@ flowchart LR
   **no link files** and can't create duplicates by losing one.
 - **Images are content-addressed** (id = SHA-256 of the bytes). The editor asks the host whether it
   has an image and uploads it only if not. Hosts without file storage say so in their manifest and
-  the editor links images from `EDITOR_PUBLIC_URL`.
+  the editor links images from `EDITOR_PUBLIC_URL`. Editor uploads are private (a signed-in editor session is needed to load one), so such a link does not reach learners: a host without image storage cannot show editor images to learners.
 - **The host negotiates.** `GET /v1/manifest` says which protocol major it speaks, which block types
   it can show (lessons using others keep their last published version, with a warning), and its
   limits. It is cached for five minutes.
