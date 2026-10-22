@@ -88,6 +88,14 @@ describe("convertHostCourse", () => {
     expect(Object.values(course.limits!.level_shares).reduce((a, b) => a + b, 0)).toBe(100)
   })
 
+  it("leaves out a cover that isn't a web address, and says so", () => {
+    const input = clone(mini) as unknown as { course: Record<string, any> }
+    input.course.cover_image_url = "not a url"
+    const { course, notes } = convert(input)
+    expect(course.cover_image_url).toBeNull()
+    expect(notes.join("\n")).toMatch(/isn't a web address/)
+  })
+
   it("is repeatable", () => {
     expect(convert()).toEqual(convert())
   })
@@ -110,6 +118,10 @@ describe("convertHostCourse", () => {
     it("two lessons with one title in a module", () => refuse((c) => (c.modules[0].lessons[1].title = c.modules[0].lessons[0].title), /two lessons called/))
     it("a module outside the three levels", () => refuse((c) => (c.levels[0].level_number = 4), /exactly three levels/))
     it("a summary the editor would refuse", () => refuse((c) => (c.description = "Too short"), /shorter than 20/))
+    it("a title or summary longer than the editor can hold, rather than storing a course it couldn't read back", () => {
+      refuse((c) => (c.title = "T".repeat(121)), /can't hold this course/)
+      refuse((c) => (c.description = "S".repeat(1001)), /can't hold this course/)
+    })
     it("something that isn't an export", () => expect(() => convert({})).toThrow(/Not an export/))
   })
 

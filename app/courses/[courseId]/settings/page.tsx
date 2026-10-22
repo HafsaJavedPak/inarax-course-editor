@@ -3,6 +3,7 @@ import Link from "next/link"
 import { CourseSettings } from "@/components/course/course-settings"
 import { AppHeader } from "@/components/course/app-header"
 import { coursePaths } from "@/lib/admin-mode"
+import { CourseOwnerPicker } from "@/components/course/owner-picker"
 import { CourseAccessModePicker } from "@/components/course/access-mode-field"
 import { CourseDepartmentPicker } from "@/components/course/department-field"
 import { authorCourseForPage, permissionsFor } from "@/lib/authz/context"
@@ -44,6 +45,7 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]/se
             disabled={!canEdit}
           />
         )}
+        {permissions.transfer && <CourseOwnerPicker courseId={course.id} ownerId={course.owner_id} />}
         {permissions.sponsor && <CourseAccessModePicker courseId={course.id} current={record.accessMode} />}
         <CourseSettings course={course} canEdit={canEdit} />
       </main>

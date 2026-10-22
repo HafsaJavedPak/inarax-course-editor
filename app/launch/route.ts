@@ -56,7 +56,8 @@ export async function POST(request: Request) {
     staff: access.staff,
     memberships: (access.orgs ?? []).map((o) => ({ tenantId: o.id, role: o.role })),
   })
-  const response = seeOther(request, reviewer ? "/admin" : "/dashboard")
+  // A course the person asked to open on the platform (protocol 2.6): bring it across, then open it.
+  const response = seeOther(request, claims.open_course ? `/adopt/${claims.open_course}` : reviewer ? "/admin" : "/dashboard")
   response.cookies.set(SESSION_COOKIE, sessionToken, sessionCookieOptions(requestIsHttps(request)))
   // Start from the default workspace (an organization's, if they have one): a remembered
   // personal workspace would send an organization's creator's courses past their org admin.

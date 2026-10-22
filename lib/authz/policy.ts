@@ -42,6 +42,12 @@ export type CourseResource = {
   departmentId?: string | null
   /** A copy of the sample course (lib/sample-course). */
   sample?: boolean
+  /**
+   * Taken from the platform rather than written here. It has no author, so the admins of its organization and platform
+   * staff act as its authors: edit, submit, restore, use AI on it, as the owner does. Courses written in the editor keep
+   * the separation between writing and reviewing.
+   */
+  adopted?: boolean
 }
 
 export type CourseAction =
@@ -66,6 +72,8 @@ export type CourseAction =
   | "course.settings"
   /** Decide whether the organization sponsors the course (its members enroll without purchasing). An org admin in their org, or platform staff; organization courses only. */
   | "course.sponsor"
+  /** Hand the course to another owner (an organization's course; the new owner is a member of it). */
+  | "course.transfer"
   /** Give, change and remove access (grants, invitations). */
   | "course.share"
   /** Request an AI job for this course (generate text, images …). The output is only a suggestion. */
@@ -112,7 +120,8 @@ export function grantRole(subject: Subject, course: CourseResource): GrantRole |
 
 export function can(subject: Subject, action: CourseAction, course: CourseResource): boolean {
   const role = roleIn(subject, course.tenantId)
-  const author = isAuthor(subject, course, role)
+  // A course taken from the platform has no author: its organization's admins and platform staff stand in for one.
+  const author = isAuthor(subject, course, role) || (course.adopted === true && !course.sample && (isOrgAdmin(course, role) || subject.staff))
   const reviewer = isReviewer(subject, course, role)
   const grant = grantRole(subject, course)
   // A manager of the course's department oversees it: reads it, sees its history, shares it, takes it down.
@@ -148,6 +157,9 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
     case "course.sponsor":
       // Only an organization has members to sponsor; the decision is the admin's (or the platform's), never the author's.
       return (isOrgAdmin(course, role) || subject.staff) && course.tenantKind === "org" && !course.sample
+    case "course.transfer":
+      // The owner, an admin of the organization, or platform staff; only an organization has members to hand it to.
+      return (author || isOrgAdmin(course, role) || subject.staff) && course.tenantKind === "org" && !course.sample
     case "course.share":
       // The owner, a co-owner, an org admin in their org, a manager of its department, or platform staff.
       return author || coOwner || isOrgAdmin(course, role) || manager || subject.staff

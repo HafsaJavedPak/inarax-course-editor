@@ -193,6 +193,16 @@ export const courses = pgTable(
      * content: changing it never touches revisions or approvals.
      */
     accessMode: text("access_mode", { enum: ACCESS_MODES }),
+    /**
+     * For a course taken from the host: its version stamp when the editor last read or published it (the protocol's
+     * `base_version`). Null for a course the editor made. Not part of the content: it never touches revisions.
+     */
+    hostVersion: text("host_version"),
+    /**
+     * Taken from the platform (opened here from its admin) rather than written in the editor. It has no author, so the
+     * admins of its organization (and platform staff) act as its authors. Not part of the content.
+     */
+    adopted: boolean("adopted").notNull().default(false),
   },
   (t) => [
     // Target of the lessons' composite foreign key.

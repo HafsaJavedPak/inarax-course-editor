@@ -21,6 +21,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/db-migrate.ts",
     "uploads:migrate": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/uploads-migrate.ts",
+    "package:snapshot": "tsx scripts/package-from-snapshot.ts",
     "verify:link": "tsx scripts/verify-link.ts",
     "import:host-course": "tsx scripts/import-host-course.ts",
     "db:import-files": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/import-files-to-db.ts",

@@ -1,43 +1,73 @@
-# Bringing a course that lives on the platform into the editor
+# Editing a course that lives on the platform
 
-For a course that was made in inara-next (not in the editor) and should now be edited here. The editor
-copy keeps the platform's ids, so a publish from the editor **updates that same course in place** (learners,
-progress, quizzes and organization links stay) instead of creating a copy.
+Any course on the platform, however it was made (the platform's admin builder, a bulk import, a script writing
+straight to its database), can be edited in the editor by a platform admin or by an admin of one of its organizations.
+Nobody exports or converts anything: the editor *adopts* the course the first time it is opened.
 
-## Steps
+## For an admin
 
-1. **Export** (inara-next, read only; run against a database you can read, never writes):
-   `npm run course-editor:export -- <course uuid> course.json`
-2. **Find the owner's id:** their `users.uuid` on the platform (the `sub` of their launch token). If an email has
-   more than one row, take the one whose `last_active_at` is recent: that is the account they sign in with.
-3. **Convert** (this repo): `npm run import:host-course -- course.json --owner <uuid> --out host-import`.
-   Read the list it prints: length, size, limits and audience are worked out from the lessons, and the learning
-   objectives are the module titles, because the platform stores none of these.
-4. **Check a publish would change nothing:** `npm run verify:link -- course.json --owner <uuid>`.
-   Exit 0 means a publish rewrites no lesson, placement question, title or structure (module positions may be
-   renumbered within their level; the order learners see doesn't change). Anything else is listed with where.
-5. **Load it:** `npm run db:import-files -- host-import`. It's added to the owner's personal workspace; running it
-   again changes nothing.
-6. Open the course in the editor. Before it can be submitted for review, fix what the editor requires and the
-   platform didn't (see below).
+- **From the platform:** the course's admin page has **Edit in course editor**. It opens the editor on that course.
+- **From the editor:** on your workspace's page, **On the platform** lists the platform courses you may open and the
+  editor doesn't have yet. **Open here** brings one across.
 
-## What to expect
+The editor keeps the platform's ids, so **Save publishes to that very course** (learners, progress, quizzes and
+organization links stay). Opening it again just opens the copy.
 
-- **Needs the platform on protocol 2.5** (inara-next `feat/course-editor-workplace-scenario` or later): that is what
-  lets the editor publish lessons with personalized `workplace_scenario` blocks, and what makes a lesson that only
-  differs by keys the schema ignores count as unchanged. Against an older platform, those lessons aren't sent.
-- **A level with lessons needs a placement bank:** 1 easy, 1 medium and 1 hard question at least (or the course's own
-  number). A course whose platform data has no bank for a level (AI Essentials has none for Advanced) can't be
-  submitted until the author writes one.
-- **Editing a lesson discards its generated personalized copies** on the platform; they are written again the next time
-  a learner of that group opens it. Publishing an unedited course discards nothing.
-- **Content stays exactly as the platform has it.** The editor only adds a value when a block's editor needs a list
-  or an object; it never fills in blank text, so an unedited lesson comes out identical (`tests/block-forms/real-course.test.ts`).
-- Editing a published course reopens it as a draft until it is submitted and approved again; the live version keeps
-  being served meanwhile.
+### Who may open a course
+The platform decides: a platform admin (any course), or an admin of an organization the course is linked to. Creators
+write their own courses in the editor and don't open others'. The copy goes in your organization's workspace (the
+organization of the course that you administer), or your own workspace for a platform admin.
 
-## Rehearsal against a copy
+### Who owns it, and who can edit it
+- The admin who first opens a course owns it.
+- Every admin of its organization, and every platform admin, can edit, submit, restore versions, use AI on it,
+  publish and review it, **whoever owns it**. A course with no author acts as if its admins were its authors. (A course
+  *written* in the editor keeps the separation between writing and reviewing: admins review a creator's course, they
+  don't submit it for them.)
+- The owner, an admin of the organization or a platform admin can **hand a course to another owner** (course
+  settings › Owner): any admin or creator of the organization. It's in the course's history.
 
-`inara-next/tests/db/course-editor-rehearsal.db.test.ts` loads the export into the throwaway test database, applies
-the package the editor builds (`verify:link -- … --write-package package.json`) and checks that nothing changes, that
-a second publish is a no-op, and that one edited lesson updates alone.
+### If the platform changes under you
+Each copy carries the platform's **version** stamp. If someone edits the course on the platform after you opened it,
+**Save refuses** (it never overwrites their change) and offers **Refresh from the platform**. Refreshing brings the
+platform's version in as a new version in the history, so what you changed here is still there to restore.
+Publishing from the editor keeps the stamp current, so your own saves never conflict with themselves.
+
+### What can't be opened
+- **Lessons written by the generation pipeline** (plain text rather than interactive blocks) can't be edited here; the
+  course is refused with the lesson named, and stays editable on the platform.
+- **Retired courses.**
+- A course whose title or summary is longer than the editor can hold (120 and 1000 characters) is refused with the reason.
+
+### What the editor makes up
+The platform has no field for a course's learning objectives, audience, length, lesson size, limits or pricing, so the
+copy gets sensible values worked out from its lessons (objectives are its module titles). Read them in the course
+settings and change them; they aren't shown to learners on the platform. A level that has lessons but no placement bank
+on the platform (the AI Essentials course has none for Advanced) needs one before the course can be submitted.
+
+## For developers
+
+| Piece | Where |
+|---|---|
+| The protocol: two read-only endpoints, `version` / `base_version`, `open_course` | `contract/README.md` § Courses on the host |
+| Adopting, refreshing, listing | `lib/adopt/index.ts` |
+| Snapshot → course | `lib/host-import/convert.ts` (`convertSnapshot`) |
+| Who counts as an author of such a course | `lib/authz/policy.ts` (`CourseResource.adopted`), column `courses.adopted` |
+| The platform's version of a copy | column `courses.host_version`, sent on publish by `lib/workflow-response.ts` |
+| Routes | `/adopt/[courseId]`, `/api/host-courses`, `/api/courses/[id]/refresh`, `/api/courses/[id]/owner` |
+
+`/api/host-courses` is deliberately **not** under `/api/platform/`: that prefix is public (the host's signed events)
+and exempt from the cross-site write guard.
+
+### Rehearsing against a copy of a real course
+These never touch a shared database.
+
+1. In inara-next, `npm run course-editor:export -- <course uuid> course.json` (read only).
+2. `COURSE_EXPORT=course.json SNAPSHOT_OUT=snapshot.json npm run test:db -- course-editor-rehearsal` writes the snapshot the
+   platform would hand out, from a copy of the course in the throwaway test database.
+3. Here: `npm run package:snapshot -- snapshot.json --owner <uuid> --out package.json` builds what Save would publish.
+4. `COURSE_EXPORT=course.json SNAPSHOT_PACKAGE=package.json npm run test:db -- course-editor-rehearsal` applies it: nothing
+   changes, and a platform-side change makes it stale.
+
+The older route, for loading a whole export into a local editor database by hand: `npm run import:host-course` then
+`npm run db:import-files`, and `npm run verify:link` to compare what a publish would change.
