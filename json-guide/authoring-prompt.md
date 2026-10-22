@@ -44,7 +44,7 @@ Output it as a **single fenced ```json code block** (so the chat shows a one-cli
   - Every `categorization` item's `correct_bucket_id` equals one of `buckets[].id`.
   - `sequencing.data.correct_order` is a **permutation of the item ids** — same set, no extras, no duplicates, none missing.
   - Every `fill_blank` blank `id` appears as a `{{id}}` token inside `template`, and its `correct_index` is valid.
-- **Never** set `personalized` to true and **never** use the `workplace_scenario` block type — those belong to a separate personalized pipeline, not standard authoring.
+- **Never** set `personalized` to true and **do not** emit the `workplace_scenario` block type. It is a prompt for text the platform writes per learner group, and a person adds it in the editor (**Add block › Personalized**), not in generated lesson JSON. Also use only the block types in the engine reference; the editor has forms for more (simulators, sorting and so on) than this guide covers, and those are added by hand.
 - **Images:** only real hosted URLs. If you don't have one, do not invent a fake URL — skip the image (the reviewer can add it later) or use a non-image block.
 
 ## Content quality rules — every one of these came from a real defect found in shipped lessons
