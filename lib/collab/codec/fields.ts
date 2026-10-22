@@ -36,7 +36,7 @@ export const BLOCK_FIELDS: Readonly<Record<keyof BlockDataMap, BlockSpec>> = {
   flip_cards: { lists: { cards: { text: ["front", "back"] } } },
   accordion_tabs: { lists: { sections: { text: ["title", "body"] } } },
   stepped_timeline: { lists: { steps: labelBody } },
-  mcq: { text: ["question", "explanation"], groups: { answer: ["options", "correct_index"] } },
+  mcq: { text: ["question", "explanation"], groups: { answer: ["options", "correct_index", "correct_indices"] } },
   categorization: { lists: { buckets: { text: ["label"] }, items: { text: ["label"] } } },
   // correct_order lists item ids, so it's a plain value (last writer wins).
   sequencing: { lists: { items: { text: ["label"] } } },

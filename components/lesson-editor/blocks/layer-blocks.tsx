@@ -40,6 +40,7 @@ function LabeledItemsEditor({
   limits,
   labelPlaceholder,
   bodyPlaceholder,
+  withColor,
 }: {
   items: LabeledItem[]
   onChange: (items: LabeledItem[]) => void
@@ -49,6 +50,8 @@ function LabeledItemsEditor({
   limits: { min: number; max: number }
   labelPlaceholder: string
   bodyPlaceholder: string
+  /** Offers a colour per item (wheel slices and add-next-layer layers only). */
+  withColor?: boolean
 }) {
   const Noun = noun[0].toUpperCase() + noun.slice(1)
   return (
@@ -56,7 +59,7 @@ function LabeledItemsEditor({
       <p className="le-muted">
         {limits.min}–{limits.max} {noun}s.
       </p>
-      <ListEditor
+      <ListEditor<LabeledItem>
         items={items}
         onChange={onChange}
         getKey={(item) => item.id}
@@ -80,6 +83,25 @@ function LabeledItemsEditor({
               minRows={2}
               onChange={(body) => update({ ...item, body })}
             />
+            {withColor && (
+              <select
+                className="le-select"
+                aria-label={`${Noun} ${index + 1} colour`}
+                value={item.color ?? ""}
+                onChange={(e) => {
+                  const { color, ...rest } = item
+                  void color
+                  update(e.target.value ? { ...rest, color: e.target.value as RoadmapColor } : rest)
+                }}
+              >
+                <option value="">Automatic colour</option>
+                {ROADMAP_COLORS.map((c) => (
+                  <option key={c} value={c}>
+                    {c[0].toUpperCase() + c.slice(1)}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         )}
       />
@@ -107,6 +129,7 @@ export function WheelDiagramBlock({ data, onChange }: { data: WheelDiagramData; 
         idPrefix="s"
         noun="slice"
         limits={BLOCK_LIMITS.wheel_diagram}
+        withColor
         labelPlaceholder="Slice label, e.g. Data"
         bodyPlaceholder="What learners see when they open this slice (markdown)"
       />
@@ -157,6 +180,7 @@ export function AddNextLayerBlock({ data, onChange }: { data: AddNextLayerData; 
         idPrefix="l"
         noun="layer"
         limits={BLOCK_LIMITS.add_next_layer}
+        withColor
         labelPlaceholder="Layer label"
         bodyPlaceholder="What this layer adds (markdown)"
       />

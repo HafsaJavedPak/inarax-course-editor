@@ -13,7 +13,15 @@ import { ImagePlusIcon } from "@/components/tiptap-icons/image-plus-icon"
 import { Field, TextField } from "@/components/lesson-editor/fields"
 import { handleImageUpload } from "@/lib/tiptap-utils"
 import { imageSrc } from "@/lib/uploads"
-import type { ImageData, OpaqueBlock } from "@/lib/lesson"
+import { IMAGE_ALIGNS, IMAGE_SIZES, type ImageData, type OpaqueBlock } from "@/lib/lesson"
+
+/** Sets an optional field, or removes it when empty (the host rejects "" for enums). */
+function withOptional<T extends object, K extends keyof T>(data: T, key: K, value: T[K] | ""): T {
+  const next = { ...data }
+  if (value === "") delete next[key]
+  else next[key] = value
+  return next
+}
 
 /** URL input plus an upload button that fills it in. */
 export function ImageUrlField({
@@ -123,6 +131,32 @@ export function ImageBlock({
           value={data.caption ?? ""}
           onChange={(caption) => onChange({ ...data, caption })}
         />
+      </div>
+      <div className="le-grid-2">
+        <Field label="Size" optional>
+          {(id, control) => (
+            <select {...control} className="le-select" value={data.size ?? ""} onChange={(e) => onChange(withOptional(data, "size", e.target.value as ImageData["size"] | ""))}>
+              <option value="">Full width</option>
+              {IMAGE_SIZES.filter((s) => s !== "full").map((s) => (
+                <option key={s} value={s}>
+                  {s[0].toUpperCase() + s.slice(1)}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+        <Field label="Position" optional>
+          {(id, control) => (
+            <select {...control} className="le-select" value={data.align ?? ""} onChange={(e) => onChange(withOptional(data, "align", e.target.value as ImageData["align"] | ""))}>
+              <option value="">Centred</option>
+              {IMAGE_ALIGNS.filter((a) => a !== "center").map((a) => (
+                <option key={a} value={a}>
+                  {a === "left" ? "Start (left)" : "End (right)"}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
       </div>
     </div>
   )

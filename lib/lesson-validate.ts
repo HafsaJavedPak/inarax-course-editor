@@ -95,11 +95,17 @@ export function validateBlock(block: TypedBlock): { level: LessonIssue["level"];
       break
 
     case "mcq": {
-      const { question, options, correct_index } = block.data
+      const { question, options, correct_index, correct_indices } = block.data
       if (isBlank(question)) error("Question is required")
       if (options.length < 2) error("Add at least two options")
       if (options.some(isBlank)) error("Options can't be empty")
-      if (!(correct_index >= 0 && correct_index < options.length)) error("Pick the correct option")
+      if (correct_indices !== undefined) {
+        if (correct_index !== undefined) error("Use either one correct answer or several, not both")
+        if (correct_indices.length < 1 || correct_indices.some((i) => !(i >= 0 && i < options.length))) error("Tick at least one correct option")
+        if (hasDuplicates(correct_indices.map(String))) error("Each correct option can only be ticked once")
+      } else if (correct_index === undefined || !(correct_index >= 0 && correct_index < options.length)) {
+        error("Pick the correct option")
+      }
       const lengths = options.map((o) => o.trim().length).filter(Boolean)
       if (lengths.length >= 2 && Math.max(...lengths) > Math.min(...lengths) * 1.25 + 5) {
         warn("Options differ a lot in length — learners tend to pick the longest one")

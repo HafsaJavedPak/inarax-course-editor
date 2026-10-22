@@ -8,13 +8,18 @@
 import { SPEC_BLOCK_TYPES, SPEC_FORMS, isSpecBlockType, type Rec, type SpecBlockType } from "@/lib/block-forms"
 
 export type RichTextData = { markdown: string }
-export type ImageData = { image_url: string; alt: string; caption?: string }
+export const IMAGE_SIZES = ["small", "medium", "large", "full"] as const
+export const IMAGE_ALIGNS = ["left", "center", "right"] as const
+/** `size` and `align` are optional: absent means full width, centred. */
+export type ImageData = { image_url: string; alt: string; caption?: string; size?: (typeof IMAGE_SIZES)[number]; align?: (typeof IMAGE_ALIGNS)[number] }
 export type Hotspot = { id: string; x: number; y: number; title: string; info: string }
 export type ImageHotspotData = {
   image_url: string
   alt?: string
   /** Shown under the image. */
   caption?: string
+  /** "find" hides the pins until the learner clicks near each one ("spot the flaws"). Absent: "explore". */
+  mode?: "explore" | "find"
   /** Optional: with none, the block is a plain captioned image (no points). */
   hotspots: Hotspot[]
 }
@@ -22,12 +27,16 @@ export type FlipCard = { id: string; front: string; back: string }
 export type FlipCardsData = { cards: FlipCard[] }
 export type AccordionSection = { id: string; title: string; body: string }
 export type AccordionTabsData = { display?: "accordion" | "tabs"; sections: AccordionSection[] }
-export type TimelineStep = { id: string; label: string; body: string }
+export type TimelineStepImage = { image_url: string; alt: string; caption?: string }
+/** `images`: screenshots shown under the step's text (up to 4). */
+export type TimelineStep = { id: string; label: string; body: string; images?: TimelineStepImage[] }
 export type SteppedTimelineData = { steps: TimelineStep[] }
+/** One right answer is `correct_index`; "select all that apply" is `correct_indices` instead. Exactly one of the two. */
 export type McqData = {
   question: string
   options: string[]
-  correct_index: number
+  correct_index?: number
+  correct_indices?: number[]
   points?: number
   explanation?: string
 }
@@ -44,7 +53,7 @@ export type Blank = { id: string; options: string[]; correct_index: number }
 export type FillBlankData = { template: string; blanks: Blank[]; points_per_blank?: number }
 
 /** One labelled item with a markdown body: a wheel slice, a layer, a format option. */
-export type LabeledItem = { id: string; label: string; body: string }
+export type LabeledItem = { id: string; label: string; body: string; /** Wheel slices and add-next-layer layers only. */ color?: RoadmapColor }
 export type WheelDiagramData = { center_label?: string; slices: LabeledItem[] }
 export type NestedLayersData = { layers: LabeledItem[] }
 export type FormatSwitcherData = {

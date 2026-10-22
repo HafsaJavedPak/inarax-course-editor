@@ -9,11 +9,13 @@ import {
   ListEditor,
 } from "@/components/lesson-editor/fields"
 import { Input } from "@/components/tiptap-ui-primitive/input"
+import { ImageUrlField } from "@/components/lesson-editor/blocks/content-blocks"
 import {
   nextInnerId,
   type AccordionTabsData,
   type FlipCardsData,
   type SteppedTimelineData,
+  type TimelineStep,
 } from "@/lib/lesson"
 
 // ---------------------------------------------------------------------------
@@ -132,7 +134,7 @@ export function SteppedTimelineBlock({
   onChange: (data: SteppedTimelineData) => void
 }) {
   return (
-    <ListEditor
+    <ListEditor<TimelineStep>
       items={data.steps}
       onChange={(steps) => onChange({ ...data, steps })}
       getKey={(step) => step.id}
@@ -154,6 +156,26 @@ export function SteppedTimelineBlock({
             aria-label={`Step ${index + 1} body`}
             minRows={2}
             onChange={(body) => update({ ...step, body })}
+          />
+          <ListEditor
+            items={step.images ?? []}
+            onChange={(images) => {
+              const { images: _old, ...rest } = step
+              void _old
+              update(images.length ? { ...rest, images } : rest)
+            }}
+            getKey={(_, i) => `${step.id}-image-${i}`}
+            createItem={() => ({ image_url: "", alt: "", caption: "" })}
+            addLabel="Add screenshot"
+            itemLabel="screenshot"
+            maxItems={4}
+            renderItem={(image, i, updateImage) => (
+              <div className="le-stack-tight">
+                <ImageUrlField label={`Screenshot ${i + 1}`} value={image.image_url} onChange={(image_url) => updateImage({ ...image, image_url })} />
+                <Input value={image.alt} placeholder="Alt text" aria-label={`Screenshot ${i + 1} alt text`} onChange={(e) => updateImage({ ...image, alt: e.target.value })} />
+                <Input value={image.caption ?? ""} placeholder="Caption (optional)" aria-label={`Screenshot ${i + 1} caption`} onChange={(e) => updateImage({ ...image, caption: e.target.value })} />
+              </div>
+            )}
           />
         </div>
       )}
