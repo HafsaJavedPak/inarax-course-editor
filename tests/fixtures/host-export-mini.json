@@ -1,0 +1,2007 @@
+{
+ "exported_at": "2026-10-22T07:51:23.451Z",
+ "course": {
+  "id": 39,
+  "uuid": "5b4d8ff0-9514-4d23-939c-cc3806517c0c",
+  "title": "AI Essentials",
+  "status": "PUBLISHED",
+  "generation_prompt": null,
+  "proactive_prompt": null,
+  "description": "A four-week AI literacy course, from AI-curious to AI-capable.",
+  "quiz_prompt": "You are writing questions for the weekly quiz of \"AI Essentials\", a practical course for working professionals in Pakistan and Saudi Arabia with non-technical backgrounds. Each lesson gives 5 questions to a bank; the weekly quiz draws 10 at random from all of that week's lessons, and the learner needs 80% to unlock the next week. The learner takes it after the week, without the lesson on screen, s",
+  "placement_quiz_prompt": null,
+  "created_at": "2026-10-05T11:06:49.810Z",
+  "updated_at": "2026-10-07T11:34:16.324Z",
+  "remedial_lesson_prompt": null,
+  "cover_image_url": "https://storage.googleapis.com/inara-476406.firebasestorage.app/course-images%2Fcourse_35_288212b3_20260928_3bd0d577b6b3.jpg",
+  "schema_version": "engineering",
+  "require_user_future_goal": false,
+  "available_languages": [
+   "English"
+  ],
+  "course_metadata": [
+   {
+    "id": 429,
+    "course_id": 39,
+    "label": "Medical",
+    "type": "DOMAIN"
+   },
+   {
+    "id": 430,
+    "course_id": 39,
+    "label": "Manufacturing",
+    "type": "DOMAIN"
+   },
+   {
+    "id": 431,
+    "course_id": 39,
+    "label": "Business Management",
+    "type": "DOMAIN"
+   },
+   {
+    "id": 432,
+    "course_id": 39,
+    "label": "Banking",
+    "type": "DOMAIN"
+   },
+   {
+    "id": 433,
+    "course_id": 39,
+    "label": "Education",
+    "type": "DOMAIN"
+   },
+   {
+    "id": 434,
+    "course_id": 39,
+    "label": "Generic",
+    "type": "DOMAIN"
+   },
+   {
+    "id": 435,
+    "course_id": 39,
+    "label": "Operations",
+    "type": "DEPARTMENT"
+   },
+   {
+    "id": 436,
+    "course_id": 39,
+    "label": "Sales & Marketing",
+    "type": "DEPARTMENT"
+   },
+   {
+    "id": 437,
+    "course_id": 39,
+    "label": "Finance",
+    "type": "DEPARTMENT"
+   },
+   {
+    "id": 438,
+    "course_id": 39,
+    "label": "Human Resources",
+    "type": "DEPARTMENT"
+   },
+   {
+    "id": 439,
+    "course_id": 39,
+    "label": "Information Technology",
+    "type": "DEPARTMENT"
+   },
+   {
+    "id": 440,
+    "course_id": 39,
+    "label": "Customer Service",
+    "type": "DEPARTMENT"
+   },
+   {
+    "id": 441,
+    "course_id": 39,
+    "label": "Generic",
+    "type": "DEPARTMENT"
+   }
+  ],
+  "course_organizations": [
+   {
+    "id": 45,
+    "course_id": 39,
+    "organization_id": 2,
+    "created_at": "2026-10-05T11:23:50.062Z",
+    "access_mode": "INDIVIDUAL",
+    "organizations": {
+     "id": 2,
+     "uuid": "7739665a-2914-417c-8cbb-be109de6e11a",
+     "name": "inaraX"
+    }
+   }
+  ],
+  "levels": [
+   {
+    "id": 69,
+    "name": "Associate",
+    "level_number": 1,
+    "course_id": 39
+   },
+   {
+    "id": 70,
+    "name": "Intermediate",
+    "level_number": 2,
+    "course_id": 39
+   },
+   {
+    "id": 71,
+    "name": "Advanced",
+    "level_number": 3,
+    "course_id": 39
+   }
+  ],
+  "modules": [
+   {
+    "id": 183,
+    "uuid": "74b08254-07c4-4df0-a8f4-1f0c5327cbfa",
+    "title": "Week 1: AI Foundations",
+    "course_id": 39,
+    "level_id": 69,
+    "order_index": 1,
+    "lessons": [
+     {
+      "id": 675,
+      "uuid": "3b7dff49-7fbe-4db6-85b8-680b29a8bac5",
+      "title": "What is artificial intelligence?",
+      "module_id": 183,
+      "order_index": 1,
+      "key_concepts": [
+       "Artificial intelligence",
+       "Rules vs learning",
+       "Narrow AI",
+       "General AI (AGI)",
+       "Limits of AI"
+      ],
+      "lesson_type": "standard",
+      "generated_lessons": [
+       {
+        "id": 908,
+        "uuid": "496b7b8f-66da-4ecf-ac53-42fac92a6c56",
+        "lesson_id": 675,
+        "course_id": 39,
+        "status": "APPROVED",
+        "approved_by": "shahzaibiqbal1057@gmail.com",
+        "rejected_by": null,
+        "approved_at": "2026-10-05T11:06:49.810Z",
+        "rejection_comments": null,
+        "created_at": "2026-10-05T11:06:49.810Z",
+        "updated_at": "2026-10-14T05:19:58.808Z",
+        "generated_text": "",
+        "structured_content": {
+         "version": 1,
+         "format": "blocks",
+         "sections": [
+          {
+           "id": "27c7e44f-88d3-4783-9b61-24a250057417",
+           "title": "You've already used AI today",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "f0e9accd-5418-4c35-aa9c-e07c2a27af88",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Your phone unlocked when it saw your face. Your email quietly moved three scam messages to spam. Google Maps warned you about traffic before you left. YouTube picked your next video. Your keyboard finished your sentence before you did.\n\nNone of these announced themselves as \"AI.\" That's the point: most AI is invisible."
+             }
+            },
+            {
+             "id": "1b63dcb6-a845-42f1-b344-3ce3fe792a5d",
+             "type": "quick_question",
+             "personalized": false,
+             "required_to_advance": true,
+             "data": {
+              "question": "Quick guess: how many times do you think you've used AI today?",
+              "options": [
+               {
+                "id": "g1",
+                "label": "0–2",
+                "feedback": "That's the most common guess, because most AI works out of sight. The lab will show you how much you've been using without noticing."
+               },
+               {
+                "id": "g2",
+                "label": "3–5",
+                "feedback": "A fair start. When you list the AI around you in the lab, see whether you need to raise your number."
+               },
+               {
+                "id": "g3",
+                "label": "6–10",
+                "feedback": "You're already spotting some of it. In the lab, check how close you were."
+               },
+               {
+                "id": "g4",
+                "label": "10+",
+                "feedback": "You're probably right, and the real number is likely higher still. The lab will help you see where it all hides."
+               }
+              ]
+             }
+            }
+           ]
+          },
+          {
+           "id": "a0c97e98-2cc6-40c0-99a4-36a4123deaff",
+           "title": "What is AI?",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "182d3d16-d404-41ac-8223-249f42ec606b",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "**Artificial intelligence** is technology that lets computers do tasks that normally need human intelligence, like recognising faces, understanding language, making predictions or creating content, by **learning patterns from data** instead of only following rules a person wrote.\n\nThe key difference is *how* the computer knows what to do.\n\n**Traditional software follows rules.** A programmer writes every instruction: \"If the subject line contains 'FREE MONEY', mark it as spam.\" The software never does anything it wasn't told to do. When scammers change their wording, the rule fails.\n\n**AI learns from examples.** Show a system millions of emails labelled \"spam\" and \"not spam,\" and it learns the patterns itself, including ones no programmer thought to write down. When scammers change tactics, it can adapt as it sees new examples."
+             }
+            },
+            {
+             "id": "04203317-5768-4267-9214-33728577ad88",
+             "personalized": false,
+             "type": "image",
+             "data": {
+              "image_url": "https://storage.googleapis.com/inara-476406.firebasestorage.app/lesson-assets%2Fai-essentials-20261005%2FL1-0.png",
+              "alt": "Two ways to build a spam filter. Traditional software: a new email plus rules a person wrote gives spam or inbox, the same answer every time. AI system: it first learns from millions of labelled emails and builds a model of the patterns, then a new email goes through the model and comes out as 94% likely spam.",
+              "size": "full"
+             }
+            },
+            {
+             "id": "03a1646a-3b52-46ab-af98-6f09b34fca89",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": ":::tip The one-question test\nDid someone write every rule, or did the system learn from examples? Keep this question handy. You'll use it all course.\n:::"
+             }
+            },
+            {
+             "id": "12333476-8e0a-4a86-98d6-26ab5a29b142",
+             "type": "filter_compare",
+             "personalized": false,
+             "required_to_advance": false,
+             "data": {
+              "title": "Try to fool both filters",
+              "prompt": "Pick an email subject line below. Watch which filter catches it.",
+              "placeholder": "Type a subject line…",
+              "examples": [
+               "FREE MONEY inside",
+               "Fr33 m0ney waiting for you!!",
+               "Congratulations! Claim your prize now",
+               "Lunch meeting tomorrow at 1pm?",
+               "Your invoice for September"
+              ],
+              "positive_label": "Spam",
+              "negative_label": "Inbox",
+              "rule": {
+               "title": "Rule-based filter",
+               "description": "Its only rule: if the subject contains \"free money\", it's spam.",
+               "phrase": "free money",
+               "lookalike_pattern": "fr[e3]{2}|m[o0]n[e3]y|prize|claim|lottery|winner"
+              },
+              "learned": {
+               "title": "Learned filter",
+               "description": "It weighs many patterns it picked up from examples.",
+               "weights": {
+                "free": 1.2,
+                "money": 1.3,
+                "prize": 1.6,
+                "claim": 1.3,
+                "winner": 1.6,
+                "won": 1.2,
+                "congratulations": 1.2,
+                "urgent": 1.2,
+                "click": 1,
+                "now": 0.6,
+                "lottery": 1.8,
+                "cash": 1.2,
+                "offer": 0.8,
+                "limited": 0.8,
+                "guaranteed": 1.2,
+                "act": 0.5,
+                "bonus": 1,
+                "waiting": 0.5,
+                "meeting": -1.2,
+                "lunch": -1.1,
+                "tomorrow": -0.6,
+                "invoice": -0.5,
+                "report": -0.9,
+                "thanks": -0.9,
+                "class": -0.8,
+                "agenda": -1.1,
+                "minutes": -0.6,
+                "assignment": -0.9
+               },
+               "exclaim_weight": 0.45,
+               "exclaim_max": 3,
+               "caps_weight": 0.5,
+               "caps_max": 2,
+               "threshold": 1.4,
+               "steepness": 1.6
+              },
+              "footnote": "This is a simplified simulation. Real spam filters learn from billions of emails and look at far more than the subject line."
+             }
+            }
+           ]
+          },
+          {
+           "id": "86026f53-1b40-47c0-ab34-659e5bc5dd38",
+           "title": "AI or not?",
+           "required_to_advance": true,
+           "blocks": [
+            {
+             "id": "bc36b983-7cc7-4c3b-9b84-959bd8b3c5f4",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Twelve everyday systems. For each one, decide: did it **learn from examples**, or does it just **follow fixed rules**? Some are trickier than they look."
+             }
+            },
+            {
+             "id": "2e178730-cb0a-400a-ae82-e5522fbb847f",
+             "personalized": false,
+             "type": "categorization",
+             "data": {
+              "buckets": [
+               {
+                "id": "ai",
+                "label": "AI: learns from examples"
+               },
+               {
+                "id": "not",
+                "label": "Not AI: fixed rules"
+               }
+              ],
+              "items": [
+               {
+                "id": "c1",
+                "label": "A calculator adding two numbers",
+                "correct_bucket_id": "not"
+               },
+               {
+                "id": "c2",
+                "label": "Gmail moving an email to spam",
+                "correct_bucket_id": "ai"
+               },
+               {
+                "id": "c3",
+                "label": "A traffic light that changes every 60 seconds",
+                "correct_bucket_id": "not"
+               },
+               {
+                "id": "c4",
+                "label": "YouTube choosing your next video",
+                "correct_bucket_id": "ai"
+               },
+               {
+                "id": "c5",
+                "label": "Face unlock on your phone",
+                "correct_bucket_id": "ai"
+               },
+               {
+                "id": "c6",
+                "label": "A website chatbot where you tap menu buttons for fixed answers",
+                "correct_bucket_id": "not"
+               },
+               {
+                "id": "c7",
+                "label": "Google Maps predicting your arrival time",
+                "correct_bucket_id": "ai"
+               },
+               {
+                "id": "c8",
+                "label": "An Excel SUM formula",
+                "correct_bucket_id": "not"
+               },
+               {
+                "id": "c9",
+                "label": "Your keyboard suggesting the next word",
+                "correct_bucket_id": "ai"
+               },
+               {
+                "id": "c10",
+                "label": "An ATM checking your PIN",
+                "correct_bucket_id": "not"
+               },
+               {
+                "id": "c11",
+                "label": "Your bank flagging an unusual transaction",
+                "correct_bucket_id": "ai"
+               },
+               {
+                "id": "c12",
+                "label": "A smart thermostat that learns your schedule",
+                "correct_bucket_id": "ai"
+               }
+              ],
+              "points_per_match": 2
+             }
+            }
+           ]
+          },
+          {
+           "id": "5eaa53db-ce63-4514-8e4c-3167572469e1",
+           "title": "Narrow AI vs General AI",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "db29faae-832c-43e3-9ee8-c7244591cab0",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "**Narrow AI** is built to do one specific task well: recognise faces, filter spam, recommend videos, play chess. Almost all AI you've ever used is narrow AI. A chess engine that beats world champions can't tell you what's in a photo.\n\n**General AI**, often called AGI, is a *hypothetical* system that could learn and do any intellectual task a human can, in any subject, with real understanding. It does not exist today. Experts genuinely disagree about whether it's coming soon, far in the future, or ever.\n\n### So where do ChatGPT, Claude and Gemini fit?\n\nThey're more general-purpose than older AI. The same tool can write an email, explain physics and translate Urdu. But general-purpose isn't the same as general intelligence. These tools still make basic mistakes, don't understand the world the way people do, and can't reliably check their own work."
+             }
+            },
+            {
+             "id": "928621ca-97ef-46f5-a36b-c39378d6a3a5",
+             "personalized": false,
+             "type": "image",
+             "data": {
+              "image_url": "https://storage.googleapis.com/inara-476406.firebasestorage.app/lesson-assets%2Fai-essentials-20261005%2FL1-1.png",
+              "alt": "The AI spectrum from one task to any task: narrow AI exists (face unlock, spam filters, chess engines, YouTube recommendations); general-purpose AI exists with real limits (ChatGPT, Claude, Gemini); general AI (AGI) is hypothetical and doesn't exist yet.",
+              "size": "full"
+             }
+            }
+           ]
+          },
+          {
+           "id": "1db4e112-a68c-4179-b0e4-99be0d18f3e3",
+           "title": "What AI can and can't do",
+           "required_to_advance": true,
+           "blocks": [
+            {
+             "id": "963841cf-ec41-4aac-998f-ec64bd354830",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "AI is extremely good at some things and surprisingly weak at others. Knowing the difference is what separates people who use AI well from people who get burned by it."
+             }
+            },
+            {
+             "id": "9ad1e3e6-1e49-4335-a05c-c3407157bcfc",
+             "type": "compare_columns",
+             "personalized": false,
+             "required_to_advance": false,
+             "data": {
+              "columns": [
+               {
+                "id": "good",
+                "title": "AI is good at",
+                "icon": "✅",
+                "color": "emerald",
+                "body": "- Spotting patterns in huge amounts of data\n- Predicting what's likely to happen next\n- Generating text, images and code quickly\n- Translating and summarising\n- Working at a speed and scale no human can\n- Doing the same task consistently, without tiring"
+               },
+               {
+                "id": "hard",
+                "title": "AI struggles with",
+                "icon": "⚠️",
+                "color": "amber",
+                "body": "- Guaranteeing that what it says is true\n- Knowing about events after it was trained\n- Common sense in unfamiliar situations\n- Understanding meaning the way people do\n- Being free of bias, since it learns from human data\n- Taking responsibility for decisions"
+               }
+              ],
+              "caption": "Strengths and limits of today's AI"
+             }
+            },
+            {
+             "id": "42c1885d-2986-4b38-bab6-5f3dc07f505e",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "### Myth or reality?\n\nTap each card to see the truth."
+             }
+            },
+            {
+             "id": "81247714-d87d-4e31-8966-ad53fa3ce894",
+             "personalized": false,
+             "type": "flip_cards",
+             "data": {
+              "cards": [
+               {
+                "id": "m1",
+                "front": "AI thinks and feels like a human.",
+                "back": "AI finds patterns and predicts outputs. It has no feelings or intentions of its own."
+               },
+               {
+                "id": "m2",
+                "front": "If AI says it confidently, it must be right.",
+                "back": "AI can sound completely confident while being completely wrong. You'll see this happen in this week's project."
+               },
+               {
+                "id": "m3",
+                "front": "AI is objective because it's a machine.",
+                "back": "AI learns from human-created data, so it can absorb human biases."
+               },
+               {
+                "id": "m4",
+                "front": "AI will replace everyone's job.",
+                "back": "AI mostly changes tasks within jobs. People who use AI well tend to gain an advantage. That's what Module 4 is about."
+               }
+              ]
+             }
+            }
+           ]
+          },
+          {
+           "id": "e875e921-8f53-4983-a0ee-37d158f6e413",
+           "title": "Lab: AI around me",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "487ae13c-7427-4f11-b45f-9d76ba707818",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Find **one AI system** you use in a normal day: on your phone, at study or work, while shopping, or for entertainment.\n\nBe specific about **which part** is AI. The whole Careem app isn't AI, but its price and arrival-time predictions are.\n\n### Worked example: Google Maps\n\n:::table-colors indigo emerald\n| Item | Detail |\n|---|---|\n| **What it does** | Gives directions |\n| **Where exactly is AI used?** | Predicting traffic and arrival time |\n| **Input** | Live location data from phones, road data, time of day |\n| **Output** | Estimated arrival time and the fastest route |\n| **Could it get it wrong?** | Yes, when there's a sudden accident or road closure it hasn't detected yet |\n:::"
+             }
+            },
+            {
+             "id": "7d95491b-5999-40a5-a990-9dc790c0bbfa",
+             "type": "free_response",
+             "personalized": false,
+             "data": {
+              "prompt": "Log the AI system you found.",
+              "min_words": 20,
+              "fields": [
+               {
+                "id": "system",
+                "label": "AI system",
+                "hint": "e.g. Instagram, Careem, Google Translate"
+               },
+               {
+                "id": "where",
+                "label": "Where exactly is AI used?",
+                "hint": "The specific feature, not the whole app"
+               },
+               {
+                "id": "input",
+                "label": "Input it receives",
+                "hint": "Be concrete: \"live location data\", not just \"data\""
+               },
+               {
+                "id": "output",
+                "label": "Output it produces"
+               },
+               {
+                "id": "wrong",
+                "label": "Could it get it wrong? How?",
+                "hint": "One realistic failure",
+                "long": true
+               }
+              ]
+             }
+            }
+           ]
+          },
+          {
+           "id": "ceb64da8-e44c-4afa-be20-5bcec86045fe",
+           "title": "Quiz",
+           "required_to_advance": true,
+           "blocks": [
+            {
+             "id": "da95cb9c-765c-44e8-b60a-0e9c4553cc09",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "Which description best explains what AI is?",
+              "options": [
+               "Any software that runs on a computer",
+               "Software that follows a very long list of rules",
+               "Technology that performs tasks needing human-like intelligence by learning patterns from data",
+               "A robot that thinks like a human"
+              ],
+              "correct_index": 2,
+              "points": 10,
+              "explanation": "The key idea is learning from data. Following rules, however many, is traditional software."
+             }
+            },
+            {
+             "id": "2bc04991-7eab-4f39-9c61-9789de48059c",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "A café's website has a chat window. You tap \"Opening hours\" and it shows the hours. You tap \"Menu\" and it shows the menu. Is this AI?",
+              "options": [
+               "Yes, because it's a chatbot",
+               "No, because every answer is pre-written and triggered by a button",
+               "It depends on the café",
+               "Yes, because it answers questions"
+              ],
+              "correct_index": 1,
+              "points": 10,
+              "explanation": "Being a chatbot doesn't make something AI. This one follows fixed rules."
+             }
+            },
+            {
+             "id": "3fae74cd-481f-448d-8ab7-a423a7a8fedb",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "Your bank sends an alert when your card is used in a city you've never visited. What is the AI most likely doing?",
+              "options": [
+               "Checking whether your PIN was correct",
+               "Asking a bank employee to review every transaction",
+               "Following a rule that blocks all transactions outside your city",
+               "Comparing the transaction with your learned spending pattern and spotting something unusual"
+              ],
+              "correct_index": 3,
+              "points": 10,
+              "explanation": "Fraud detection learns what \"normal\" looks like for you and flags what doesn't fit."
+             }
+            },
+            {
+             "id": "9fcbcc0a-4b59-45b5-a958-f5391bdfc5b5",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "A colleague says: \"ChatGPT gave me this statistic, so it must be correct.\" What's the best response?",
+              "options": [
+               "Suggest checking it against a reliable source, because AI can give confident but wrong answers",
+               "Agree, because it answered confidently",
+               "Tell them never to use AI",
+               "Agree, since AI uses huge amounts of data"
+              ],
+              "correct_index": 0,
+              "points": 10,
+              "explanation": "Confidence is not accuracy. Verifying important facts is a core AI skill you'll practise all course."
+             }
+            },
+            {
+             "id": "6356a6a5-e2e9-48d6-9a6a-d0377a27e2fa",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "Which statement about general AI (AGI) is most accurate?",
+              "options": [
+               "ChatGPT is an example of general AI",
+               "It's a hypothetical AI that could handle any intellectual task a human can, and it doesn't exist yet",
+               "It's AI used by governments",
+               "It's any AI that can do more than one task"
+              ],
+              "correct_index": 1,
+              "points": 10,
+              "explanation": "Today's assistants are general-purpose, not general intelligence."
+             }
+            },
+            {
+             "id": "8347af90-aaee-4f40-a055-c4bb757e8488",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "A spam filter has worked well for years, but it starts letting through a new type of scam email. What's the most likely reason?",
+              "options": [
+               "The filter is broken and needs replacing",
+               "Someone changed its rules",
+               "AI filters stop working after a few years",
+               "The scam uses patterns the filter didn't see in the examples it learned from"
+              ],
+              "correct_index": 3,
+              "points": 10,
+              "explanation": "AI is only as good as the examples it learned from. New patterns can slip past until it learns them."
+             }
+            }
+           ]
+          },
+          {
+           "id": "d48f611d-2698-4fbf-a933-f1ecefa0459c",
+           "title": "Wrap-up",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "021c2f73-2c7e-4cd7-ac84-b69fdefcc53a",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": ":::takeaways\n1. AI learns patterns from data. Traditional software follows rules written by people.\n2. Most AI in your life is invisible, and almost all of it is narrow AI.\n3. Today's AI assistants are general-purpose, but general AI doesn't exist.\n4. AI is powerful at patterns, prediction and generation, and weak at guaranteeing truth.\n5. Confidence is not accuracy. Always verify what matters.\n:::"
+             }
+            }
+           ]
+          }
+         ],
+         "intro": {
+          "subtitle": "You use AI dozens of times a day without noticing. In this lesson you'll learn to spot it, understand how it's different from ordinary software, and know when to trust it.",
+          "objectives": [
+           "Define AI in simple terms",
+           "Spot AI in everyday products",
+           "Explain how AI differs from rule-based software",
+           "Describe what today's AI can and can't do"
+          ]
+         }
+        },
+        "is_canonical": true,
+        "quiz_generated": true,
+        "quiz_generation_attempted": true,
+        "quiz_generation_error": null,
+        "word_count": 2816,
+        "token_count": null,
+        "language": "English",
+        "title": null
+       }
+      ]
+     },
+     {
+      "id": 676,
+      "uuid": "74ca401a-0731-4011-af74-10aa4cc4473a",
+      "title": "From AI to generative AI",
+      "module_id": 183,
+      "order_index": 2,
+      "key_concepts": [
+       "AI family",
+       "Machine learning",
+       "Deep learning",
+       "Generative AI",
+       "Large language models"
+      ],
+      "lesson_type": "standard",
+      "generated_lessons": [
+       {
+        "id": 909,
+        "uuid": "caffbe96-75c8-4f8d-a073-94724b850f86",
+        "lesson_id": 676,
+        "course_id": 39,
+        "status": "APPROVED",
+        "approved_by": "shahzaibiqbal1057@gmail.com",
+        "rejected_by": null,
+        "approved_at": "2026-10-05T11:06:49.810Z",
+        "rejection_comments": null,
+        "created_at": "2026-10-05T11:06:49.810Z",
+        "updated_at": "2026-10-14T05:19:58.808Z",
+        "generated_text": "",
+        "structured_content": {
+         "version": 1,
+         "format": "blocks",
+         "sections": [
+          {
+           "id": "d18748f4-eb59-4b22-8a4b-ebd0844a8f53",
+           "title": "What is ChatGPT, exactly?",
+           "required_to_advance": true,
+           "blocks": [
+            {
+             "id": "65b6b316-7b07-413c-bbbc-ebbc569a684b",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "You'll hear ChatGPT called all of these things. Which labels are correct? Select every one you think applies.",
+              "options": [
+               "Artificial intelligence",
+               "Machine learning",
+               "Deep learning",
+               "Generative AI",
+               "Large language model"
+              ],
+              "correct_indices": [
+               0,
+               1,
+               2,
+               3,
+               4
+              ],
+              "points": 10,
+              "explanation": "The answer is all five. ChatGPT is a large language model, which is a kind of generative AI, which is built with deep learning, which is a kind of machine learning, which is part of AI. The next section shows how they nest like boxes inside boxes."
+             }
+            }
+           ]
+          },
+          {
+           "id": "7daf89cc-ff16-4a56-a544-a8be686a9b23",
+           "title": "The AI family",
+           "required_to_advance": true,
+           "blocks": [
+            {
+             "id": "f402c352-e303-4228-8625-5b19081ad9e7",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Think of these terms as boxes inside boxes. AI is the biggest box: the whole field. Each box inside is a more specific way of doing AI."
+             }
+            },
+            {
+             "id": "bee3c42b-aa3b-4f1a-88d2-26502f8f3940",
+             "personalized": false,
+             "type": "nested_layers",
+             "data": {
+              "layers": [
+               {
+                "id": "l1",
+                "label": "Artificial intelligence",
+                "body": "**What it is:** The whole field: any technique that makes computers do tasks that normally need human intelligence.\n\n**How it works:** Early AI used hand-written rules and logic. Today, almost all AI learns from data instead.\n\n**Examples:** 1990s chess computers, Expert systems, Everything inside this box\n\n**Timeline:** Field founded in 1956"
+               },
+               {
+                "id": "l2",
+                "label": "Machine learning",
+                "body": "**What it is:** AI that learns patterns from data instead of following rules a person wrote.\n\n**How it works:** Show it many examples with the right answers, and it learns to predict answers for new cases.\n\n**Examples:** Spam filters, Fraud alerts, Netflix recommendations, House-price predictions\n\n**Timeline:** Became mainstream in the 1990s–2000s"
+               },
+               {
+                "id": "l3",
+                "label": "Deep learning",
+                "body": "**What it is:** Machine learning that uses neural networks with many layers.\n\n**How it works:** Each layer picks up more complex patterns, which makes it great at messy data like images, speech and language.\n\n**Examples:** Face unlock, Voice assistants, Self-driving car vision, Medical image analysis\n\n**Timeline:** Took off in 2012"
+               },
+               {
+                "id": "l4",
+                "label": "Generative AI",
+                "body": "**What it is:** Deep learning models that create new content, instead of only sorting or predicting.\n\n**How it works:** It learns the patterns of text, images or sound so well that it can produce new examples that follow them.\n\n**Examples:** Image generators, AI music tools, AI video tools, Chat assistants\n\n**Timeline:** Went mainstream in 2022\n\nMany generative models are now multimodal: they can take in and produce text, images and audio together."
+               },
+               {
+                "id": "l5",
+                "label": "Large language models",
+                "body": "**What it is:** Generative AI trained on enormous amounts of text to predict the next word, one piece at a time.\n\n**How it works:** By predicting what comes next extremely well, it can write, summarise, translate, answer questions and write code. You'll see how in Lesson 4.\n\n**Examples:** GPT models (ChatGPT), Claude, Gemini, Llama\n\n**Timeline:** Built on the 2017 transformer; exploded in 2022\n\nMost popular assistants are powered by multimodal LLMs, so they can read images too."
+               }
+              ]
+             }
+            },
+            {
+             "id": "b7bceeda-a51d-45ce-b93d-8409996f7f60",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": ":::info The nesting rule\nEvery LLM is generative AI. All generative AI is deep learning. All deep learning is machine learning. And all of it is AI. But it doesn't work the other way: most AI is not an LLM.\n:::"
+             }
+            }
+           ]
+          },
+          {
+           "id": "838da49e-69d7-43bb-b4f0-caf28bb33f1b",
+           "title": "Inside deep learning",
+           "required_to_advance": true,
+           "blocks": [
+            {
+             "id": "724e7a0e-9405-47e4-88f5-d2d23fb58932",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Deep learning uses neural networks: layers of simple connected units, loosely inspired by how brain cells pass signals. Each layer picks up patterns from the one before it, building from simple to complex.\n\nHere's how a network recognises your face. Step through the layers."
+             }
+            },
+            {
+             "id": "4ad06e7b-695b-4322-bfaa-c85b82045157",
+             "type": "image_switcher",
+             "personalized": false,
+             "data": {
+              "options": [
+               {
+                "id": "s1",
+                "label": "1. Pixels",
+                "image_url": "https://storage.googleapis.com/inara-476406.firebasestorage.app/lesson-assets%2Fai-essentials-20261005%2FL2-face-step-1.png",
+                "alt": "Step 1: a face photo shown as a grid of small coloured squares, beside a network whose first column, pixels, is lit.",
+                "caption": "Input: your photo arrives as millions of tiny coloured dots called pixels. On their own, they mean nothing."
+               },
+               {
+                "id": "s2",
+                "label": "2. Edges",
+                "image_url": "https://storage.googleapis.com/inara-476406.firebasestorage.app/lesson-assets%2Fai-essentials-20261005%2FL2-face-step-2.png",
+                "alt": "Step 2: the face reduced to its outlines and lines, with the network's first layer of edge detectors lit.",
+                "caption": "Layer 1 spots simple patterns in the pixels: edges, lines, and patches of light and dark."
+               },
+               {
+                "id": "s3",
+                "label": "3. Shapes",
+                "image_url": "https://storage.googleapis.com/inara-476406.firebasestorage.app/lesson-assets%2Fai-essentials-20261005%2FL2-face-step-3.png",
+                "alt": "Step 3: the eyes, nose and mouth outlined on the face, with the second layer of shape detectors lit.",
+                "caption": "Layer 2 combines those edges into shapes: an eye, the curve of a nose, a mouth."
+               },
+               {
+                "id": "s4",
+                "label": "4. Face",
+                "image_url": "https://storage.googleapis.com/inara-476406.firebasestorage.app/lesson-assets%2Fai-essentials-20261005%2FL2-face-step-4.png",
+                "alt": "Step 4: the whole face with a green tick, and the network's answer: this is you, 97 percent sure, phone unlocked.",
+                "caption": "The final layer combines shapes into a whole face, and the network gives its answer: \"This is you, 97% sure.\" Your phone unlocks."
+               }
+              ]
+             }
+            },
+            {
+             "id": "06882e9e-fd61-4eea-aff9-1cb7d6b9de49",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": ":::info Nobody programmed those layers\nNo one told the network to look for edges or eyes. It discovered these patterns by itself during training. \"Deep\" just means many layers.\n:::"
+             }
+            }
+           ]
+          },
+          {
+           "id": "908e1c3c-f93f-4e30-a040-a3800de140fe",
+           "title": "How we got here",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "523a182f-ea2d-4016-bdad-df436afb678a",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "AI isn't new. The field is about 70 years old. For decades, researchers tried to write intelligence as rules. It worked for puzzles and games but broke down in the messy real world. The big shift came when AI started learning from data instead."
+             }
+            },
+            {
+             "id": "2db6e723-6b54-42cb-9b18-f7f22094ce3a",
+             "personalized": false,
+             "type": "vertical_roadmap",
+             "data": {
+              "eras": [
+               {
+                "id": "rules",
+                "name": "Rules era: intelligence written by hand",
+                "color": "amber"
+               },
+               {
+                "id": "learning",
+                "name": "Learning era: intelligence learned from data",
+                "color": "emerald"
+               }
+              ],
+              "events": [
+               {
+                "id": "ev-1",
+                "date": "1956",
+                "era_id": "rules",
+                "text": "The term \"artificial intelligence\" is coined at a summer workshop at Dartmouth College, and AI becomes a field of research."
+               },
+               {
+                "id": "ev-2",
+                "date": "1966",
+                "era_id": "rules",
+                "text": "ELIZA, one of the first chatbots, imitates a therapist using simple pattern-matching rules."
+               },
+               {
+                "id": "ev-3",
+                "date": "1980s",
+                "era_id": "rules",
+                "text": "\"Expert systems\" boom: programs built from thousands of if-then rules. They're costly to maintain and brittle, and funding dries up in an \"AI winter.\""
+               },
+               {
+                "id": "ev-4",
+                "date": "1997",
+                "era_id": "rules",
+                "text": "IBM's Deep Blue beats world chess champion Garry Kasparov, mostly by brute-force searching millions of moves."
+               },
+               {
+                "id": "ev-5",
+                "date": "2012",
+                "era_id": "learning",
+                "text": "The deep learning breakthrough: a neural network called AlexNet crushes a major image-recognition contest. The learning era begins in earnest."
+               },
+               {
+                "id": "ev-6",
+                "date": "2016",
+                "era_id": "learning",
+                "text": "DeepMind's AlphaGo beats Go champion Lee Sedol, in a game long thought too complex for computers."
+               },
+               {
+                "id": "ev-7",
+                "date": "2017",
+                "era_id": "learning",
+                "text": "Google researchers publish the **transformer**, the design behind almost every modern language model."
+               },
+               {
+                "id": "ev-8",
+                "date": "2022",
+                "era_id": "learning",
+                "text": "ChatGPT launches in November and becomes one of the fastest-growing apps in history."
+               },
+               {
+                "id": "ev-9",
+                "date": "2023–24",
+                "era_id": "learning",
+                "text": "Multimodal models arrive: assistants that understand images and audio, not just text."
+               },
+               {
+                "id": "ev-10",
+                "date": "Today",
+                "era_id": "learning",
+                "text": "AI agents that use tools and take actions, not just answer questions. You'll build with these in Module 4."
+               }
+              ]
+             }
+            }
+           ]
+          },
+          {
+           "id": "2961c403-869e-4e49-8588-813de6b56cd9",
+           "title": "Why now?",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "6c05593d-0d58-438f-8787-a354490bcffd",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Neural networks were invented decades ago. So why did AI explode in the last ten years? Three ingredients finally came together at the same time.\n\n**Data + Computing power + Better designs = Modern AI**"
+             }
+            },
+            {
+             "id": "1cf2575a-8dbc-4ee2-84b6-efe2a2cd088a",
+             "type": "card_grid",
+             "personalized": false,
+             "required_to_advance": false,
+             "data": {
+              "columns": 4,
+              "cards": [
+               {
+                "id": "data",
+                "icon": "📚",
+                "title": "Data",
+                "body": "The internet created enormous amounts of text, images and video to learn from.",
+                "color": "sky"
+               },
+               {
+                "id": "compute",
+                "icon": "⚡",
+                "title": "Computing power",
+                "body": "Graphics chips (GPUs), built for video games, turned out to be perfect for training neural networks.",
+                "color": "amber"
+               },
+               {
+                "id": "designs",
+                "icon": "🧩",
+                "title": "Better designs",
+                "body": "New techniques, especially the 2017 transformer, made it possible to learn from all that data efficiently.",
+                "color": "violet"
+               },
+               {
+                "id": "modern-ai",
+                "icon": "🚀",
+                "title": "Modern AI",
+                "body": "ChatGPT, image generators, voice assistants and the tools you'll use in this course.",
+                "color": "emerald"
+               }
+              ],
+              "caption": "Think of it as fuel, engine and design. You need all three."
+             }
+            }
+           ]
+          },
+          {
+           "id": "32594df9-9481-439f-b47f-b7c58032fb43",
+           "title": "Lab: AI evolution map",
+           "required_to_advance": true,
+           "blocks": [
+            {
+             "id": "ffbd0564-92e2-4ea0-9b17-6de83784ca3e",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Place each example in the most specific layer it belongs to. [ChatGPT](https://chatgpt.com) is technically all five, but the most specific answer is \"Large language models.\""
+             }
+            },
+            {
+             "id": "4d9c39ef-4d91-4321-b08c-371945d0d48b",
+             "personalized": false,
+             "type": "categorization",
+             "data": {
+              "buckets": [
+               {
+                "id": "b1",
+                "label": "AI (rules, no learning)"
+               },
+               {
+                "id": "b2",
+                "label": "Machine learning"
+               },
+               {
+                "id": "b3",
+                "label": "Deep learning"
+               },
+               {
+                "id": "b4",
+                "label": "Generative AI"
+               },
+               {
+                "id": "b5",
+                "label": "Large language models"
+               }
+              ],
+              "items": [
+               {
+                "id": "c1",
+                "label": "A 1980s expert system that diagnoses faults with if-then rules",
+                "correct_bucket_id": "b1"
+               },
+               {
+                "id": "c2",
+                "label": "A 1997 chess computer that searches millions of moves",
+                "correct_bucket_id": "b1"
+               },
+               {
+                "id": "c3",
+                "label": "A bank flagging unusual card transactions",
+                "correct_bucket_id": "b2"
+               },
+               {
+                "id": "c4",
+                "label": "Predicting house prices from size and location",
+                "correct_bucket_id": "b2"
+               },
+               {
+                "id": "c5",
+                "label": "Face unlock on your phone",
+                "correct_bucket_id": "b3"
+               },
+               {
+                "id": "c6",
+                "label": "A voice assistant understanding your speech",
+                "correct_bucket_id": "b3"
+               },
+               {
+                "id": "c7",
+                "label": "An app that creates an image from your description",
+                "correct_bucket_id": "b4"
+               },
+               {
+                "id": "c8",
+                "label": "An AI tool that composes background music",
+                "correct_bucket_id": "b4"
+               },
+               {
+                "id": "c9",
+                "label": "ChatGPT answering your question",
+                "correct_bucket_id": "b5"
+               },
+               {
+                "id": "c10",
+                "label": "Claude summarising a long report",
+                "correct_bucket_id": "b5"
+               }
+              ],
+              "points_per_match": 2
+             }
+            }
+           ]
+          },
+          {
+           "id": "89d537fd-c046-45ff-94dc-b8050edd8691",
+           "title": "Quiz",
+           "required_to_advance": true,
+           "blocks": [
+            {
+             "id": "16f67198-5209-4b0b-967b-ce20e0282aa7",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "A hospital system learns to spot pneumonia in X-rays after studying thousands of labelled scans with a many-layered neural network. What's the most specific label?",
+              "options": [
+               "Deep learning",
+               "Rule-based AI",
+               "Large language model",
+               "Generative AI"
+              ],
+              "correct_index": 0,
+              "points": 10,
+              "explanation": "It learns from images using a neural network with many layers. It recognises patterns but doesn't create new content, so it's deep learning."
+             }
+            },
+            {
+             "id": "39ebf0b7-8364-41a6-bd58-32da3409111d",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "An app creates a brand-new logo from your written description. What's the most relevant technology?",
+              "options": [
+               "Machine learning (prediction)",
+               "Rule-based AI",
+               "Generative AI",
+               "A spreadsheet formula"
+              ],
+              "correct_index": 2,
+              "points": 10,
+              "explanation": "It creates new content that didn't exist before. That's what makes it generative AI."
+             }
+            },
+            {
+             "id": "0060187f-2b42-4ab9-a956-f65dcd52ec66",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "A 1980s program diagnosed engine faults using 500 if-then rules written by mechanics. Where does it fit?",
+              "options": [
+               "Large language model",
+               "AI, but not machine learning",
+               "Deep learning",
+               "Machine learning"
+              ],
+              "correct_index": 1,
+              "points": 10,
+              "explanation": "It's part of the AI field's history, but it didn't learn anything. Every rule was written by people. That's rules-era AI."
+             }
+            },
+            {
+             "id": "d559726c-4d37-464c-a3f1-2e6453c9f0c3",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "A shop predicts next month's sales by learning from three years of past sales data. What's the most specific label?",
+              "options": [
+               "Generative AI",
+               "Large language model",
+               "Rule-based AI",
+               "Machine learning"
+              ],
+              "correct_index": 3,
+              "points": 10,
+              "explanation": "It learns patterns from data to make a prediction. That's classic machine learning. No new content is being created."
+             }
+            },
+            {
+             "id": "523fba1f-d862-4620-a7aa-b82c37393867",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "Which statement is true?",
+              "options": [
+               "Every AI system is an LLM",
+               "Every LLM is a type of generative AI, but not every generative AI is an LLM",
+               "Generative AI and machine learning are completely separate",
+               "Deep learning is older and broader than machine learning"
+              ],
+              "correct_index": 1,
+              "points": 10,
+              "explanation": "LLMs sit inside generative AI. Image and music generators are generative AI too, but they aren't language models."
+             }
+            },
+            {
+             "id": "398c272b-1c55-4214-b71c-a535bb4e5e9f",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "You upload a photo of a broken washing machine and ask your assistant what's wrong with it. What capability is it using?",
+              "options": [
+               "Machine learning with no neural network",
+               "Rule-based AI",
+               "Multimodal AI",
+               "Only a spreadsheet"
+              ],
+              "correct_index": 2,
+              "points": 10,
+              "explanation": "It's working with more than one type of input, an image plus your text. That's multimodal AI."
+             }
+            },
+            {
+             "id": "1ae6ccb3-e78f-43ae-abcd-50232779d96a",
+             "personalized": false,
+             "type": "mcq",
+             "data": {
+              "question": "Why did AI improve so dramatically after about 2012?",
+              "options": [
+               "More data, more computing power and better designs came together",
+               "The internet was invented in 2012",
+               "Computers became conscious",
+               "Programmers finally wrote enough rules"
+              ],
+              "correct_index": 0,
+              "points": 10,
+              "explanation": "All three ingredients matured at once: huge datasets, GPUs, and better techniques like the transformer."
+             }
+            }
+           ]
+          },
+          {
+           "id": "658a3060-ce84-4985-a519-78fd8d51cc5c",
+           "title": "Wrap-up",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "5076d205-3186-4165-ad25-dc7b80e8f1dc",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": ":::takeaways\n1. AI is the whole field. Machine learning, deep learning, generative AI and LLMs are nested inside it.\n2. Machine learning learns from data. Deep learning uses many-layered neural networks. Generative AI creates new content. LLMs are generative AI for language.\n3. Every LLM is generative AI, but most AI is not an LLM.\n4. Modern AI took off when data, computing power and better designs like the transformer came together.\n5. Many assistants are now multimodal: they work with text, images and audio.\n:::"
+             }
+            }
+           ]
+          }
+         ],
+         "intro": {
+          "subtitle": "AI, machine learning, deep learning, generative AI, LLMs. People use these words as if they mean the same thing. They don't. By the end of this lesson, you'll know exactly how they fit together, and how we got from chess computers to ChatGPT.",
+          "objectives": [
+           "Explain how AI, machine learning, deep learning, generative AI and LLMs relate to each other",
+           "Describe the key milestones that led to today's AI",
+           "Classify real products by the technology behind them"
+          ]
+         }
+        },
+        "is_canonical": true,
+        "quiz_generated": true,
+        "quiz_generation_attempted": true,
+        "quiz_generation_error": null,
+        "word_count": 2483,
+        "token_count": null,
+        "language": "English",
+        "title": null
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": 185,
+    "uuid": "40e6bb0d-d837-40fc-8c76-a13f36c0c83f",
+    "title": "Week 3: AI for Work and Problem Solving",
+    "course_id": 39,
+    "level_id": 70,
+    "order_index": 3,
+    "lessons": [
+     {
+      "id": 686,
+      "uuid": "2a0178dc-a60e-4a3f-9d33-9965e14d49a3",
+      "title": "Week 3 setup: your toolkit",
+      "module_id": 185,
+      "order_index": 1,
+      "key_concepts": [
+       "Home-base assistant",
+       "Free tool accounts",
+       "Privacy settings check",
+       "Data Traffic Light",
+       "Fallback tools"
+      ],
+      "lesson_type": "standard",
+      "generated_lessons": [
+       {
+        "id": 919,
+        "uuid": "333e2082-3cdf-4211-ad4d-2fd2a78dedb4",
+        "lesson_id": 686,
+        "course_id": 39,
+        "status": "APPROVED",
+        "approved_by": "shahzaibiqbal1057@gmail.com",
+        "rejected_by": null,
+        "approved_at": "2026-10-05T11:06:49.810Z",
+        "rejection_comments": null,
+        "created_at": "2026-10-05T11:06:49.810Z",
+        "updated_at": "2026-10-09T14:10:49.731Z",
+        "generated_text": "",
+        "structured_content": {
+         "version": 1,
+         "format": "blocks",
+         "sections": [
+          {
+           "id": "06dd3383-ca81-48d5-a681-b084e3e2af31",
+           "title": "Your Week 3 toolkit",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "1916d80d-45f9-4ad8-a37c-3ad24411adeb",
+             "type": "rich_text",
+             "personalized": false,
+             "data": {
+              "markdown": "This week you'll use AI on real work: research, writing, visuals, data and your career. Take 15 minutes now to set up every tool in one go, so each lesson starts with \"open the tool\", not \"create an account\". Come back to this lesson any time you need a link or a setting.\n\n- About 15 minutes\n- Free accounts only"
+             }
+            }
+           ]
+          },
+          {
+           "id": "a9cf20b7-0e7a-4fb4-ad0e-626ebd4bba3a",
+           "title": "Choose your home-base assistant",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "892087ea-23ba-4ae8-a223-f5add5f231d3",
+             "type": "rich_text",
+             "personalized": false,
+             "data": {
+              "markdown": "This is the everyday assistant you'll use for writing, analysis and building your personal AI assistant. Pick the one you already know best."
+             }
+            },
+            {
+             "id": "2e1b0271-5676-4b44-ac33-bcc995bf0272",
+             "type": "accordion_tabs",
+             "personalized": false,
+             "data": {
+              "display": "tabs",
+              "sections": [
+               {
+                "id": "ge",
+                "title": "Gemini (recommended)",
+                "body": "**[Open Gemini ↗](https://gemini.google.com)**\n\nGoogle's AI assistant, and your recommended home base. You'll also use Gems, its free custom assistants, to build your own assistant this week.\n\n**Your assistant this week:** you'll build it with Gems, its free custom assistants.\n\n**Free plan:** Free with daily limits. Gems are free to create, but only in the web app, so use a laptop or desktop to build one."
+               },
+               {
+                "id": "cl",
+                "title": "Claude",
+                "body": "**[Open Claude ↗](https://claude.ai)**\n\nAnthropic's AI assistant, especially strong at writing and working with documents. Its Projects let you build your own assistant with instructions and files.\n\n**Your assistant this week:** you'll build it with Projects, which hold your instructions and files.\n\n**Free plan:** Free with daily limits. The free plan includes a small number of Projects, which is plenty for one assistant."
+               }
+              ]
+             }
+            },
+            {
+             "id": "bc0ed290-2c9e-415c-b873-e4cca07723f6",
+             "type": "rich_text",
+             "personalized": false,
+             "data": {
+              "markdown": "**Why these two?** This week's project is building your own AI assistant, and both [Gemini](https://gemini.google.com) (Gems) and [Claude](https://claude.ai) (Projects) let you do that on a free account. You'll also use [ChatGPT](https://chatgpt.com) for one data activity."
+             }
+            }
+           ]
+          },
+          {
+           "id": "d04f781d-1a12-47a0-8b28-bf892407d567",
+           "title": "Set up each tool",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "5dcf43b0-14dc-434f-a4e7-0c88039ca70e",
+             "type": "rich_text",
+             "personalized": false,
+             "data": {
+              "markdown": "For each tool: create a free account (use \"Sign in with Google\" where you can, so it's one login), then check its privacy settings. Work down the list and make sure both are done for every tool you'll use. You only need one of Gemini and Claude, the home base you chose above.\n\n| Tool | Open | Used in | Step-by-step guide |\n|---|---|---|---|\n| ✨ **Gemini** | [gemini.google.com](https://gemini.google.com) | All week · the Week 3 project (building your assistant with Gems) | *Gemini: Create a custom Gem (your own AI assistant)* |\n| 🧡 **Claude** | [claude.ai](https://claude.ai) | All week as your home base, if you choose it · the Week 3 project (building your assistant with Projects) | – |\n| 📓 **NotebookLM** | [notebooklm.google.com](https://notebooklm.google.com) | *AI for research and information* · *AI for learning and career* | – |\n| 🔎 **Perplexity** | [perplexity.ai](https://www.perplexity.ai) | *AI for research and information* | *Perplexity: Market and competitor research with Perplexity* |\n| 🖼️ **Gamma** | [gamma.app](https://gamma.app) | *AI for writing and communication* | *Gamma: Create a business presentation with Gamma* |\n| 🎨 **ImagineArt** | [imagine.art](https://www.imagine.art) | *AI for visual content* · *What generative AI can create* | – |\n| 📊 **Julius** | [julius.ai](https://julius.ai) | *AI for data and analysis* | *Julius: Analyse retail sales data with Julius* |\n| 💬 **ChatGPT** | [chatgpt.com](https://chatgpt.com) | *AI for data and analysis* | – |\n\n:::info \"Privacy checked\" means two things\nFirst, open the tool's settings and look for an option about using your chats or files to improve or train the AI, and decide whether to keep it on. Second, remember the Data Traffic Light from the *Responsible AI* lesson: whatever the setting, never upload red data, and clean amber data first.\n:::"
+             }
+            }
+           ]
+          },
+          {
+           "id": "9764c113-741e-41ec-b1a9-8a497c333d83",
+           "title": "The tools, one by one",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "5b1fcdeb-7763-4fbb-9846-f0d8d7a37696",
+             "type": "accordion_tabs",
+             "personalized": false,
+             "data": {
+              "display": "accordion",
+              "sections": [
+               {
+                "id": "t1",
+                "title": "✨ Gemini",
+                "body": "**[Open Gemini ↗](https://gemini.google.com)**\n\n**Used in:** All week · the Week 3 project (building your assistant with Gems)\n\nGoogle's AI assistant, and your recommended home base. You'll also use Gems, its free custom assistants, to build your own assistant this week.\n\n**Sign up**\n\nSign in with your Google account at [gemini.google.com](https://gemini.google.com).\n\n**Free plan**\n\nFree with daily limits. Gems are free to create, but only in the web app, so use a laptop or desktop to build one.\n\n**Privacy**\n\nIn Gemini's settings, look for Activity. It controls whether your chats are saved and used to improve Google's AI.\n\n**If it doesn't work**\n\nUse [Claude](https://claude.ai) instead: it covers the same activities, including building your assistant with Projects.\n\n**Step-by-step guide**\n\nFollow the *Gemini: Create a custom Gem (your own AI assistant)* lesson later this week, with every step laid out."
+               },
+               {
+                "id": "t2",
+                "title": "🧡 Claude",
+                "body": "**[Open Claude ↗](https://claude.ai)**\n\n**Used in:** All week as your home base, if you choose it · the Week 3 project (building your assistant with Projects)\n\nAnthropic's AI assistant, especially strong at writing and working with documents. Its Projects let you build your own assistant with instructions and files.\n\n**Sign up**\n\nSign up at [claude.ai](https://claude.ai). You can use your Google account.\n\n**Free plan**\n\nFree with daily limits. The free plan includes a small number of Projects, which is plenty for one assistant.\n\n**Privacy**\n\nIn Claude's settings, look for Privacy, and the option about using your chats to help improve Claude.\n\n**If it doesn't work**\n\nUse [Gemini](https://gemini.google.com) instead: it covers the same activities."
+               },
+               {
+                "id": "t3",
+                "title": "📓 NotebookLM",
+                "body": "**[Open NotebookLM ↗](https://notebooklm.google.com)**\n\n**Used in:** *AI for research and information* · *AI for learning and career*\n\nGoogle's research and study notebook. You upload sources, and it answers only from them, with a citation for every claim. It also makes quizzes, flashcards and audio summaries.\n\n**Sign up**\n\nSign in with your Google account at [notebooklm.google.com](https://notebooklm.google.com).\n\n**Free plan**\n\nFree, with generous limits for this course.\n\n**Privacy**\n\nOnly upload sources you're allowed to share. Check Google's privacy notice for NotebookLM, and apply the Traffic Light to every file.\n\n**If it doesn't work**\n\nUpload your documents to [Gemini](https://gemini.google.com) or [Claude](https://claude.ai) and ask it to answer only from them, quoting where each answer comes from."
+               },
+               {
+                "id": "t4",
+                "title": "🔎 Perplexity",
+                "body": "**[Open Perplexity ↗](https://www.perplexity.ai)**\n\n**Used in:** *AI for research and information*\n\nAn AI search engine. It searches the web and answers with numbered links to its sources, so you can check each claim.\n\n**Sign up**\n\nSign up at [perplexity.ai](https://www.perplexity.ai) with Google.\n\n**Free plan**\n\nFree for everyday searches. Some advanced search modes are limited.\n\n**Privacy**\n\nIn settings, look for an option about using your data to improve the AI.\n\n**If it doesn't work**\n\nUse [Gemini](https://gemini.google.com) or [ChatGPT](https://chatgpt.com) with web search switched on, and ask for links to sources.\n\n**Step-by-step guide**\n\nFollow the *Perplexity: Market and competitor research with Perplexity* lesson later this week, with every step laid out."
+               },
+               {
+                "id": "t5",
+                "title": "🖼️ Gamma",
+                "body": "**[Open Gamma ↗](https://gamma.app)**\n\n**Used in:** *AI for writing and communication*\n\nTurns an outline or document into a designed presentation in seconds. You then edit the slides like normal.\n\n**Sign up**\n\nSign up at [gamma.app](https://gamma.app) with Google.\n\n**Free plan**\n\nFree starting credits. Each new presentation uses some.\n\n**Privacy**\n\nDon't paste amber or red data into a presentation prompt. Check who can see your decks before sharing links.\n\n**If it doesn't work**\n\nAsk your home-base assistant for a slide-by-slide outline, then build the slides in Google Slides or PowerPoint.\n\n**Step-by-step guide**\n\nFollow the *Gamma: Create a business presentation with Gamma* lesson later this week, with every step laid out."
+               },
+               {
+                "id": "t6",
+                "title": "🎨 ImagineArt",
+                "body": "**[Open ImagineArt ↗](https://www.imagine.art)**\n\n**Used in:** *AI for visual content* · *What generative AI can create*\n\nAn AI creative suite for images, video and voice, with editing, upscaling, brand kits and ad-making tools.\n\n**Sign up**\n\nSign up at [imagine.art](https://www.imagine.art) with Google.\n\n**Free plan**\n\nFree credits for generating. Limits and offers change often, so check the pricing page.\n\n**Privacy**\n\nCheck whether your creations are public or private by default. Never upload photos of other people without their permission.\n\n**If it doesn't work**\n\nUse the image generation built into [Gemini](https://gemini.google.com) or [ChatGPT](https://chatgpt.com)."
+               },
+               {
+                "id": "t7",
+                "title": "📊 Julius",
+                "body": "**[Open Julius ↗](https://julius.ai)**\n\n**Used in:** *AI for data and analysis*\n\nAn AI data analyst. Upload a spreadsheet, ask questions in plain language, and get answers and charts.\n\n**Sign up**\n\nSign up at [julius.ai](https://julius.ai) with Google.\n\n**Free plan**\n\nA limited number of free messages. Enough for the lesson if you plan your questions.\n\n**Privacy**\n\nOnly upload the practice dataset from the lesson, or data you've cleaned. Never upload files with personal details.\n\n**If it doesn't work**\n\nUpload the same file to [ChatGPT](https://chatgpt.com), [Gemini](https://gemini.google.com) or [Claude](https://claude.ai) and ask the same questions.\n\n**Step-by-step guide**\n\nFollow the *Julius: Analyse retail sales data with Julius* lesson later this week, with every step laid out."
+               },
+               {
+                "id": "t8",
+                "title": "💬 ChatGPT",
+                "body": "**[Open ChatGPT ↗](https://chatgpt.com)**\n\n**Used in:** *AI for data and analysis*\n\nOpenAI's assistant. In Lesson 14 you'll give it the same dataset as [Julius](https://julius.ai) and compare their answers.\n\n**Sign up**\n\nSign up at [chatgpt.com](https://chatgpt.com) with Google.\n\n**Free plan**\n\nFree with daily limits, including a limited number of file uploads and analyses.\n\n**Privacy**\n\nIn settings, open Data controls and look for the option about improving the model for everyone.\n\n**If it doesn't work**\n\nUse your home-base assistant for the comparison instead."
+               }
+              ]
+             }
+            },
+            {
+             "id": "5b002a4c-c967-42cc-9900-72066b2bce49",
+             "type": "rich_text",
+             "personalized": false,
+             "data": {
+              "markdown": "Last checked: September 2026. AI tools, free plans and settings change often. If something here doesn't match what you see, follow the tool's own instructions, or use the fallback."
+             }
+            }
+           ]
+          },
+          {
+           "id": "0c1d07be-a62d-4fdf-a1f8-8e0e9257d56f",
+           "title": "Ready for Week 3?",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "57776597-be0c-4f89-a9fb-547738da99dc",
+             "type": "rich_text",
+             "personalized": false,
+             "data": {
+              "markdown": "Once your tools are set up, move on to the Week 3 project, then *AI for research and information*. Any lesson that uses one of these tools assumes your account is ready."
+             }
+            }
+           ]
+          }
+         ]
+        },
+        "is_canonical": true,
+        "quiz_generated": false,
+        "quiz_generation_attempted": false,
+        "quiz_generation_error": null,
+        "word_count": 1108,
+        "token_count": null,
+        "language": "English",
+        "title": null
+       }
+      ]
+     },
+     {
+      "id": 687,
+      "uuid": "6dde0e1d-df6d-4a99-915d-2169b705fbf4",
+      "title": "Project: My AI Assistant",
+      "module_id": 185,
+      "order_index": 2,
+      "key_concepts": [
+       "AI assistant",
+       "Instructions",
+       "Knowledge sources",
+       "Testing",
+       "Opportunity Hunt"
+      ],
+      "lesson_type": "standard",
+      "generated_lessons": [
+       {
+        "id": 920,
+        "uuid": "564345c0-38f8-485a-a7e2-be98d17ed72a",
+        "lesson_id": 687,
+        "course_id": 39,
+        "status": "APPROVED",
+        "approved_by": "shahzaibiqbal1057@gmail.com",
+        "rejected_by": null,
+        "approved_at": "2026-10-05T11:06:49.810Z",
+        "rejection_comments": null,
+        "created_at": "2026-10-05T11:06:49.810Z",
+        "updated_at": "2026-10-09T14:10:49.731Z",
+        "generated_text": "",
+        "structured_content": {
+         "version": 1,
+         "format": "blocks",
+         "sections": [
+          {
+           "id": "ec88cc8b-eb00-4169-8ca8-94249cc3fc0b",
+           "title": "Step 1: Define (Lesson 11)",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "5a85177a-15e8-47ed-b38e-b8fc9f90b7f2",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Decide what your assistant is for, where you'll build it, and which trustworthy sources it should know. Use the research skills from Lesson 11 to choose your sources.\n\n**What will it be?**\n\nWhere you'll build it: [Gemini](https://gemini.google.com) Gems or [Claude](https://claude.ai) Projects.\n\nIts main job: Study tutor, Career coach, Work assistant or Something else.\n\nNote down:\n\n- Its name\n- Who it helps, and with what (one or two sentences)\n- 3 things it should do\n\n**3 knowledge sources**\n\nFiles or pages your assistant will use: your syllabus, notes, a job description, a policy document. Choose reliable ones, and check each with the Data Traffic Light."
+             }
+            },
+            {
+             "id": "5e571ead-1d4e-44e3-a74c-0922f470b370",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "**For each of your 3 sources:**\n\nNote down:\n\n- What is it?\n- Where it's from (link or file)\n- Why it's reliable\n- Traffic Light (Green or Amber (cleaned))"
+             }
+            },
+            {
+             "id": "afbed30c-d50a-44e4-a8bd-3139b96dda88",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "No red data, ever: no ID numbers, passwords, health records or other people's private details."
+             }
+            }
+           ]
+          },
+          {
+           "id": "49667507-b971-4faa-abdd-6cd5d950542b",
+           "title": "Step 2: Instructions (Lesson 12)",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "16c94fd8-7e04-452f-8548-2a96480f8853",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Instructions are your assistant's permanent prompt: it reads them before every chat. Write them using the writing skills from Lesson 12, and reuse your best Prompt Playbook templates as examples of tasks.\n\nNote down:\n\n- Role and purpose (who it is, and why it exists)\n- What it does (the main tasks, step by step)\n- How it responds (tone, length, format, language)\n- Rules (what it must always and never do)\n- When it's unsure (how to handle gaps)"
+             }
+            }
+           ]
+          },
+          {
+           "id": "8e79a0da-2dd1-475c-a194-02364ddf3779",
+           "title": "Step 3: Build (Lesson 13)",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "d07a4ead-47c6-4736-b182-79ef8bd6da82",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Time to build it for real. Use a laptop or desktop for this step. Follow the guide for the tool you chose, then go through the checklist."
+             }
+            },
+            {
+             "id": "794f3e92-3772-4df7-8b6d-1f008199acc2",
+             "personalized": false,
+             "type": "accordion_tabs",
+             "data": {
+              "display": "tabs",
+              "sections": [
+               {
+                "id": "a1",
+                "title": "✨ Gemini Gems",
+                "body": "1. Open [gemini.google.com](https://gemini.google.com) in a browser on a computer.\n2. Open Gems (sometimes under Explore Gems), then choose New Gem.\n3. Give it your assistant's name.\n4. Paste your instructions from step 2 into the Instructions box.\n5. Under Knowledge, add your source files (Traffic Light checked).\n6. Try a test message in the preview on the right.\n7. Click Save.\n\nThe full step-by-step guide is the Gemini guide lesson, after Lesson 13."
+               },
+               {
+                "id": "a2",
+                "title": "🧡 Claude Projects",
+                "body": "1. Open [claude.ai](https://claude.ai) and go to Projects.\n2. Create a new project with your assistant's name.\n3. Open the project's instructions and paste your instructions from step 2.\n4. Add your source files to the project's knowledge.\n5. Start a chat inside the project and send a test message."
+               }
+              ]
+             }
+            },
+            {
+             "id": "173304c8-0842-48da-bcb9-f458fbbd3ef9",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Menus change from time to time. If a button has moved, look for the equivalent option, or check the tool's help pages.\n\n:::tip Checklist\n- I created my assistant\n- I pasted in my instructions\n- I added my knowledge files, all Traffic Light checked\n- I sent it a first test message\n- Optional: I made an icon or banner for it in [ImagineArt](https://www.imagine.art) (Lesson 13)\n:::\n\nNote down:\n\n- What happened in your first test? (what you asked, and how it did)\n- Link to your assistant (optional, if your tool lets you share one)"
+             }
+            }
+           ]
+          },
+          {
+           "id": "bbce08a0-4842-4aa1-befc-4530d9959fb5",
+           "title": "Step 4: Test (Lesson 14)",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "c36ff822-6729-4f00-996e-e56d0d7568e7",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "A good assistant is a tested assistant. Run these 5 test cases in your assistant, record what happened, and note what you'd fix. Use the Verification Wheel from Lesson 9 to judge each answer."
+             }
+            },
+            {
+             "id": "dbeeaca6-ef36-4311-aa5a-8784fa7b0008",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "**Run these tests:**\n\n1. An everyday task it's built for\n2. Another everyday task\n3. A question that needs your uploaded files\n4. A tricky or unusual request\n5. Something it should refuse, or say it isn't sure about\n\n**For each test:**\n\nNote down:\n\n- What you asked\n- What it did\n- What you'd change (optional)"
+             }
+            }
+           ]
+          },
+          {
+           "id": "de563c42-7de7-4e9c-b7b8-4c8f9c128672",
+           "title": "Step 5: Improve (Lesson 15)",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "083b6d55-5434-4e3b-93bc-e4403d337de2",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Use your assistant for one real task this week: revising for a test, preparing for an interview, drafting a work update. Then improve its instructions based on what you learned from testing and using it.\n\nNote down:\n\n- The real task you used it for\n- How it helped\n- What didn't work well\n- What you changed in its instructions (go back to step 2, edit, and paste the new version into your tool)"
+             }
+            }
+           ]
+          },
+          {
+           "id": "31b7c690-24f6-4898-acff-495b4ff38abe",
+           "title": "Step 6: Opportunity Hunt (Lesson 16)",
+           "required_to_advance": false,
+           "blocks": [
+            {
+             "id": "257f78d9-5d3a-4a17-a883-5b8c313e820a",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "Find 3 repetitive or difficult tasks in your own life: study, work, family business, volunteering. Run each through the framework from Lesson 16. Then choose one to solve in your Week 4 capstone."
+             }
+            },
+            {
+             "id": "21749154-0478-470d-a856-9b144e82c01e",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "**For each of your 3 opportunitys:**\n\nNote down:\n\n- The problem (what's wrong, and who it affects)\n- How it's done now (the current process)\n- The AI opportunity (what AI could do)\n- Expected benefit (time saved, quality, something you can measure)\n- Main risk (and how a human stays involved)"
+             }
+            },
+            {
+             "id": "ce5658f7-640d-4f04-93b9-aacc37ceabe2",
+             "personalized": false,
+             "type": "rich_text",
+             "data": {
+              "markdown": "**Choose your capstone problem**\n\nOpportunity 1, Opportunity 2 or Opportunity 3.\n\nNote down:\n\n- Why this one? (use the six ingredients: frequent, time-consuming, AI-shaped, low risk, measurable, doable)"
+             }
+            }
+           ]
+          }
+         ],
+         "intro": {
+          "subtitle": "This week you'll build your own AI assistant: a study tutor, career coach or work helper that knows your goals, follows your rules and uses your sources. You'll add one step in each Week 3 lesson."
+         }
+        },
+        "is_canonical": true,
+        "quiz_generated": false,
+        "quiz_generation_attempted": false,
+        "quiz_generation_error": null,
+        "word_count": 812,
+        "token_count": null,
+        "language": "English",
+        "title": null
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "placement_quizzes": [
+   {
+    "id": 26,
+    "uuid": "58235026-1905-40e3-b78f-8965faea8958",
+    "title": "Placement — Associate",
+    "description": null,
+    "status": "APPROVED",
+    "version": 1,
+    "approved_by": "admin-copy",
+    "rejected_by": null,
+    "approved_at": "2026-07-14T06:17:18.090Z",
+    "rejection_comments": null,
+    "course_id": 39,
+    "level_name": "Associate",
+    "source_lesson_titles": [],
+    "quiz_data": {
+     "source": "static"
+    },
+    "llm_model": null,
+    "last_error": null,
+    "created_at": "2026-10-05T11:22:03.782Z",
+    "updated_at": "2026-10-06T13:58:14.728Z",
+    "token_count": null,
+    "language": "English",
+    "placement_questions": [
+     {
+      "id": 872,
+      "uuid": "75958512-fef4-444e-acb7-d0fb96336af1",
+      "placement_quiz_id": 26,
+      "question_text": "A company builds an AI tool to shortlist job applicants. It learns from ten years of the company's records: each applicant's CV and whether they were hired. In those years, very few women were hired into engineering roles. What is the tool most likely to do with new applicants for engineering roles?",
+      "question_type": "MULTIPLE_CHOICE",
+      "options": [
+       "It will score women lower, because it copies the patterns in the company's past hiring decisions.",
+       "It will score everyone on merit, because a computer has no personal views about people.",
+       "It will spot the imbalance and correct it, because it has studied so many years of records.",
+       "It will treat men and women alike, because nobody wrote a rule telling it to use gender.",
+       "I am not sure / I don't know the answer."
+      ],
+      "correct_answer": "It will score women lower, because it copies the patterns in the company's past hiring decisions.",
+      "explanation": "Part 1: An AI tool learns whatever patterns are in its training data, so a history of hiring few women teaches it to favour the kind of applicant who was hired before. Part 2: No one needs to write a gender rule for this to happen; the tool picks up the pattern from clues in the CVs and past outcomes, and it has no sense of what is fair. Part 3: Before trusting an AI tool with decisions about people, ask what data it learned from and test its results for unfair patterns.",
+      "difficulty": "EASY",
+      "order_index": 0,
+      "topics": [
+       "Bias from training data"
+      ],
+      "concepts": [
+       "training data",
+       "bias",
+       "learned patterns"
+      ],
+      "level_name": "Associate",
+      "lesson_title": "How AI learns",
+      "token_count": null
+     },
+     {
+      "id": 873,
+      "uuid": "e7c2815b-2c3d-4673-bd9d-8afc76a80259",
+      "placement_quiz_id": 26,
+      "question_text": "Rukhsana is reviewing a vendor's tool that estimates which customers are likely to cancel their contracts. It was built by feeding it five years of customer records, each marked to show who cancelled and who stayed. It gives a risk score for each customer and cannot write text or answer questions. The vendor calls it an AI product. How should she describe it?",
+      "question_type": "MULTIPLE_CHOICE",
+      "options": [
+       "As not really AI, because AI today means tools that create text, images or other content.",
+       "As generative AI, because every risk score it gives is a new output that did not exist before.",
+       "As not really AI, because a tool that outputs only numbers is working from a fixed formula.",
+       "As AI, because it found its own patterns in examples, even though it creates no new content.",
+       "I am not sure / I don't know the answer."
+      ],
+      "correct_answer": "As AI, because it found its own patterns in examples, even though it creates no new content.",
+      "explanation": "Part 1: The tool found patterns in labelled examples to make predictions, which is machine learning, and machine learning is a kind of AI even when nothing new is created. Part 2: Generative AI is only one part of AI; most AI predicts or sorts, and a prediction such as a risk score is not generated content. Part 3: Knowing that much of the AI at work is predictive helps you ask the right questions about its data and accuracy, instead of judging every tool by what chat assistants do.",
+      "difficulty": "MEDIUM",
+      "order_index": 1,
+      "topics": [
+       "Generative AI versus predictive AI"
+      ],
+      "concepts": [
+       "machine learning",
+       "generative AI",
+       "prediction"
+      ],
+      "level_name": "Associate",
+      "lesson_title": "From AI to generative AI",
+      "token_count": null
+     },
+     {
+      "id": 874,
+      "uuid": "7ac44853-bbd4-419b-a6e8-f32918624b63",
+      "placement_quiz_id": 26,
+      "question_text": "Iman uses an AI assistant with its memory feature switched off. Yesterday, in a long chat, she explained her team's report format, and the assistant followed it well. Today she opens a new chat and asks for another report, and it ignores the format. What is the most likely reason?",
+      "question_type": "MULTIPLE_CHOICE",
+      "options": [
+       "Overnight, the format she taught it was outweighed by what it learned from other users' chats.",
+       "It can only work with what is in the current chat, and yesterday's chat is not part of it.",
+       "It still has yesterday's chat, but it gives older messages less attention than newer ones.",
+       "It saw the format again but judged that a different layout suited today's request better.",
+       "I am not sure / I don't know the answer."
+      ],
+      "correct_answer": "It can only work with what is in the current chat, and yesterday's chat is not part of it.",
+      "explanation": "Part 1: A language model has no memory of its own between chats; each reply is written from what it can see in the current conversation, so a new chat starts without yesterday's instructions. Part 2: Older messages getting less attention happens inside one long chat, but a new chat does not contain yesterday's messages at all, and the model does not learn from chats as people use it. Part 3: Keep important instructions, such as your report format, saved and paste them at the start of each new chat, or turn on a memory feature on purpose.",
+      "difficulty": "MEDIUM",
+      "order_index": 2,
+      "topics": [
+       "No memory between chats"
+      ],
+      "concepts": [
+       "context window",
+       "conversation memory"
+      ],
+      "level_name": "Associate",
+      "lesson_title": "How LLMs generate responses",
+      "token_count": null
+     },
+     {
+      "id": 875,
+      "uuid": "e591a8af-536a-4f4a-89c4-7b282aae2f13",
+      "placement_quiz_id": 26,
+      "question_text": "Fawaz's team is comparing AI tools for handling supplier questions about unpaid invoices. Which description shows that a tool is working as an AI agent rather than as an AI assistant?",
+      "question_type": "MULTIPLE_CHOICE",
+      "options": [
+       "When Fawaz pastes in a supplier email, it reads the invoice he attaches and drafts a reply for him.",
+       "It can search the finance system and the web to answer any question Fawaz types about a supplier.",
+       "It remembers each supplier's past questions across chats and suggests which ones Fawaz should answer first.",
+       "Given the aim of clearing the inbox, it checks each invoice and then replies or passes cases to Fawaz.",
+       "I am not sure / I don't know the answer."
+      ],
+      "correct_answer": "Given the aim of clearing the inbox, it checks each invoice and then replies or passes cases to Fawaz.",
+      "explanation": "Part 1: An agent is given a goal, plans its own steps and takes actions with tools until the goal is reached, while an assistant helps with each task when you ask. Part 2: Searching systems, reading files and remembering past chats are features an assistant can also have; what makes an agent is that it decides and carries out the next steps itself. Part 3: Once a tool acts on its own, you must decide which actions it may take without approval and where a person checks its work.",
+      "difficulty": "MEDIUM",
+      "order_index": 3,
+      "topics": [
+       "Assistant versus agent"
+      ],
+      "concepts": [
+       "AI agent",
+       "AI assistant",
+       "autonomy"
+      ],
+      "level_name": "Associate",
+      "lesson_title": "LLMs, chatbots, assistants and agents",
+      "token_count": null
+     }
+    ]
+   },
+   {
+    "id": 27,
+    "uuid": "db2b4da8-d8e8-4f80-b778-80fd9f72dbd8",
+    "title": "Placement — Intermediate",
+    "description": null,
+    "status": "APPROVED",
+    "version": 1,
+    "approved_by": "admin-copy",
+    "rejected_by": null,
+    "approved_at": "2026-07-14T06:17:18.090Z",
+    "rejection_comments": null,
+    "course_id": 39,
+    "level_name": "Intermediate",
+    "source_lesson_titles": [],
+    "quiz_data": {
+     "source": "static"
+    },
+    "llm_model": null,
+    "last_error": null,
+    "created_at": "2026-10-05T11:22:03.782Z",
+    "updated_at": "2026-10-06T13:58:14.728Z",
+    "token_count": null,
+    "language": "English",
+    "placement_questions": [
+     {
+      "id": 887,
+      "uuid": "8a4b3f27-8e80-4e39-8c91-9fc7e797a789",
+      "placement_quiz_id": 27,
+      "question_text": "Junaid is starting a study for his manager on whether their company should offer same-day delivery in Karachi. He has a general AI chat assistant with web search turned off. Which part of the work is it best suited to?",
+      "question_type": "MULTIPLE_CHOICE",
+      "options": [
+       "Listing published studies on same-day delivery, with the authors, year and main finding of each",
+       "Confirming whether the market figures in his early notes are correct, before he relies on them",
+       "Setting out the prices and delivery times that rival companies in Karachi offer at the moment",
+       "Breaking his broad question into focused sub-questions, and the kind of source that could answer each",
+       "I am not sure / I don't know the answer."
+      ],
+      "correct_answer": "Breaking his broad question into focused sub-questions, and the kind of source that could answer each",
+      "explanation": "Part 1: A chat assistant without web search is strongest at explaining and planning, such as breaking a broad question into sub-questions and suggesting where to look, because that does not depend on current facts or checkable sources. Part 2: Asking it to list published studies is tempting, but without search it cannot look anything up and may produce realistic-looking studies that do not exist. Part 3: Use the chat assistant to plan the research, then use web search or your own documents to find and check the facts.",
+      "difficulty": "EASY",
+      "order_index": 0,
+      "topics": [
+       "Choosing the right research tool"
+      ],
+      "concepts": [
+       "chat assistant strengths",
+       "planning research",
+       "no sources without search"
+      ],
+      "level_name": "Intermediate",
+      "lesson_title": "AI for research and information",
+      "token_count": null
+     },
+     {
+      "id": 888,
+      "uuid": "74d83564-ac9d-4b5a-98b2-7405ce145652",
+      "placement_quiz_id": 27,
+      "question_text": "Zara must brief her director on how other banks in her market have responded to a new rule announced last month. Her tools are a chat assistant, an AI search engine, and a notebook tool that answers only from documents she uploads. Which plan uses these tools best?",
+      "question_type": "MULTIPLE_CHOICE",
+      "options": [
+       "Ask the chat assistant how banks in her market have responded, then ask it to compare their approaches",
+       "Upload the official text of the new rule to the notebook tool, and ask it how other banks have responded",
+       "Find recent reports with AI search, open them and keep the reliable ones, then compare them in the notebook tool",
+       "Ask AI search to find and summarise recent reports, then compare its summaries, since every point has a linked source",
+       "I am not sure / I don't know the answer."
+      ],
+      "correct_answer": "Find recent reports with AI search, open them and keep the reliable ones, then compare them in the notebook tool",
+      "explanation": "Part 1: AI search is the right tool for finding recent material, and a tool that answers only from uploaded documents is the right tool for comparing sources she has opened and judged reliable. Part 2: Comparing the search engine's own summaries skips reading the reports, and a linked page may not say what the summary claims. Part 3: Matching each step to the right tool, and choosing the sources yourself, gives a briefing built on documents you have actually read.",
+      "difficulty": "HARD",
+      "order_index": 1,
+      "topics": [
+       "Combining research tools"
+      ],
+      "concepts": [
+       "AI search for current sources",
+       "document-grounded comparison"
+      ],
+      "level_name": "Intermediate",
+      "lesson_title": "AI for research and information",
+      "token_count": null
+     },
+     {
+      "id": 889,
+      "uuid": "81ee1efd-5eec-4f3d-b156-88f604019af7",
+      "placement_quiz_id": 27,
+      "question_text": "Qasim uploads a market report to a tool that answers only from his documents and asks for the main findings. One line reads: 'Online sales in the region grew by 30% last year (page 12).' On page 12, he finds the 30% figure in a paragraph about the growth the authors expect over the next three years. What should he do with the line?",
+      "question_type": "MULTIPLE_CHOICE",
+      "options": [
+       "Keep it as written, since the same figure appears on exactly the page the tool cited",
+       "Rewrite it so the 30% is shown as the authors' forecast for the coming years",
+       "Keep the line, and add a note that some figures in the report are estimates",
+       "Ask the tool to check page 12 again, and keep the line if it confirms it",
+       "I am not sure / I don't know the answer."
+      ],
+      "correct_answer": "Rewrite it so the 30% is shown as the authors' forecast for the coming years",
+      "explanation": "Part 1: A citation only helps if the cited passage says what the claim says, and here the source gives 30% as expected future growth, not as last year's result, so the line must be corrected. Part 2: The figure does appear on the cited page, but a matching number is not a matching claim, because the tool turned a forecast into a fact. Part 3: When you check AI citations, read the sentence around each number, since tools often keep the figure and change its meaning.",
+      "difficulty": "MEDIUM",
+      "order_index": 2,
+      "topics": [
+       "Verifying citations"
+      ],
+      "concepts": [
+       "checking the cited passage",
+       "forecast versus result"
+      ],
+      "level_name": "Intermediate",
+      "lesson_title": "AI for research and information",
+      "token_count": null
+     },
+     {
+      "id": 890,
+      "uuid": "d759415b-066e-4388-9909-72f8e4cfc0c0",
+      "placement_quiz_id": 27,
+      "question_text": "Maha asks AI to draft a LinkedIn post about a big project her team has just finished. The draft is fluent and positive, but it could have been written by anyone about any project. Which change would do most to make the post sound like her?",
+      "question_type": "MULTIPLE_CHOICE",
+      "options": [
+       "Ask the AI to rewrite it in a warmer, more personal tone, as if talking to a friend",
+       "Ask the AI for stronger and more impressive words to describe what the whole team achieved",
+       "Ask the AI to study popular posts about finished projects and follow their style",
+       "Add a real detail only she knows, such as a problem the team hit and how they solved it",
+       "I am not sure / I don't know the answer."
+      ],
+      "correct_answer": "Add a real detail only she knows, such as a problem the team hit and how they solved it",
+      "explanation": "Part 1: AI cannot invent your experience, so a specific real detail is what makes a post recognisably yours and believable. Part 2: A warmer tone changes the style but leaves the content generic, so the post still reads as if it could be about anyone. Part 3: Let AI help with the draft, then add the facts, moments and numbers that only you have before you post.",
+      "difficulty": "EASY",
+      "order_index": 3,
+      "topics": [
+       "Keeping your own voice"
+      ],
+      "concepts": [
+       "personal detail",
+       "generic AI writing"
+      ],
+      "level_name": "Intermediate",
+      "lesson_title": "AI for writing and communication",
+      "token_count": null
+     }
+    ]
+   }
+  ]
+ }
+}
