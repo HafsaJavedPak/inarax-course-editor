@@ -118,6 +118,10 @@ export const memberships = pgTable(
 )
 
 /** member: belongs to the department. manager: also manages its courses and authors (lib/authz/departments.ts). */
+/** Who pays for an organization course: its members enroll without purchasing (sponsored), or each buys it (individual). */
+export const ACCESS_MODES = ["sponsored", "individual"] as const
+export type AccessMode = (typeof ACCESS_MODES)[number]
+
 export const DEPARTMENT_ROLES = ["member", "manager"] as const
 export type DepartmentRole = (typeof DEPARTMENT_ROLES)[number]
 
@@ -183,6 +187,22 @@ export const courses = pgTable(
      * organization. Not part of the course's content: changing it never touches revisions or approvals.
      */
     departmentId: uuid("department_id").references(() => departments.id, { onDelete: "set null" }),
+    /**
+     * Whether the organization sponsors the course, set by an org admin or platform staff. Null:
+     * not decided, so publishing leaves the host's setting alone. Not part of the course's
+     * content: changing it never touches revisions or approvals.
+     */
+    accessMode: text("access_mode", { enum: ACCESS_MODES }),
+    /**
+     * For a course taken from the host: its version stamp when the editor last read or published it (the protocol's
+     * `base_version`). Null for a course the editor made. Not part of the content: it never touches revisions.
+     */
+    hostVersion: text("host_version"),
+    /**
+     * Taken from the platform (opened here from its admin) rather than written in the editor. It has no author, so the
+     * admins of its organization (and platform staff) act as its authors. Not part of the content.
+     */
+    adopted: boolean("adopted").notNull().default(false),
   },
   (t) => [
     // Target of the lessons' composite foreign key.

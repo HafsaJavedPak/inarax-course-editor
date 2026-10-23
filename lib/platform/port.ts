@@ -7,7 +7,9 @@
 // implement in any language. No host-specific code lives in the editor.
 
 import type { Course } from "@/lib/course"
+import type { AccessMode } from "@/lib/db/schema"
 import type { Lesson } from "@/lib/lesson"
+import type { CourseListing, CourseSnapshot } from "@/lib/protocol/wire"
 
 export type PublishInput = {
   /** The course as saved locally. */
@@ -20,6 +22,10 @@ export type PublishInput = {
   organization?: { hostOrgId: string } | null
   /** The host department of the course; null or missing for the whole organization. */
   department?: { hostDepartmentId: string } | null
+  /** Whether the organization sponsors the course; null or missing: not decided, the host keeps its setting. */
+  accessMode?: AccessMode | null
+  /** For a course taken from the platform: the version it was last read or published as. The platform refuses (kind "stale") if the course changed since. */
+  baseVersion?: string | null
 }
 
 export type PublishSummary = {
@@ -31,6 +37,8 @@ export type PublishSummary = {
   warnings: string[]
   /** The course's page on the platform, when it has one. */
   platformUrl: string | null
+  /** What the platform's course is now, to check the next publish against; absent from a platform that doesn't say. */
+  version?: string
 }
 
 export type DeleteSummary = {
@@ -71,6 +79,15 @@ export interface PlatformPort {
    * call repeatedly (idempotent); the last report wins.
    */
   reportAiSpend(input: AiSpendReportInput): Promise<void>
+  /** Whether the platform lets an admin open its courses here (protocol 2.6). False for an older platform. */
+  canAdopt(): Promise<boolean>
+  /**
+   * A course as the platform has it, for the admin `actor` to open here. Throws a PlatformError: "auth" when they may
+   * not open it, "invalid" when the platform doesn't have it.
+   */
+  fetchCourse(courseId: string, actor: { id: string }): Promise<CourseSnapshot>
+  /** The courses the admin `actor` may open here (all of them for a platform admin, their organizations' otherwise). */
+  listCourses(actor: { id: string }): Promise<CourseListing["courses"]>
   /**
    * The platform's sign-in and sign-out addresses, as far as it says (all
    * optional; empty when it can't be reached): for the sign-out flow and the
@@ -88,6 +105,7 @@ export type PlatformLinks = { launchUrl?: string; logoutUrl?: string; signInUrl?
 export type PlatformErrorKind =
   | "invalid" // the course breaks a platform rule the author can fix (e.g. duplicate title)
   | "conflict" // the platform already has something that clashes
+  | "stale" // the course was changed on the platform after the editor's copy was taken: refresh it first
   | "auth" // the platform refused the editor's credentials
   | "unavailable" // the platform couldn't be reached or failed
   | "not_configured" // no platform set up for this editor, or set up wrongly
@@ -109,6 +127,7 @@ export class PlatformError extends Error {
 export const PLATFORM_ERROR_STATUS: Record<PlatformErrorKind, number> = {
   invalid: 422,
   conflict: 409,
+  stale: 409,
   auth: 502,
   unavailable: 502,
   not_configured: 503,

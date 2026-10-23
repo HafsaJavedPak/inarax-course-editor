@@ -1,9 +1,10 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/SteppedTimelineBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/SteppedTimelineBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import Markdown from "@/vendor/inara-player/components/Markdown";
 import type { LessonBlock } from "@/vendor/inara-player/lib/lesson-content/schema";
@@ -121,8 +122,38 @@ export default function SteppedTimelineBlock({
           <div className="text-xs font-bold uppercase tracking-[0.1em] text-indigo-600 rtl:tracking-normal">
             {t("timelineStepOf", { n: active + 1, total: n })}
           </div>
-          <div className="font-montserrat text-[19px] font-bold leading-snug text-slate-900">{step.label}</div>
-          <div className="[&_.md-paragraph:last-child]:!mb-0 [&_.md-paragraph]:!text-[16px] [&_.md-paragraph]:!leading-[1.65] [&_li]:!text-[16px]">
+          <div className="font-montserrat text-[16px] font-bold leading-snug text-slate-900">{step.label}</div>
+          {/* The screenshot comes first, under the step title, so the instructions read against it. */}
+          {step.images?.length ? (
+            <div className="mb-1 flex flex-col gap-3">
+              {step.images.map((image, i) => (
+                // Keyed by step so the picture swaps cleanly when the learner moves on. A click opens
+                // it full size in a new tab, since buttons in a screenshot can be small.
+                <figure key={`${step.id}-${i}`} className="m-0">
+                  <a
+                    href={image.image_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block overflow-hidden rounded-xl border border-slate-200 bg-white"
+                  >
+                    <Image
+                      src={image.image_url}
+                      alt={image.alt}
+                      width={0}
+                      height={0}
+                      unoptimized
+                      sizes="(max-width: 768px) 100vw, 704px"
+                      className="h-auto w-full"
+                    />
+                  </a>
+                  {image.caption ? (
+                    <figcaption className="mt-2 text-center text-sm text-slate-500">{image.caption}</figcaption>
+                  ) : null}
+                </figure>
+              ))}
+            </div>
+          ) : null}
+          <div className="[&_.md-paragraph:last-child]:!mb-0 [&_.md-paragraph]:!text-[14px] [&_.md-paragraph]:!leading-[1.65] [&_li]:!text-[14px] [&_li]:!leading-[1.6] [&_ol]:!space-y-1 [&_ul]:!space-y-1">
             <Markdown content={step.body} variant="lesson" />
           </div>
           <div className="flex items-center justify-between gap-3 pt-1">

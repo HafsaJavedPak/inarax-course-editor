@@ -1,4 +1,4 @@
-# Course Publishing Protocol, version 2.3
+# Course Publishing Protocol, version 2.6
 
 How the course editor publishes courses to a host platform. The editor owns this
 contract; a host implements it in whatever stack it uses (Next.js, FastAPI, …).
@@ -18,6 +18,29 @@ The source of truth is `lib/protocol/wire.ts` (messages) and
 generated files and `npm run contract:check` fails when they are stale.
 `npm run verify-host` checks a running host against this document (see
 [Conformance](#conformance)).
+
+**Changes in 2.6:** an admin can open **any course on the host in the editor**, however it was made
+(the host's own admin, a bulk import, a script writing to its database). Two read-only endpoints
+([Courses on the host](#courses-on-the-host)) give the editor a course as the host has it; the launch
+token can name a course to open (`open_course`); and a copy taken from the host carries the host's `version`
+stamp, which the editor sends back as `course.base_version` so a publish never overwrites a change made on the
+host in the meantime (409). All of it is additive and advertised by `capabilities.adopt`, so either side can be
+upgraded first.
+
+**Changes in 2.5:** no new field. The block type `workplace_scenario` (a *personalized* block) is
+now authorable, so a host that accepts it lists it in `content.block_types`, and an editor sends
+lessons that contain it only to a host that does (see [Personalized blocks](#personalized-blocks)).
+A block carries the author's `component_prompt` and `metadata_fields`; the text learners read
+(`data.generated`) belongs to the host and is never sent by an editor. A host or editor on 2.4 is
+unaffected: a 2.4 host doesn't list the type, so a 2.5 editor keeps those lessons at their last
+published version and warns.
+
+**Changes in 2.4:** `course.access_mode` (`sponsored` or `individual`) says whether the
+organization sponsors the course, so its members enroll without purchasing (see
+[Access mode](#access-mode)). It is optional; a package without it leaves the host's setting
+as it is, so either side can be upgraded first. `course.placement_size` (integer 1 to 50, or
+`null`) is how many placement questions a learner is asked per level, drawn at random from the
+level's bank (see [Placement size](#placement-size)); also optional.
 
 **Changes in 2.3:** `course.metadata` carries what a learner picks when they start the
 course (see [Learner choices](#learner-choices)). It is optional; a package without
@@ -198,7 +221,7 @@ host (user already signed in)                 editor
 ```
 token   = "v2." + b64url(payload) + "." + b64url(Ed25519(host private key, "course-editor-launch.v2." + b64url(payload)))
 payload = {"v":2, "kid", "iss", "aud":"course-editor", "sub", "email", "name",
-           "role":"admin"|"creator", "orgs"?, "staff"?, "iat", "exp", "jti"}
+           "role":"admin"|"creator", "orgs"?, "staff"?, "open_course"?, "iat", "exp", "jti"}
 orgs    = [{"id": "<organization id>", "name": "<display name>", "role": "admin"|"creator",
             "review_trusted"?: boolean,                       // 2.2
             "departments"?: [{"id", "name", "role": "member"|"manager"|null}, …]}, …]  // 2.2
@@ -349,6 +372,27 @@ add the labels they lack, remove labels that are no longer listed, and keep (wit
 label a learner has already chosen. `departments` here are the learner's own team choice, not the
 organization departments of `course.department`.
 
+<a id="personalized-blocks"></a>**Personalized blocks (2.5).** `workplace_scenario` has `personalized: true`
+and `data: { component_prompt, metadata_fields, generated? }`. The author writes `component_prompt` (it may use
+`{{domain}}`, `{{department}}` and `{{future_goal}}`) and picks `metadata_fields`. The host generates the text per
+learner group after publishing and stores it as `data.generated`. An editor must not send `generated`; a host may
+accept it only when it is identical to what the host already stores for that block id (an editor returning what it
+was given), and otherwise refuses the package with `422`. Changing a lesson's content may discard the host's
+generated copies for that lesson, so a host should treat an unchanged package as a no-op.
+
+<a id="access-mode"></a>**Access mode (2.4).** `course.access_mode` is `"sponsored"` or `"individual"`.
+It is decided in the editor by an organization admin of the course's organization or by platform
+staff, and only for organization courses (a personal course never sends it). A host applies it to
+the course's link with the package's organization (inara-next: `course_organizations.access_mode`),
+on every publish, including while a live course holds back other edits, since it is not content.
+Absent means "leave the host's setting as it is".
+
+<a id="placement-size"></a>**Placement size (2.4).** `course.placement_size` is the number of questions each
+learner is asked per level, drawn at random from that level's bank (`levels[].placement`). `null`
+means the platform's default (inara-next: 5, as 1 easy + 2 medium + 2 hard, or 10 medium/hard for
+`professional` courses); absent means "leave the host's setting as it is". The editor requires each
+level with lessons to have at least that many questions. A host with a smaller bank asks what it has.
+
 **Publishing (2.2; `approved` in 2.0 and 2.1).** When a package says
 `review.status = published`, hosts should make the course live for the
 organization's members (subject to their own publish requirements), and while a
@@ -417,7 +461,7 @@ Semantics the host must implement:
   host has for that level (`[]`: none); a missing `placement` leaves the
   host's bank alone. Only complete questions are sent. The editor won't let a
   course become `approved` (or `published`) until every level with lessons has at
-  least 1 easy, 2 medium and 2 hard questions, so hosts may treat the bank of an
+  least 1 easy, 1 medium and 1 hard question, so hosts may treat the bank of an
   `approved` or `published` package as reviewed. How many questions a learner sees and the pass mark
   are the host's choice.
 - **Course pricing, length and audience** are informational; hosts may ignore
@@ -449,6 +493,43 @@ Removes the course. `200 {"course_id", "archived"}`. `archived: true` means the
 host kept an archived copy (for example because of payment records).
 `404 not_found` if the host doesn't have the course; the editor treats that as
 success.
+
+## Courses on the host
+
+*Since 2.6. A host that offers it says `capabilities.adopt: true` in its manifest.*
+
+An admin should be able to edit any course of their organization in the editor, whoever or whatever created it
+on the host. The first time they open one, the editor **adopts** it: it takes a copy that keeps the host's ids (course,
+module, lesson and placement-question ids), so publishing it later is the ordinary `PUT /v1/courses/{id}` and
+updates that very course. Two signed requests, both read-only; `actor` (a host user id, the launch token's `sub`) is
+in the query, which the signature covers:
+
+**`GET /v1/courses/{course_id}?actor={user_id}`** answers `200` with a snapshot (`schemas/course-snapshot.schema.json`):
+the course (`id`, `title`, `summary`, `cover_image_url`, `status` as in a package or `null` when the host
+retired it, linked `organizations` with their `access_mode`, learner `metadata`, `placement_size`, timestamps, and
+the `quiz_prompt` if it has one), the three `levels` with their `modules`, `lessons` and `placement` bank, `warnings`,
+`workspace` (the organization, among those the actor administers, the copy belongs in, or `null` for their own
+space) and a `version`. A lesson's `content` is its lesson content object, or `null` with a `problem`
+(`text_only`: not blocks, `no_content`) when the editor can't open it. Errors: `403 forbidden` when the actor
+may not use the editor or may not open this course, `404 not_found`.
+
+**`GET /v1/courses?actor={user_id}`** answers `200 {"protocol", "courses": [{"id","title","status","organizations","updated_at"}]}`:
+the courses that actor may open. `schemas/course-list.schema.json`.
+
+*Who may open a course* is the host's decision: a platform-wide admin, or an admin of one of the organizations the
+course is linked to. A creator writes their own courses in the editor and doesn't open others'.
+
+**`version`** is a stamp of everything a publish can overwrite (title, summary, cover, status, structure, lessons'
+content, placement, learner choices). It must be the same for the same content on every read, and different when
+any of that changes; timestamps, organization links and anything a publish leaves alone must not move it. The
+editor stores it and sends it back as `course.base_version` on its next publish. If the host's course no longer has
+that version, the host answers **`409 conflict`** with an error at `["course","base_version"]` and writes nothing; the
+editor then offers to refresh its copy from the host. A successful publish answers the new `version`. A package
+without `base_version` is never checked.
+
+**Opening from the host.** The launch token may carry `open_course`, a course id the person asked to open (for
+instance from a button on the host's course page). A host puts it in only when that person may open the course; the
+editor then brings the course across (if it hasn't got it) and opens it, instead of the usual landing page.
 
 ## Errors
 
@@ -486,7 +567,8 @@ lesson, section and block to fix.
 
 ## Conformance
 
-`npm run verify-host` runs the protocol checks against a live host:
+`npm run verify-host` runs the protocol checks against a live host (including, when it advertises `adopt`, the 2.6 course
+endpoints and the `base_version` check):
 
 ```bash
 PLATFORM_URL=http://localhost:3000/api/integrations/course-editor \

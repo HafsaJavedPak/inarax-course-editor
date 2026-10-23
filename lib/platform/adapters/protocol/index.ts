@@ -17,7 +17,9 @@ import { signRequest } from "@/lib/protocol/signing"
 import {
   AiSpendReportSchema,
   AiSpendResultSchema,
+  CourseListingSchema,
   CoursePackageSchema,
+  CourseSnapshotSchema,
   DeleteResultSchema,
   majorOf,
   ManifestSchema,
@@ -84,6 +86,10 @@ export function toPlatformError(error: unknown, pkg?: CoursePackage): unknown {
     case "payload_too_large":
       return new PlatformError("invalid", `The platform didn't accept the course: ${message}`, error, issues)
     case "conflict":
+      // The course changed on the platform after the editor's copy was taken (protocol 2.6): not something to fix in the course.
+      if (problem.errors?.some((e) => e.path.join(".") === "course.base_version")) {
+        return new PlatformError("stale", `This course was changed on the platform after you opened it here, so publishing would overwrite that change. Refresh your copy from the platform, then publish again.`, error)
+      }
       return new PlatformError("conflict", `The platform didn't accept the course: ${message}`, error, issues)
     case "unsupported_protocol":
       return new PlatformError("not_configured", `The platform doesn't support this editor's protocol version: ${message}`, error)
@@ -132,7 +138,7 @@ export function createProtocolPlatform(config: ProtocolPlatformConfig): Platform
   return {
     name: NAME,
 
-    publishCourse({ course, lessons, actor, organization, department }) {
+    publishCourse({ course, lessons, actor, organization, department, accessMode, baseVersion }) {
       return serialized(course.id, async () => {
         let pkg: CoursePackage | undefined
         try {
@@ -155,7 +161,7 @@ export function createProtocolPlatform(config: ProtocolPlatformConfig): Platform
           }
 
           const coverImageUrl = course.cover_image_url ? await assets.resolve(course.cover_image_url) : null
-          pkg = CoursePackageSchema.parse(buildPackage({ course, lessons: publishable, coverImageUrl, actor, organization, department }))
+          pkg = CoursePackageSchema.parse(buildPackage({ course, lessons: publishable, coverImageUrl, actor, organization, department, accessMode, baseVersion }))
 
           const bytes = new TextEncoder().encode(JSON.stringify(pkg)).byteLength
           if (bytes > manifest.max_package_bytes) {
@@ -170,12 +176,42 @@ export function createProtocolPlatform(config: ProtocolPlatformConfig): Platform
             ...result.changes,
             warnings: [...warnings, ...result.warnings, ...assets.warnings()],
             platformUrl: result.host.admin_url ?? null,
+            ...(result.version ? { version: result.version } : {}),
           }
           return summary
         } catch (error) {
           throw toPlatformError(error, pkg)
         }
       })
+    },
+
+    async canAdopt() {
+      try {
+        return (await getManifest()).capabilities.adopt === true
+      } catch {
+        return false
+      }
+    },
+
+    async fetchCourse(courseId, actor) {
+      try {
+        const snapshot = await http.get(`${PROTOCOL_PATHS.course(courseId)}?actor=${encodeURIComponent(actor.id)}`, CourseSnapshotSchema)
+        if (majorOf(snapshot.protocol) !== PROTOCOL_MAJOR) {
+          throw new PlatformError("not_configured", `The platform answered with protocol ${snapshot.protocol}; this editor speaks ${PROTOCOL_MAJOR}.x.`)
+        }
+        return snapshot
+      } catch (error) {
+        if (error instanceof HttpError && error.status === 404) throw new PlatformError("invalid", "The platform doesn't have that course.", error)
+        throw toPlatformError(error)
+      }
+    },
+
+    async listCourses(actor) {
+      try {
+        return (await http.get(`${PROTOCOL_PATHS.courses}?actor=${encodeURIComponent(actor.id)}`, CourseListingSchema)).courses
+      } catch (error) {
+        throw toPlatformError(error)
+      }
     },
 
     async links() {

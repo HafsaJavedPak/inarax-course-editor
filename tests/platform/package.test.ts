@@ -36,6 +36,25 @@ describe("buildPackage", () => {
     expect(org.course.organization).toEqual({ host_org_id: "acme-uuid" })
   })
 
+  it("sends the placement size when the course has one (a number, or null for the default), nothing when unset (protocol 2.4)", () => {
+    const build = (placement_size?: number | null) =>
+      buildPackage({ course: sampleCourse({ placement_size }), lessons: new Map(), coverImageUrl: null, actor: { id: "me" } })
+    expect("placement_size" in build().course).toBe(false)
+    expect(build(8).course.placement_size).toBe(8)
+    expect(build(null).course.placement_size).toBeNull()
+    expect(CoursePackageSchema.safeParse(build(8)).success).toBe(true)
+    expect(CoursePackageSchema.safeParse({ ...build(8), course: { ...build(8).course, placement_size: 0 } }).success).toBe(false)
+  })
+
+  it("sends the access mode only when it was decided (protocol 2.4)", () => {
+    const build = (accessMode?: "sponsored" | "individual" | null) =>
+      buildPackage({ course: sampleCourse(), lessons: new Map(), coverImageUrl: null, actor: { id: "me" }, accessMode })
+    expect("access_mode" in build().course).toBe(false)
+    expect("access_mode" in build(null).course).toBe(false)
+    expect(build("sponsored").course.access_mode).toBe("sponsored")
+    expect(CoursePackageSchema.safeParse(build("individual")).success).toBe(true)
+  })
+
   it("sends null content for lessons it has nothing to publish for", () => {
     const pkg = buildPackage({ course: sampleCourse(), lessons: new Map(), coverImageUrl: null, actor: { id: "me" } })
     expect(pkg.levels[0].modules[0].lessons[0].content).toBeNull()

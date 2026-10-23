@@ -7,7 +7,7 @@ import { CourseSchema, getCourseLimits, type Course, type ReviewStage } from "@/
 import { pipelineTenant, stageAwaited } from "@/lib/review/pipeline"
 import { afterEdit, isLocked, type ReviewDecision, type WorkflowResult } from "@/lib/course-status"
 import { getLessonStats, validateCourse, type LessonStats } from "@/lib/course-validate"
-import { collabDocuments, collabUpdates, courses, lessons, tenants, type RevisionKind, type TenantKind, type TenantSettings } from "@/lib/db/schema"
+import { collabDocuments, collabUpdates, courses, lessons, tenants, type AccessMode, type RevisionKind, type TenantKind, type TenantSettings } from "@/lib/db/schema"
 import { tenantFilter, withTenantScope, type Scope, type Tx } from "@/lib/db/tenant-db"
 import { findLessonRef } from "@/lib/course"
 import { notifyAccess } from "@/lib/collab/notify"
@@ -56,6 +56,12 @@ export type CourseRecord = {
   sample: boolean
   /** The department it belongs to, or null for the whole organization (lib/authz/departments.ts). */
   departmentId: string | null
+  /** Whether the organization sponsors it; null when nobody has decided (lib/authz/policy.ts course.sponsor). */
+  accessMode: AccessMode | null
+  /** For a course taken from the host: the version it was last read or published as; null for one the editor made. */
+  hostVersion: string | null
+  /** Taken from the platform rather than written here: its organization's admins act as its authors (lib/authz/policy.ts). */
+  adopted: boolean
 }
 
 export class RevisionConflictError extends Error {}
@@ -112,6 +118,9 @@ const recordColumns = {
   publishedRevisionId: courses.publishedRevisionId,
   sample: courses.sample,
   departmentId: courses.departmentId,
+  accessMode: courses.accessMode,
+  hostVersion: courses.hostVersion,
+  adopted: courses.adopted,
 }
 
 const toRecord = (row: Omit<CourseRecord, "course"> & { data: Course }): CourseRecord => ({
@@ -126,6 +135,9 @@ const toRecord = (row: Omit<CourseRecord, "course"> & { data: Course }): CourseR
   publishedRevisionId: row.publishedRevisionId,
   sample: row.sample,
   departmentId: row.departmentId,
+  accessMode: row.accessMode,
+  hostVersion: row.hostVersion,
+  adopted: row.adopted,
 })
 
 /** The indexed columns kept next to the full course. */
@@ -276,6 +288,18 @@ export async function setCourseDepartment(scope: Scope, courseId: string, depart
   })
 }
 
+/** Sets whether the organization sponsors the course. Callers check `course.sponsor`; like the department it isn't content, so no revision. */
+export async function setCourseAccessMode(scope: Scope, courseId: string, accessMode: AccessMode): Promise<boolean> {
+  return withTenantScope(scope, async (tx) => {
+    const updated = await tx
+      .update(courses)
+      .set({ accessMode })
+      .where(and(eq(courses.id, courseId), tenantFilter(courses, scope)))
+      .returning({ id: courses.id })
+    return updated.length > 0
+  })
+}
+
 /**
  * Stores a brand-new course with its lessons, all in its first revision, in
  * the caller's transaction (scoped to `scope`). `sample` marks a copy of the
@@ -286,9 +310,18 @@ export async function insertCourseTx(
   scope: Scope,
   tenantId: string,
   course: Course,
-  options: { lessons?: ReadonlyMap<string, Lesson>; sample?: boolean; departmentId?: string | null } = {},
+  options: { lessons?: ReadonlyMap<string, Lesson>; sample?: boolean; departmentId?: string | null; hostVersion?: string | null; accessMode?: AccessMode | null; adopted?: boolean } = {},
 ): Promise<void> {
-  await tx.insert(courses).values({ id: course.id, tenantId, ...columnsOf(course), sample: options.sample ?? false, departmentId: options.departmentId ?? null })
+  await tx.insert(courses).values({
+    id: course.id,
+    tenantId,
+    ...columnsOf(course),
+    sample: options.sample ?? false,
+    departmentId: options.departmentId ?? null,
+    hostVersion: options.hostVersion ?? null,
+    accessMode: options.accessMode ?? null,
+    adopted: options.adopted ?? false,
+  })
   for (const [lessonId, lesson] of options.lessons ?? []) await writeLesson(tx, tenantId, course.id, lessonId, lesson)
   await commitContent(tx, scope, tenantId, course, { kind: "initial", actorId: course.owner_id })
 }
@@ -489,12 +522,20 @@ export async function decideReview(
 }
 
 /** Records a successful publish of `revisionId`. Like workflow changes, doesn't bump `revision`. */
-export async function recordPublish(scope: Scope, courseId: string, at: string, revisionId: string | null = null): Promise<void> {
+export async function recordPublish(
+  scope: Scope,
+  courseId: string,
+  at: string,
+  revisionId: string | null = null,
+  /** What the host's course is now (its `version`), for the next publish to be checked against. */
+  hostVersion?: string,
+): Promise<void> {
   await withTenantScope(scope, async (tx) => {
     const current = (await selectCourse(tx, scope, courseId, true))?.course
     if (!current) return
     await writeCourse(tx, { ...current, published_at: at })
     if (revisionId) await tx.update(courses).set({ publishedRevisionId: revisionId }).where(eq(courses.id, courseId))
+    if (hostVersion) await tx.update(courses).set({ hostVersion }).where(eq(courses.id, courseId))
   })
 }
 
@@ -621,6 +662,104 @@ export async function restoreRevision(
 
     const revision = await commitContent(tx, scope, record.tenantId, next, { kind: "restored", actorId: editor.id, restoredFrom: revisionId })
     return { course: next, revision }
+  })
+}
+
+/**
+ * Brings a course taken from the platform up to date with the platform, as one new revision (kind "imported"): the
+ * platform's title, summary, cover, outline, lessons' content, placement, learner choices and status replace what is
+ * stored; what only the editor holds (objectives, audience, length, pricing, limits, owner, history, sharing) stays.
+ * Nothing is lost: the previous revisions stay in the history, and restoring one writes it forward again.
+ */
+export async function refreshFromHost(
+  scope: Scope,
+  courseId: string,
+  incoming: { course: Course; lessons: ReadonlyMap<string, Lesson> },
+  hostVersion: string,
+  by: string,
+): Promise<Course | null> {
+  return withTenantScope(scope, async (tx) => {
+    const record = await selectCourse(tx, scope, courseId, true)
+    if (!record) return null
+    await ensureHistory(tx, scope, record)
+    const current = record.course
+    const now = new Date().toISOString()
+    const next = CourseSchema.parse({
+      ...current,
+      title: incoming.course.title,
+      summary: incoming.course.summary,
+      cover_image_url: incoming.course.cover_image_url,
+      levels: incoming.course.levels,
+      metadata: incoming.course.metadata,
+      placement_size: incoming.course.placement_size,
+      status: incoming.course.status,
+      revision: current.revision + 1,
+      updated_at: now,
+      published_at: incoming.course.status === "published" ? now : current.published_at,
+      change_requests: [],
+      review_history: [
+        ...current.review_history,
+        { status: incoming.course.status, action: "synced", at: now, by, note: "Refreshed from the platform", changes: [] },
+      ],
+    })
+    await writeCourse(tx, next)
+
+    const stored = await tx
+      .select({ id: lessons.id, hash: lessons.hash })
+      .from(lessons)
+      .where(and(eq(lessons.courseId, courseId), tenantFilter(lessons, scope)))
+    const storedHash = new Map(stored.map((r) => [r.id, r.hash]))
+    const touched: string[] = []
+    for (const id of outlineLessonIds(next)) {
+      const lesson = incoming.lessons.get(id)
+      if (lesson) {
+        // A lesson that already matches the platform isn't rewritten, so open editors on it aren't disturbed.
+        if (storedHash.get(id) !== lessonHash(lesson)) {
+          await writeLesson(tx, record.tenantId, courseId, id, lesson)
+          touched.push(id)
+        }
+      } else if (storedHash.has(id)) {
+        await tx.delete(lessons).where(and(eq(lessons.courseId, courseId), eq(lessons.id, id)))
+        touched.push(id)
+      }
+    }
+    // Lessons the platform no longer has.
+    const wanted = new Set(outlineLessonIds(next))
+    for (const id of storedHash.keys()) {
+      if (!wanted.has(id)) {
+        await tx.delete(lessons).where(and(eq(lessons.courseId, courseId), eq(lessons.id, id)))
+        touched.push(id)
+      }
+    }
+    await resetLiveDocs(tx, courseId, touched)
+    await notifyAccess(tx, { kind: "course", course: courseId })
+
+    const revision = await commitContent(tx, scope, record.tenantId, next, { kind: "imported", actorId: by })
+    await tx
+      .update(courses)
+      .set({ hostVersion, ...(next.status === "published" ? { publishedRevisionId: revision.id } : {}) })
+      .where(eq(courses.id, courseId))
+    return next
+  })
+}
+
+/** Hands a course to another owner. Callers check who may (lib/authz/ownership). The new owner must be a member of the course's workspace. */
+export async function transferOwner(scope: Scope, courseId: string, newOwnerId: string, by: string): Promise<Course | null> {
+  return withTenantScope(scope, async (tx) => {
+    const record = await selectCourse(tx, scope, courseId, true)
+    if (!record) return null
+    const now = new Date().toISOString()
+    const next = CourseSchema.parse({
+      ...record.course,
+      owner_id: newOwnerId,
+      updated_at: now,
+      review_history: [
+        ...record.course.review_history,
+        { status: record.course.status, action: "transferred", at: now, by, note: `Handed to ${newOwnerId}`, changes: [] },
+      ],
+    })
+    await writeCourse(tx, next)
+    return next
   })
 }
 

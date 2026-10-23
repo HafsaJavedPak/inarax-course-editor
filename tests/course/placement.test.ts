@@ -29,7 +29,7 @@ const question = (overrides: Partial<PlacementQuestion> = {}): PlacementQuestion
 })
 
 describe("placement quiz requirement", () => {
-  it("is met by 1 easy, 2 medium and 2 hard questions in every level with lessons", () => {
+  it("is met by 1 easy, 1 medium and 1 hard question in every level with lessons", () => {
     expect(placementIssues(sampleCourse())).toEqual([])
   })
 
@@ -38,9 +38,25 @@ describe("placement quiz requirement", () => {
     expect(issues).toEqual([
       {
         levelId: "associate",
-        message: "Associate placement quiz needs at least 1 easy, 2 medium and 2 hard questions; add 1 more medium, add 2 more hard",
+        message: "Associate placement quiz needs at least 1 easy, 1 medium and 1 hard questions; add 1 more hard",
       },
     ])
+  })
+
+  it("follows the course's own number of questions per level, of any difficulty", () => {
+    const five = samplePlacement()
+    expect(placementIssues({ ...withPlacement(sampleCourse(), five), placement_size: 5 })).toEqual([])
+    expect(placementIssues({ ...withPlacement(sampleCourse(), five), placement_size: 3 })).toEqual([])
+    expect(placementIssues({ ...withPlacement(sampleCourse(), five), placement_size: 8 })).toEqual([
+      { levelId: "associate", message: "Associate placement quiz needs at least 8 questions; add 3 more" },
+    ])
+    // Fewer than the default 1/2/2 split is fine when the course asks for fewer.
+    expect(placementIssues({ ...withPlacement(sampleCourse(), five.slice(0, 2)), placement_size: 2 })).toEqual([])
+  })
+
+  it("keeps the default split when the size is null or unset", () => {
+    const short = withPlacement(sampleCourse(), samplePlacement().slice(0, 2))
+    expect(placementIssues({ ...short, placement_size: null })).toEqual(placementIssues(short))
   })
 
   it("doesn't ask for questions in a level without lessons", () => {

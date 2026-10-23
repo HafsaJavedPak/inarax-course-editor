@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/FlipCardsBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/FlipCardsBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import { useEffect, useState } from "react";
@@ -72,7 +72,7 @@ export default function FlipCardsBlock({
                   <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-indigo-600 rtl:tracking-normal">
                     {card.front.trim()}
                   </span>
-                  <span className="text-[15px] leading-relaxed text-slate-800">{card.back.trim()}</span>
+                  <span className="text-[14px] leading-relaxed text-slate-800">{card.back.trim()}</span>
                 </div>
               </div>
             </button>

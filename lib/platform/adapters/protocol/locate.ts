@@ -13,6 +13,7 @@ const FIELD_NAMES: Record<string, string> = {
   learning_objectives: "learning objectives",
   audience: "audience",
   metadata: "learner choices",
+  placement_size: "placement questions per level",
 }
 
 /** One readable line per error. */

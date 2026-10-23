@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/SectionStepper.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/SectionStepper.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import { useState } from "react";
@@ -8,6 +8,7 @@ import type { LessonSection } from "@/vendor/inara-player/lib/lesson-content/sch
 import { canAdvanceSection } from "@/vendor/inara-player/lib/ile/progress";
 import { Check, CheckCircle, ChevronDown } from "lucide-react";
 import { useLessonText } from "@/vendor/inara-player/components/ile/LessonLanguageProvider";
+import { sectionMinutes } from "@/vendor/inara-player/lib/lesson-content/duration";
 
 /**
  * Most sections carry no `title`, so the label is generated here. That generated string is
@@ -45,6 +46,7 @@ export default function SectionStepper({
   maxReachedSectionIndex,
   completedBlockIds,
   onSelectSection,
+  positionLabel,
 }: {
   sections: LessonSection[];
   sectionIndex: number;
@@ -53,8 +55,18 @@ export default function SectionStepper({
   completedBlockIds: ReadonlySet<string>;
   /** When provided, chips for reached sections are clickable. */
   onSelectSection?: (index: number) => void;
+  /** Where the lesson sits in the course, e.g. "Module 1 · Lesson 2", shown before the part. */
+  positionLabel?: string;
 }) {
   const t = useLessonText();
+  // "Module 1 · Lesson 2 · Part 3 of 9 · about 4 min"
+  const summary = [
+    positionLabel,
+    t("sectionSummary", { current: sectionIndex + 1, total: sections.length }),
+    sections[sectionIndex] ? t("sectionMinutes", { n: sectionMinutes(sections[sectionIndex]) }) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   /**
    * Collapsed on a phone. The chips are two-per-row below `sm`, so a twelve-part
    * lesson opened with roughly six rows of navigation — about 260px — above any
@@ -90,9 +102,7 @@ export default function SectionStepper({
   return (
     <div className="mb-8 border-b border-slate-100 pb-5">
       <div className="hidden items-center justify-between gap-6 sm:flex">
-        <div className="shrink-0 text-sm font-medium text-slate-500">
-          {t("sectionSummary", { current: sectionIndex + 1, total: sections.length })}
-        </div>
+        <div className="shrink-0 text-sm font-medium text-slate-500">{summary}</div>
         {/* With both side panels open the column is narrow; many parts scroll here rather
             than pushing the page sideways. */}
         <ol className="flex min-w-0 items-center overflow-x-auto p-1">
@@ -130,9 +140,7 @@ export default function SectionStepper({
         <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white">
           {sectionIndex + 1}
         </span>
-        <span className="min-w-0 flex-1 truncate">
-          {t("sectionSummary", { current: sectionIndex + 1, total: sections.length })}
-        </span>
+        <span className="min-w-0 flex-1 truncate">{summary}</span>
         {completedCount > 0 ? (
           <span className="flex shrink-0 items-center gap-1 text-emerald-600">
             <CheckCircle className="h-3.5 w-3.5" aria-hidden />

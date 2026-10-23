@@ -100,6 +100,65 @@ export function OptionsEditor({
   )
 }
 
+/** Options where any number can be correct ("select all that apply"); keeps the ticked ones through moves and removals. */
+function MultiOptionsEditor({
+  options,
+  correct,
+  onChange,
+}: {
+  options: string[]
+  correct: number[]
+  onChange: (options: string[], correct: number[]) => void
+}) {
+  const move = (index: number, offset: -1 | 1) => {
+    const target = index + offset
+    const next = [...options]
+    const [item] = next.splice(index, 1)
+    next.splice(target, 0, item)
+    const swap = (i: number) => (i === index ? target : i === target ? index : i)
+    onChange(next, correct.map(swap).sort((a, b) => a - b))
+  }
+  const remove = (index: number) =>
+    onChange(
+      options.filter((_, i) => i !== index),
+      correct.filter((i) => i !== index).map((i) => (i > index ? i - 1 : i)),
+    )
+  const toggle = (index: number, on: boolean) =>
+    onChange(options, (on ? [...correct, index] : correct.filter((i) => i !== index)).sort((a, b) => a - b))
+
+  return (
+    <div className="le-list" role="group" aria-label="Options">
+      {options.map((option, index) => (
+        <div className="le-list-item le-option" key={index} data-correct={correct.includes(index)}>
+          <input
+            type="checkbox"
+            className="le-option-radio"
+            checked={correct.includes(index)}
+            onChange={(e) => toggle(index, e.target.checked)}
+            aria-label={`Mark option ${index + 1} as correct`}
+            title="Correct answer"
+          />
+          <Input
+            value={option}
+            placeholder={`Option ${index + 1}`}
+            aria-label={`Option ${index + 1}`}
+            onChange={(e) =>
+              onChange(
+                options.map((o, i) => (i === index ? e.target.value : o)),
+                correct,
+              )
+            }
+          />
+          <ItemControls index={index} count={options.length} minCount={2} label="option" onMove={(offset) => move(index, offset)} onRemove={() => remove(index)} />
+        </div>
+      ))}
+      <Button variant="ghost" className="le-list-add" onClick={() => onChange([...options, ""], correct)}>
+        <span className="tiptap-button-text">+ Add option</span>
+      </Button>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // mcq
 // ---------------------------------------------------------------------------
@@ -113,6 +172,7 @@ export function McqBlock({
   data: McqData
   onChange: (data: McqData) => void
 }) {
+  const multi = data.correct_indices !== undefined
   return (
     <div className="le-stack">
       <TextAreaField
@@ -121,14 +181,33 @@ export function McqBlock({
         onChange={(question) => onChange({ ...data, question })}
         placeholder="Which memory is fastest?"
       />
-      <div className="le-stack-tight">
-        <span className="le-field-label">Options (select the correct one)</span>
-        <OptionsEditor
-          name={`mcq-${blockId}`}
-          options={data.options}
-          correctIndex={data.correct_index}
-          onChange={(options, correct_index) => onChange({ ...data, options, correct_index })}
+      <label className="le-check">
+        <input
+          type="checkbox"
+          checked={multi}
+          onChange={(e) => {
+            const { correct_index, correct_indices, ...rest } = data
+            onChange(e.target.checked ? { ...rest, correct_indices: [correct_index ?? 0] } : { ...rest, correct_index: correct_indices?.[0] ?? 0 })
+          }}
         />
+        <span>Select all that apply (more than one correct answer)</span>
+      </label>
+      <div className="le-stack-tight">
+        <span className="le-field-label">{multi ? "Options (tick every correct one)" : "Options (select the correct one)"}</span>
+        {multi ? (
+          <MultiOptionsEditor
+            options={data.options}
+            correct={data.correct_indices ?? []}
+            onChange={(options, correct_indices) => onChange({ ...data, options, correct_indices })}
+          />
+        ) : (
+          <OptionsEditor
+            name={`mcq-${blockId}`}
+            options={data.options}
+            correctIndex={data.correct_index ?? 0}
+            onChange={(options, correct_index) => onChange({ ...data, options, correct_index })}
+          />
+        )}
       </div>
       <TextAreaField
         label="Explanation (optional, shown after answering)"

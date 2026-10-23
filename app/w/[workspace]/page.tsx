@@ -14,6 +14,7 @@ import { latestNote, summarizeCourse, timeAgo } from "@/lib/course-summary"
 import { tenantSharing } from "@/lib/authz/grants"
 import { WorkspaceSharing } from "@/components/dashboard/workspace-sharing"
 import { AddSampleCourse } from "@/components/dashboard/add-sample-course"
+import { PlatformCourses } from "@/components/dashboard/platform-courses"
 
 function isStatus(value: unknown): value is CourseStatus {
   return typeof value === "string" && (COURSE_STATUSES as readonly string[]).includes(value)
@@ -77,6 +78,9 @@ export default async function Page({ params, searchParams }: PageProps<"/w/[work
         </div>
 
         {sharing && <WorkspaceSharing tenantId={workspace.tenantId} initial={sharing} />}
+
+        {/* Admins can open any course on the platform here, however it was made. */}
+        {(isOrgAdmin || ctx.staff) && <PlatformCourses />}
 
         {attention.length > 0 && (
           <section className="db-attention" aria-labelledby="attention-title">

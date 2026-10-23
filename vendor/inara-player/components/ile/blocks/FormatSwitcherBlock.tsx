@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/FormatSwitcherBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/FormatSwitcherBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import { useEffect, useState } from "react";
@@ -61,8 +61,8 @@ export default function FormatSwitcherBlock({ block }: { block: FormatSwitcher }
     >
       {title || prompt ? (
         <div className="flex flex-col gap-1">
-          {title ? <div className="font-montserrat text-[18px] font-bold leading-snug text-slate-900">{title}</div> : null}
-          {prompt ? <div className="text-[15px] text-slate-600">{prompt}</div> : null}
+          {title ? <div className="font-montserrat text-[15px] font-bold leading-snug text-slate-900">{title}</div> : null}
+          {prompt ? <div className="text-[14px] text-slate-600">{prompt}</div> : null}
         </div>
       ) : null}
       <div className="flex flex-wrap gap-2" role="group">

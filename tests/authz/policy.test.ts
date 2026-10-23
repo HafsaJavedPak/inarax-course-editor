@@ -68,6 +68,53 @@ describe("course access", () => {
     expect(allowed(otherCreator, orgCourse)).toEqual([])
   })
 
+  describe("a course taken from the platform has no author, so its organization's admins and platform staff stand in for one", () => {
+    const adopted = { ...orgCourse, ownerId: "whoever-opened-it", adopted: true }
+    const otherOrgAdmin = subject("admin-elsewhere", [{ tenantId: "elsewhere", role: "admin" }])
+
+    it("an admin of its organization does everything the owner does, plus reviews", () => {
+      expect(allowed(orgAdmin, adopted)).toEqual(without("course.release"))
+    })
+
+    it("so does platform staff, except that they alone release it", () => {
+      expect(allowed(staff, adopted)).toEqual(ALL)
+    })
+
+    it("the admin who opened it and a second admin of the organization have the same rights", () => {
+      const opener = subject("whoever-opened-it", [{ tenantId: ORG, role: "admin" }])
+      expect(allowed(opener, adopted)).toEqual(allowed(orgAdmin, adopted))
+    })
+
+    it("an admin of another organization, a creator in this one and a stranger get nothing", () => {
+      expect(allowed(otherOrgAdmin, adopted)).toEqual([])
+      expect(allowed(otherCreator, adopted)).toEqual([])
+      expect(allowed(stranger, adopted)).toEqual([])
+    })
+
+    it("the same admin still doesn't submit or restore a course a creator wrote (writing and reviewing stay apart)", () => {
+      const written = { ...orgCourse, adopted: false }
+      expect(can(orgAdmin, "course.submit", written)).toBe(false)
+      expect(can(orgAdmin, "course.restore", written)).toBe(false)
+      expect(can(orgAdmin, "course.ai.apply", written)).toBe(false)
+    })
+
+    it("the sample course is never anyone's to submit, whatever it is marked", () => {
+      expect(can(orgAdmin, "course.submit", { ...adopted, sample: true })).toBe(false)
+    })
+  })
+
+  it("handing a course to another owner: its owner, its organization's admins and platform staff, organization courses only", () => {
+    expect(can(author, "course.transfer", orgCourse)).toBe(true)
+    expect(can(orgAdmin, "course.transfer", orgCourse)).toBe(true)
+    expect(can(staff, "course.transfer", orgCourse)).toBe(true)
+    expect(can(otherCreator, "course.transfer", orgCourse)).toBe(false)
+    expect(can(stranger, "course.transfer", orgCourse)).toBe(false)
+    // A personal workspace has no one to hand it to.
+    expect(can(owner, "course.transfer", personalCourse)).toBe(false)
+    expect(can(staff, "course.transfer", personalCourse)).toBe(false)
+    expect(can(author, "course.transfer", { ...orgCourse, sample: true })).toBe(false)
+  })
+
   it("platform staff review and publish organizations' courses too", () => {
     expect(allowed(staff, orgCourse)).toEqual(without("course.submit", "course.restore", "course.ai.apply"))
   })
@@ -148,5 +195,28 @@ describe("shared courses (course grants)", () => {
       expect(can(withGrant(role), "course.release", shared)).toBe(false)
       expect(can(withGrant(role), "course.delete", shared)).toBe(false)
     }
+  })
+})
+
+describe("course.sponsor (access mode)", () => {
+  const orgCourse: CourseResource = { courseId: "c1", tenantId: "org", tenantKind: "org", ownerId: "author" }
+  const member = (userId: string, role: "creator" | "admin"): Subject => ({ userId, staff: false, memberships: [{ tenantId: "org", role }] })
+
+  it("is the org admin's and platform staff's, never the author's", () => {
+    expect(can(member("a", "admin"), "course.sponsor", orgCourse)).toBe(true)
+    expect(can({ userId: "s", staff: true, memberships: [] }, "course.sponsor", orgCourse)).toBe(true)
+    expect(can(member("author", "creator"), "course.sponsor", orgCourse)).toBe(false)
+  })
+
+  it("is refused to a department manager, a co-owner, and an admin of another organization", () => {
+    const manager: Subject = { ...member("m", "creator"), departments: [{ tenantId: "org", departmentId: "d", role: "manager" }] }
+    expect(can(manager, "course.sponsor", { ...orgCourse, departmentId: "d" })).toBe(false)
+    expect(can({ ...member("c", "creator"), grants: [{ courseId: "c1", role: "co_owner" }] }, "course.sponsor", orgCourse)).toBe(false)
+    expect(can({ userId: "x", staff: false, memberships: [{ tenantId: "other", role: "admin" }] }, "course.sponsor", orgCourse)).toBe(false)
+  })
+
+  it("never applies to a personal workspace or a sample course", () => {
+    expect(can({ userId: "s", staff: true, memberships: [] }, "course.sponsor", { ...orgCourse, tenantKind: "personal" })).toBe(false)
+    expect(can(member("a", "admin"), "course.sponsor", { ...orgCourse, sample: true })).toBe(false)
   })
 })

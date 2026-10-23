@@ -65,6 +65,7 @@ export function resourceOf(record: CourseRecord): CourseResource {
     ownerId: record.course.owner_id,
     departmentId: record.departmentId,
     sample: record.sample,
+    adopted: record.adopted,
   }
 }
 
@@ -79,6 +80,9 @@ export type CoursePermissions = {
   restore: boolean
   /** Take a live course down from the catalogue (its organization's, or the main host). */
   takedown: boolean
+  sponsor: boolean
+  /** Hand the course to another member of its organization. */
+  transfer: boolean
   /** May request AI jobs for this course (04 · AI generation). */
   ai: boolean
   /** Their role through sharing, if that's how they reach the course. */
@@ -98,6 +102,8 @@ export function permissionsFor(ctx: RequestContext, record: CourseRecord): Cours
     history: can(ctx, "course.history", resource),
     restore: can(ctx, "course.restore", resource),
     takedown: can(ctx, "course.takedown", resource),
+    sponsor: can(ctx, "course.sponsor", resource),
+    transfer: can(ctx, "course.transfer", resource),
     ai: can(ctx, "course.ai", resource),
     role: ctx.grants.find((g) => g.courseId === record.course.id)?.role ?? null,
     sample: record.sample,

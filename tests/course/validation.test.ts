@@ -49,22 +49,22 @@ describe("roadmap dates", () => {
     } as TypedBlock
   }
 
-  it("rejects text dates and invalid calendar dates with a clear message", () => {
-    const issues = validateBlock(roadmap(["1956", "Mar 2023"]))
-    expect(issues).toContainEqual({
-      level: "error",
-      message: "Event 2 date “Mar 2023” isn't a valid date. Use numbers only: YYYY, YYYY-MM, YYYY-MM-DD",
-    })
+  it("accepts free-text dates, as inara-next does, but still asks for one", () => {
+    expect(validateBlock(roadmap(["1956", "Mar 2023", "1980s", "Today"]))).toEqual([])
+    expect(validateBlock(roadmap(["1956", " "]))).toContainEqual({ level: "error", message: "Event 2 needs a date" })
   })
 
-  it("warns when events go back in time, and limits name and text length", () => {
+  it("warns when numeric events go back in time", () => {
     expect(validateBlock(roadmap(["1990", "1980"]))).toContainEqual({
       level: "warning",
       message: "Event 2 (1980) is earlier than event 1 (1990); events show in the order listed",
     })
-    const long = validateBlock(roadmap(["1990", "2000"], { name: "x".repeat(41), text: "y".repeat(301) })).map((i) => i.message)
-    expect(long).toContain("Era 1 name must be 40 characters or fewer")
-    expect(long).toContain("Event 1 text must be 300 characters or fewer")
+    // Text dates can't be ordered, so they never trigger the warning.
+    expect(validateBlock(roadmap(["Today", "1980"]))).toEqual([])
+  })
+
+  it("has no length limits beyond the host's: era names and event text may be long", () => {
+    expect(validateBlock(roadmap(["1990", "2000"], { name: "x".repeat(80), text: "y".repeat(500) }))).toEqual([])
   })
 
   it("accepts a valid roadmap", () => {

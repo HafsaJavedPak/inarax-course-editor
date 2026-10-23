@@ -12,6 +12,7 @@ const FIELD_LABELS: Record<string, string> = {
   pricing: "pricing",
   limits: "limits",
   metadata: "learner choices",
+  placement_size: "placement questions per level",
 }
 export const fieldLabel = (key: string) => FIELD_LABELS[key] ?? key.replaceAll("_", " ")
 

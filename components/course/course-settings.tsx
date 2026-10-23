@@ -20,7 +20,7 @@ export function CourseSettings({
 }) {
   const router = useRouter()
 
-  const { title, summary, learning_objectives, cover_image_url, audience, length_hours, lesson_size, pricing, limits, metadata } =
+  const { title, summary, learning_objectives, cover_image_url, audience, length_hours, lesson_size, pricing, limits, metadata, placement_size } =
     course
   const initial: CourseInfo = {
     title,
@@ -33,6 +33,7 @@ export function CourseSettings({
     pricing,
     limits,
     metadata,
+    placement_size,
   }
 
   const save = async (info: CourseInfo): Promise<string | void> => {

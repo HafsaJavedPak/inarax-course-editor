@@ -3,6 +3,7 @@
 
 import { lastDecision } from "@/lib/course-status"
 import { LEVELS, type Course } from "@/lib/course"
+import type { AccessMode } from "@/lib/db/schema"
 import type { Lesson } from "@/lib/lesson"
 import { questionProblems } from "@/lib/placement"
 import { PROTOCOL_VERSION, type CoursePackage, type LessonContent } from "@/lib/protocol/wire"
@@ -18,10 +19,14 @@ export type PackageInput = {
   organization?: { hostOrgId: string } | null
   /** The host department of the course; null or missing for the whole organization. */
   department?: { hostDepartmentId: string } | null
+  /** Whether the organization sponsors the course; null or missing: not decided, the host keeps its setting. */
+  accessMode?: AccessMode | null
+  /** For a course taken from the platform: the version it was last read or published as (the platform refuses if it changed since). */
+  baseVersion?: string | null
   now?: Date
 }
 
-export function buildPackage({ course, lessons, coverImageUrl, actor, organization, department, now = new Date() }: PackageInput): CoursePackage {
+export function buildPackage({ course, lessons, coverImageUrl, actor, organization, department, accessMode, baseVersion, now = new Date() }: PackageInput): CoursePackage {
   // The reviewers' feedback that goes with the current status: their last
   // decision, when the course is still in the state they decided on. (A
   // withdrawn or reopened course is a draft and carries no reviewer note.)
@@ -43,6 +48,9 @@ export function buildPackage({ course, lessons, coverImageUrl, actor, organizati
       pricing: course.pricing,
       organization: organization ? { host_org_id: organization.hostOrgId } : null,
       department: department ? { host_department_id: department.hostDepartmentId } : null,
+      ...(course.placement_size !== undefined ? { placement_size: course.placement_size } : {}),
+      ...(accessMode ? { access_mode: accessMode } : {}),
+      ...(baseVersion ? { base_version: baseVersion } : {}),
       ...(course.metadata ? { metadata: course.metadata } : {}),
     },
     review: {

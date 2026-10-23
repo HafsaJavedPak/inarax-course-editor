@@ -1,5 +1,5 @@
 {
-  "$id": "https://inara.dev/course-publishing-protocol/2.3/course-package.schema.json",
+  "$id": "https://inara.dev/course-publishing-protocol/2.6/course-package.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
@@ -135,6 +135,30 @@
               "required": [
                 "host_department_id"
               ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "access_mode": {
+          "type": "string",
+          "enum": [
+            "sponsored",
+            "individual"
+          ]
+        },
+        "base_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "placement_size": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
             },
             {
               "type": "null"

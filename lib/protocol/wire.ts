@@ -11,13 +11,15 @@
 import { z } from "zod"
 
 /** major.minor. A host accepts any package whose major it supports. */
-export const PROTOCOL_VERSION = "2.3"
+export const PROTOCOL_VERSION = "2.6"
 export const PROTOCOL_MAJOR = 2
 
 /** Paths, relative to the host's base URL (PLATFORM_URL). */
 export const PROTOCOL_PATHS = {
   manifest: "/v1/manifest",
   course: (courseId: string) => `/v1/courses/${courseId}`,
+  /** Since 2.6: the courses an admin may open in the editor, and one course as the host has it; `?actor=` is the host user asking. */
+  courses: "/v1/courses",
   asset: (assetId: string) => `/v1/assets/${assetId}`,
   aiSpend: "/v1/ai-spend",
 } as const
@@ -148,6 +150,24 @@ export const CoursePackageSchema = z.object({
      */
     department: z.object({ host_department_id: z.string().min(1).max(200) }).nullable().default(null),
     /**
+     * Whether the organization sponsors the course, so its members enroll without purchasing
+     * (decided in the editor by an org admin or platform staff). Since 2.4; absent: the host's
+     * setting stays as it is.
+     */
+    access_mode: z.enum(["sponsored", "individual"]).optional(),
+    /**
+     * For a course taken from the host (see CourseSnapshot): the `version` it was last read or published as. If the
+     * host's course has changed since, the publish is refused with 409 and nothing is written. Absent for a course
+     * the editor created. Since 2.6.
+     */
+    base_version: z.string().min(1).max(64).optional(),
+    /**
+     * How many placement questions a learner is asked per level, drawn at random from the
+     * level's bank. null: the platform's default; absent: the host's setting stays as it is.
+     * Since 2.4.
+     */
+    placement_size: z.number().int().min(1).max(50).nullable().optional(),
+    /**
      * What a learner picks when they start the course: the domains and future goals they
      * choose from, optional departments, and whether a future goal is required. The host
      * adds the labels it lacks and removes the ones no longer listed (unless a learner
@@ -198,6 +218,8 @@ export const PublishResultSchema = z.object({
   }),
   /** Applied, but someone should know (e.g. a lesson the host wouldn't approve yet). */
   warnings: z.array(z.string()),
+  /** What the host's course is now, for the next publish's `base_version`. Since 2.6; absent from older hosts. */
+  version: z.string().min(1).max(64).optional(),
 })
 export type PublishResult = z.infer<typeof PublishResultSchema>
 
@@ -259,6 +281,8 @@ export const ManifestSchema = z.object({
       .nullable(),
     delete: z.boolean(),
     preview: z.boolean(),
+    /** The host serves GET courses and GET courses/{id}, so an admin can open any of its courses here. Since 2.6; absent: no. */
+    adopt: z.boolean().optional(),
   }),
   content: z.object({
     /** Block types the host can show. Anything else is refused with validation_failed. */
@@ -267,6 +291,85 @@ export const ManifestSchema = z.object({
   max_package_bytes: z.number().int().positive(),
 })
 export type Manifest = z.infer<typeof ManifestSchema>
+
+// ---------------------------------------------------------------------------
+// Courses that live on the host (2.6): GET courses/{id}?actor=… and GET courses?actor=…
+// ---------------------------------------------------------------------------
+// A course as the host has it, however it was made, for an admin to open in the editor. The editor adopts it the first
+// time: it keeps the host's ids (so a publish updates that very course) and works out what the host has no field for
+// (audience, objectives, length, limits). `actor` is the host user asking (the launch token's `sub`); the host answers
+// 403 unless they are a platform admin or an admin of one of the course's organizations.
+
+export const SnapshotPlacementQuestionSchema = z.object({
+  id: uuid,
+  question: z.string(),
+  options: z.array(z.string()),
+  correct_index: z.number().int().nonnegative(),
+  difficulty: z.enum(["easy", "medium", "hard"]),
+  explanation: z.string().nullable(),
+})
+
+export const SnapshotLessonSchema = z.object({
+  id: uuid,
+  title: z.string(),
+  /** The lesson as stored (a lesson content object); null when the editor can't open it, see `problem`. */
+  content: z.unknown().nullable(),
+  /** Why: text from the generation pipeline (not blocks), or no content at all. */
+  problem: z.enum(["text_only", "no_content"]).nullable(),
+})
+
+export const CourseSnapshotSchema = z.object({
+  protocol: z.string(),
+  /** A stamp of what a publish can overwrite. Send it back as `course.base_version`. */
+  version: z.string().min(1).max(64),
+  course: z.object({
+    id: uuid,
+    title: z.string(),
+    summary: z.string(),
+    cover_image_url: z.string().nullable(),
+    /** null: a retired course, which the editor can't open. */
+    status: z.enum(REVIEW_STATUSES).nullable(),
+    organizations: z.array(z.object({ host_org_id: z.string(), name: z.string(), access_mode: z.enum(["sponsored", "individual"]) })),
+    metadata: z.object({
+      domains: z.array(z.string()),
+      future_goals: z.array(z.string()),
+      departments: z.array(z.string()),
+      require_future_goal: z.boolean(),
+    }),
+    placement_size: z.number().int().min(1).max(50).nullable(),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime(),
+    /** Usually says who the course is for; the editor reads its audience from it. */
+    quiz_prompt: z.string().nullable(),
+  }),
+  levels: z.array(
+    z.object({
+      key: z.string(),
+      title: z.string(),
+      modules: z.array(z.object({ id: uuid, title: z.string(), lessons: z.array(SnapshotLessonSchema) })),
+      placement: z.array(SnapshotPlacementQuestionSchema),
+    }),
+  ),
+  /** Things left out or worth telling the author. */
+  warnings: z.array(z.string()),
+  /** Where the asking admin's copy belongs: an organization they administer (its id), or null for their personal workspace. */
+  workspace: z.object({ host_org_id: z.string() }).nullable(),
+})
+export type CourseSnapshot = z.infer<typeof CourseSnapshotSchema>
+
+export const CourseListingSchema = z.object({
+  protocol: z.string(),
+  courses: z.array(
+    z.object({
+      id: uuid,
+      title: z.string(),
+      status: z.enum(REVIEW_STATUSES).nullable(),
+      organizations: z.array(z.object({ host_org_id: z.string(), name: z.string() })),
+      updated_at: z.iso.datetime(),
+    }),
+  ),
+})
+export type CourseListing = z.infer<typeof CourseListingSchema>
 
 // ---------------------------------------------------------------------------
 // Errors: RFC 9457 problem details (application/problem+json)

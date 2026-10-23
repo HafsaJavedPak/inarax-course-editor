@@ -1,6 +1,6 @@
 "use client";
 
-// Copied from inara-next components/ile/LessonProgressProvider.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/LessonProgressProvider.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import {
@@ -51,6 +51,9 @@ const CHECKPOINT_DEBOUNCE_MS = 3000;
 
 type LessonProgressContextValue = {
   content: LessonContent;
+  lessonId: string;
+  /** False in the admin preview: blocks must not call learner APIs (e.g. saving answers). */
+  persistPoints: boolean;
   sectionIndex: number;
   currentSection: LessonSection;
   totalSections: number;
@@ -402,6 +405,8 @@ export function LessonProgressProvider({
 
     return {
       content,
+      lessonId,
+      persistPoints,
       sectionIndex,
       currentSection,
       totalSections,
@@ -425,6 +430,7 @@ export function LessonProgressProvider({
     };
   }, [
     content,
+    lessonId,
     sectionIndex,
     totalSections,
     completedBlockIds,

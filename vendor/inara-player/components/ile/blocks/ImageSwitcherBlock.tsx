@@ -1,10 +1,10 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/ImageSwitcherBlock.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/ImageSwitcherBlock.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { LessonBlock } from "@/vendor/inara-player/lib/lesson-content/schema";
 import { useLessonProgress } from "@/vendor/inara-player/components/ile/LessonProgressProvider";
@@ -37,6 +37,10 @@ export default function ImageSwitcherBlock({
   const [prevIndex, setPrevIndex] = useState<number | null>(null);
   const [failed, setFailed] = useState<Set<string>>(() => new Set());
   const complete = isBlockComplete(block.id);
+  const backButton = useRef<HTMLButtonElement>(null);
+  const nextButton = useRef<HTMLButtonElement>(null);
+  // Reaching either end hides the button that was pressed, so focus moves to the other one.
+  const focusAfterStep = useRef<"back" | "next" | null>(null);
 
   useEffect(() => {
     const allViewed = options.every((o) => viewed.has(o.id));
@@ -50,6 +54,20 @@ export default function ImageSwitcherBlock({
     const timer = setTimeout(() => setPrevIndex(null), 550);
     return () => clearTimeout(timer);
   }, [prevIndex, activeIndex]);
+
+  useEffect(() => {
+    const target = focusAfterStep.current;
+    if (!target) return;
+    (target === "back" ? backButton : nextButton).current?.focus();
+    focusAfterStep.current = null;
+  }, [activeIndex]);
+
+  const step = (delta: -1 | 1) => {
+    const index = activeIndex + delta;
+    if (index === 0) focusAfterStep.current = "next";
+    else if (index === options.length - 1) focusAfterStep.current = "back";
+    show(index);
+  };
 
   const show = (index: number) => {
     const option = options[index];
@@ -143,16 +161,18 @@ export default function ImageSwitcherBlock({
       {/* Back / Next walk the images in order, for sequences that should be played through. */}
       <div className="flex items-center justify-between gap-3">
         <button
+          ref={backButton}
           type="button"
-          onClick={() => show(activeIndex - 1)}
+          onClick={() => step(-1)}
           disabled={activeIndex === 0}
           className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:invisible"
         >
           <BackIcon className="h-4 w-4" aria-hidden /> {t("back")}
         </button>
         <button
+          ref={nextButton}
           type="button"
-          onClick={() => show(activeIndex + 1)}
+          onClick={() => step(1)}
           disabled={activeIndex === options.length - 1}
           className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:invisible"
         >

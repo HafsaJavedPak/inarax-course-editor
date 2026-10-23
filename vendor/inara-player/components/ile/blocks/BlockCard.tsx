@@ -1,22 +1,44 @@
 "use client";
 
-// Copied from inara-next components/ile/blocks/BlockCard.tsx @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next components/ile/blocks/BlockCard.tsx @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 import type { ReactNode } from "react";
 import {
   ArrowDownUp,
   ArrowLeftRight,
+  BrainCircuit,
+  Briefcase,
+  GitFork,
+  Puzzle,
   ChartPie,
   Images,
   Layers2,
+  Highlighter,
+  MessageSquare,
+  Map as MapIcon,
   Milestone,
+  Scissors,
+  SearchCheck,
+  Sparkles,
+  Workflow,
+  Bot,
+  MessagesSquare,
+  Table2,
   CheckCircle2,
   GitCommitHorizontal,
   Layers,
+  LayoutGrid,
   LayoutPanelTop,
+  MessageCircleQuestion,
+  Palette,
+  ShieldCheck,
+  SlidersHorizontal,
+  Gauge,
   SquareStack,
   ListChecks,
+  ListTodo,
+  PenLine,
   ListCollapse,
   MousePointerClick,
   Shapes,
@@ -37,11 +59,33 @@ export type BlockKind =
   | "stepped_timeline"
   | "image_hotspot"
   | "add_next_layer"
+  | "checklist"
+  | "free_response"
   | "wheel_diagram"
   | "nested_layers"
   | "format_switcher"
   | "image_switcher"
-  | "vertical_roadmap";
+  | "vertical_roadmap"
+  | "context_window_slider"
+  | "cliche_highlighter"
+  | "tokenizer_playground"
+  | "be_the_model"
+  | "workflow_simulator"
+  | "agent_simulator"
+  | "dual_chatbot"
+  | "data_sandbox"
+  | "quick_question"
+  | "tile_reveal"
+  | "color_sort"
+  | "slider_judge"
+  | "slider_rate"
+  | "scenario_sort"
+  | "spot_the_errors"
+  | "decision_tree"
+  | "prompt_builder"
+  | "filter_compare"
+  | "train_model"
+  | "meaning_map";
 
 const KIND: Record<BlockKind, { label: IleStringKey; Icon: LucideIcon }> = {
   mcq: { label: "blockMcq", Icon: ListChecks },
@@ -54,11 +98,33 @@ const KIND: Record<BlockKind, { label: IleStringKey; Icon: LucideIcon }> = {
   stepped_timeline: { label: "blockTimeline", Icon: GitCommitHorizontal },
   image_hotspot: { label: "blockHotspot", Icon: MousePointerClick },
   add_next_layer: { label: "blockBuildUp", Icon: SquareStack },
+  checklist: { label: "blockChecklist", Icon: ListTodo },
+  free_response: { label: "blockFreeResponse", Icon: PenLine },
   wheel_diagram: { label: "blockWheel", Icon: ChartPie },
   nested_layers: { label: "blockLayers", Icon: Layers2 },
   format_switcher: { label: "blockFormats", Icon: ArrowLeftRight },
   image_switcher: { label: "blockImages", Icon: Images },
   vertical_roadmap: { label: "blockRoadmap", Icon: Milestone },
+  context_window_slider: { label: "blockContextWindow", Icon: MessageSquare },
+  cliche_highlighter: { label: "blockCliche", Icon: Highlighter },
+  tokenizer_playground: { label: "blockTokenizer", Icon: Scissors },
+  be_the_model: { label: "blockBeTheModel", Icon: Sparkles },
+  workflow_simulator: { label: "blockWorkflow", Icon: Workflow },
+  agent_simulator: { label: "blockAgent", Icon: Bot },
+  dual_chatbot: { label: "blockDualChat", Icon: MessagesSquare },
+  data_sandbox: { label: "blockDataSandbox", Icon: Table2 },
+  quick_question: { label: "blockQuickQuestion", Icon: MessageCircleQuestion },
+  tile_reveal: { label: "blockTiles", Icon: LayoutGrid },
+  color_sort: { label: "blockColorSort", Icon: Palette },
+  slider_judge: { label: "blockSliderJudge", Icon: SlidersHorizontal },
+  slider_rate: { label: "blockSliderRate", Icon: Gauge },
+  scenario_sort: { label: "blockScenarioSort", Icon: Briefcase },
+  spot_the_errors: { label: "blockSpotErrors", Icon: SearchCheck },
+  decision_tree: { label: "blockDecisionTree", Icon: GitFork },
+  prompt_builder: { label: "blockPromptBuilder", Icon: Puzzle },
+  filter_compare: { label: "blockFilterCompare", Icon: ShieldCheck },
+  train_model: { label: "blockTrainModel", Icon: BrainCircuit },
+  meaning_map: { label: "blockMeaningMap", Icon: MapIcon },
 };
 
 /**
@@ -163,7 +229,7 @@ export function BlockFeedback({
       : tone === "warn"
         ? "border-amber-200 bg-amber-50 text-amber-900"
         : "border-slate-200 bg-slate-50 text-slate-700";
-  return <div className={`rounded-xl border px-4 py-3 text-[15px] leading-relaxed ${style}`}>{children}</div>;
+  return <div className={`rounded-xl border px-4 py-3 text-[14px] leading-relaxed ${style}`}>{children}</div>;
 }
 
 /**
@@ -171,4 +237,4 @@ export function BlockFeedback({
  * Shared so every explore block's panel reads the same.
  */
 export const BLOCK_BODY_TEXT =
-  "[&_.break-words>*:first-child]:!mt-0 [&_.break-words>*:last-child]:!mb-0 [&_.break-words>.md-paragraph:last-child]:!mb-0 [&_.break-words>.md-paragraph]:!mb-4 [&_.md-paragraph]:!text-[16px] [&_.md-paragraph]:!leading-[1.65] [&_li]:!text-[16px]";
+  "[&_.break-words>*:first-child]:!mt-0 [&_.break-words>*:last-child]:!mb-0 [&_.break-words>.md-paragraph:last-child]:!mb-0 [&_.break-words>.md-paragraph]:!mb-4 [&_.md-paragraph]:!text-[14px] [&_.md-paragraph]:!leading-[1.65] [&_li]:!text-[14px]";

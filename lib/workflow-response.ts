@@ -65,10 +65,14 @@ export async function publishAndRecord(ctx: RequestContext, course: Course): Pro
       actor: { id: actor.id, name: actor.name, email: actor.email },
       organization,
       department,
+      // Sponsorship is an organization's: a personal course never sends it.
+      accessMode: organization ? (record?.accessMode ?? null) : null,
+      // A course taken from the platform is checked against the version it came as: never overwrite a change made there.
+      baseVersion: record?.hostVersion ?? null,
     })
     const summary = { ...published, warnings: [...skipped, ...published.warnings] }
     const publishedAt = new Date().toISOString()
-    await recordPublish(ctx, course.id, publishedAt, content.revisionId)
+    await recordPublish(ctx, course.id, publishedAt, content.revisionId, published.version)
     if (summary.warnings.length) console.warn(`Published course ${course.id} with warnings:`, summary.warnings)
     return { publishedAt, summary }
   } catch (error) {

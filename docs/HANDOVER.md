@@ -467,7 +467,7 @@ npx eslint .       # errors only in the Tiptap template code and hooks/ (React C
 | 5 | **Content added in inara-next to an editor course** (modules or lessons created in inara-next's admin) is removed on the next publish: the editor is the source of truth. | The publish warns when a removed lesson had learner completions. |
 | 6 | **Two separate editor installations publishing the same course** could overwrite each other: revision ordering is per editor process, and inara-next doesn't store the revision yet. | Publish each course from one installation. |
 | 7 | Course data (`course/`) is tracked in git, so editing in the app creates git changes. | |
-| 8 | The lesson editor authors 16 of the platform's 17 block types; `workplace_scenario` is platform-generated and shown read-only. | |
+| 8 | The lesson editor authors all 41 of the platform's block types. 16 have hand-written editors (`components/lesson-editor/blocks`); the other 25 are drawn from field lists in `lib/block-forms/` by `spec-form.tsx` and checked with the platform's own schema (`vendor/inara-player`). `tests/block-forms` fails when the platform adds a type the editor lacks. The sample course doesn't demonstrate the 25 yet. | |
 
 **Resolved since 2026-10-01** (by the move to the Course Publishing Protocol): moving lessons and
 modules now moves them on inara-next, keeping learner progress, instead of being refused; a publish

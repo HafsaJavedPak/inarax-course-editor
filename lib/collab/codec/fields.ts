@@ -14,7 +14,7 @@
 // block types (e.g. the platform's workplace_scenario) keep their data as one
 // plain value and travel through untouched.
 
-import type { AuthorableBlockType } from "@/lib/lesson"
+import type { BlockDataMap } from "@/lib/lesson"
 
 export type ItemSpec = { text?: readonly string[] }
 
@@ -29,14 +29,14 @@ export type BlockSpec = {
 
 const labelBody: ItemSpec = { text: ["label", "body"] }
 
-export const BLOCK_FIELDS: Readonly<Record<AuthorableBlockType, BlockSpec>> = {
+export const BLOCK_FIELDS: Readonly<Record<keyof BlockDataMap, BlockSpec>> = {
   rich_text: { text: ["markdown"] },
   image: { text: ["alt", "caption"] },
   image_hotspot: { text: ["alt", "caption"], lists: { hotspots: { text: ["title", "info"] } } },
   flip_cards: { lists: { cards: { text: ["front", "back"] } } },
   accordion_tabs: { lists: { sections: { text: ["title", "body"] } } },
   stepped_timeline: { lists: { steps: labelBody } },
-  mcq: { text: ["question", "explanation"], groups: { answer: ["options", "correct_index"] } },
+  mcq: { text: ["question", "explanation"], groups: { answer: ["options", "correct_index", "correct_indices"] } },
   categorization: { lists: { buckets: { text: ["label"] }, items: { text: ["label"] } } },
   // correct_order lists item ids, so it's a plain value (last writer wins).
   sequencing: { lists: { items: { text: ["label"] } } },
@@ -52,5 +52,5 @@ export const BLOCK_FIELDS: Readonly<Record<AuthorableBlockType, BlockSpec>> = {
 }
 
 export function blockSpec(type: string): BlockSpec | null {
-  return Object.hasOwn(BLOCK_FIELDS, type) ? BLOCK_FIELDS[type as AuthorableBlockType] : null
+  return Object.hasOwn(BLOCK_FIELDS, type) ? BLOCK_FIELDS[type as keyof BlockDataMap] : null
 }

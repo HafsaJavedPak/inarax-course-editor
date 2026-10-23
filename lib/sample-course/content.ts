@@ -8,12 +8,12 @@
 // public/images/sample-course; `image(name)` gives their full address.
 
 import type { CourseInfo, LevelId, PlacementQuestion } from "@/lib/course"
-import type { AuthorableBlockType, BlockDataMap } from "@/lib/lesson"
+import type { BlockDataMap } from "@/lib/lesson"
 
 export const SAMPLE_IMAGES = ["cover", "course-structure", "lesson-editor", "view-laptop", "view-phone"] as const
 export type SampleImage = (typeof SAMPLE_IMAGES)[number]
 
-export type SampleBlock = { [K in AuthorableBlockType]: { type: K; data: BlockDataMap[K] } }[AuthorableBlockType]
+export type SampleBlock = { [K in keyof BlockDataMap]: { type: K; data: BlockDataMap[K] } }[keyof BlockDataMap]
 export type SampleSection = { title: string; required: boolean; blocks: SampleBlock[] }
 export type SampleLesson = { title: string; sections: SampleSection[] }
 export type SampleModule = { title: string; summary: string; lessons: SampleLesson[] }
@@ -88,7 +88,7 @@ const q = (
   explanation: string,
 ): SamplePlacementQuestion => ({ difficulty, question, options, correct_index: 0, explanation })
 
-/** Each level's placement questions: 1 easy, 2 medium and 2 hard, the least a level needs. */
+/** Each level's placement questions: a few of each difficulty (a level needs at least 1 easy, 1 medium and 1 hard). */
 function samplePlacement(): SampleCourseTemplate["placement"] {
   return {
     associate: [

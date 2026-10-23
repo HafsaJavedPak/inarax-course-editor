@@ -241,7 +241,7 @@ flowchart TD
 | `categorization` | Assess | `CategorizationBlock` |
 | `sequencing` | Assess | `SequencingBlock` |
 | `fill_blank` | Assess | `FillBlankBlock` |
-| any other type (e.g. `workplace_scenario`) | (read-only) | `OpaqueBlockView`, kept unchanged on save |
+| the other 25 types (simulators, sorting, questions, `workplace_scenario`…) | various | `SpecForm` from the field lists in `lib/block-forms/`; a type the editor doesn't know is shown by `OpaqueBlockView` and kept unchanged on save |
 
 ---
 

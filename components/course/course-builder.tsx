@@ -56,6 +56,8 @@ const ALL_PERMISSIONS: CoursePermissions = {
   history: true,
   restore: true,
   takedown: true,
+  sponsor: false,
+  transfer: false,
   ai: true,
   role: null,
   sample: false,
@@ -396,6 +398,7 @@ export function CourseBuilder({
               levelId={selectedLevel}
               questions={level.placement ?? []}
               required={placementRequired}
+              size={course.placement_size ?? null}
               dispatch={dispatch}
             />
           ) : (

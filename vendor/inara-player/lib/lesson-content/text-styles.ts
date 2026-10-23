@@ -1,4 +1,4 @@
-// Copied from inara-next lib/lesson-content/text-styles.ts @ 85883f1f9ce9 by scripts/sync-inara-player.mjs.
+// Copied from inara-next lib/lesson-content/text-styles.ts @ 767dad963cb6 by scripts/sync-inara-player.mjs.
 // Don't edit: re-run the script to update.
 // @ts-nocheck
 /**
