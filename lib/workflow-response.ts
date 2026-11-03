@@ -29,7 +29,10 @@ export async function publishAndRecord(ctx: RequestContext, course: Course): Pro
   try {
     const platform = getPlatform()
     if (!platform) {
-      throw new PlatformError("not_configured", "Publishing isn't set up for this editor (PLATFORM_ADAPTER is not set).")
+      throw new PlatformError(
+        "not_configured",
+        "Publishing isn't set up for this editor (set PLATFORM to a platform in config/platforms.json, or PLATFORM_ADAPTER=protocol with PLATFORM_URL).",
+      )
     }
 
     // Only lessons that pass validation are sent. One with problems keeps its

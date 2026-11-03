@@ -13,11 +13,14 @@ import { listCourses } from "@/lib/course-store"
 import { usersByIds } from "@/lib/authz/identity"
 import { PersonLabel } from "@/components/admin/person"
 import { summarizeCourse, timeAgo } from "@/lib/course-summary"
+import { AdoptError, listPlatformCourses } from "@/lib/adopt"
+import { PlatformCourseList } from "@/components/dashboard/platform-course-list"
+import { filterPlatform, notYetHere, parsePlatformStatus, platformCounts, type PlatformCourseRow } from "@/lib/platform-courses-view"
 
-type Filter = CourseStatus | "all"
+type Filter = CourseStatus | "all" | "platform"
 
 function parseFilter(value: unknown): Filter {
-  if (value === "all") return "all"
+  if (value === "all" || value === "platform") return value
   return typeof value === "string" && (COURSE_STATUSES as readonly string[]).includes(value)
     ? (value as CourseStatus)
     : "in_review"
@@ -33,6 +36,13 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
   const query = typeof params.q === "string" ? params.q.trim() : ""
 
   const ctx = await requireReviewArea()
+  // Courses on the platform this person may open here: not set up, or unreachable, and the tab simply isn't there.
+  const platformRows: PlatformCourseRow[] = await listPlatformCourses(ctx)
+    .then(notYetHere)
+    .catch((error) => {
+      if (error instanceof AdoptError) return []
+      throw error
+    })
   const reviewable = (await listCourses(ctx)).filter((r) => can(ctx, "course.review", resourceOf(r)))
   const workspaceOf = new Map(reviewable.map((r) => [r.course.id, r.tenantName]))
   const all = await Promise.all(reviewable.map((r) => summarizeCourse(ctx, r.course)))
@@ -43,7 +53,7 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
 
   const needle = query.toLowerCase()
   const rows = all
-    .filter((r) => filter === "all" || r.course.status === filter)
+    .filter((r) => filter === "all" || filter === "platform" || r.course.status === filter)
     .filter(
       (r) =>
         !needle ||
@@ -69,7 +79,10 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
     { id: "rejected", label: STATUS_LABELS.rejected, count: counts.rejected },
     { id: "draft", label: STATUS_LABELS.draft, count: counts.draft },
     { id: "all", label: "All courses", count: all.length },
+    ...(platformRows.length > 0 ? [{ id: "platform" as const, label: "On the platform", count: platformRows.length }] : []),
   ]
+  const onPlatform = filter === "platform" && platformRows.length > 0
+  const platformStatus = parsePlatformStatus(params.platform)
 
   return (
     <div className="in-page">
@@ -100,7 +113,14 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
           ))}
         </nav>
 
-        {rows.length === 0 ? (
+        {onPlatform ? (
+          <PlatformCourseList
+            rows={filterPlatform(platformRows, platformStatus, query)}
+            counts={platformCounts(platformRows)}
+            status={platformStatus}
+            query={query}
+          />
+        ) : rows.length === 0 ? (
           <p className="in-empty">
             {query
               ? `No courses match “${query}”.`

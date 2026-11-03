@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import { flushLiveCourse, LiveFlushError } from "@/lib/collab/live"
-import { courseForRoute } from "@/lib/authz/context"
+import { courseForRoute, editsAsReviewer } from "@/lib/authz/context"
 import { acceptJob } from "@/lib/ai/jobs"
 import { jobView } from "@/lib/ai/view"
 import { publicOrigin } from "@/lib/redirect"
@@ -32,7 +32,11 @@ export async function POST(request: Request, ctx: Ctx) {
     throw error
   }
 
-  const result = await acceptJob(loaded.ctx, jobId, loaded.ctx.userId, { mode: parsed.data.mode, origin: publicOrigin(request) })
+  const result = await acceptJob(loaded.ctx, jobId, loaded.ctx.userId, {
+    mode: parsed.data.mode,
+    origin: publicOrigin(request),
+    asReviewer: await editsAsReviewer(loaded.ctx, loaded.record),
+  })
   if (!result.ok) {
     console.log(`[ai] ${jobId} accept refused: ${result.code}`)
     const status = result.code === "not_found" ? 404 : result.code === "stale" ? 409 : result.code === "bad_state" || result.code === "locked" ? 409 : 400

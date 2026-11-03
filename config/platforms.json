@@ -1,0 +1,16 @@
+{
+  "platforms": {
+    "inara-next": {
+      "adapter": "protocol",
+      "endpoints": {
+        "baseUrl": "http://localhost:3000/api/integrations/course-editor"
+      }
+    },
+    "inara-v2": {
+      "adapter": "protocol",
+      "endpoints": {
+        "baseUrl": "http://localhost:8000/api/integrations/course-editor"
+      }
+    }
+  }
+}

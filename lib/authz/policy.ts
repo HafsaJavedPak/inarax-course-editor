@@ -168,8 +168,9 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
       // (Whether the course is locked in review is enforced where the job is written.)
       return author || reviewer || coOwner || editor
     case "course.ai.apply":
-      // Turning a candidate into content is an edit, and follows the same rules.
-      return author || coOwner || editor
+      // Turning a candidate into content is an edit, and follows the same rules: reviewers (org admins, platform
+      // staff) edit during review as reviewers, so they may apply it too.
+      return author || reviewer || coOwner || editor
   }
 }
 

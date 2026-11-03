@@ -14,6 +14,8 @@
 // rotated host key) and what the person may do are checked per request against
 // the database (lib/session.ts, lib/authz/context.ts), which proxy.ts doesn't read.
 
+import { platformConnected, resolveJwksUrl } from "@/lib/platform/profiles"
+
 /** The session cookie: a random token; its session lives in the database (lib/session.ts). */
 export const SESSION_COOKIE = "editor_session"
 
@@ -28,8 +30,8 @@ export const DEFAULT_USER_ID = "user_local_creator"
 export type AuthConfig = { mode: "none" } | { mode: "launch"; configured: boolean }
 
 export function authConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig {
-  if ((env.PLATFORM_ADAPTER ?? "none") === "none") return { mode: "none" }
-  return { mode: "launch", configured: Boolean(env.PLATFORM_JWKS_URL?.trim() || env.PLATFORM_URL?.trim()) }
+  if (platformConnected(env) === "none") return { mode: "none" }
+  return { mode: "launch", configured: Boolean(resolveJwksUrl(env)) }
 }
 
 /**

@@ -12,14 +12,13 @@ import "server-only"
 //
 // The editor never has the host's private key, and the host never has the editor's.
 
+import { resolveJwksUrl } from "@/lib/platform/profiles"
 import { createJwksClient, type KeyResolver } from "@/lib/protocol/jwks"
 import { parsePrivateKeys, type SigningKey } from "@/lib/protocol/keys"
 
 /** Where the host's public keys are, or null when no platform is configured. */
 export function hostJwksUrl(env: NodeJS.ProcessEnv = process.env): string | null {
-  if (env.PLATFORM_JWKS_URL?.trim()) return env.PLATFORM_JWKS_URL.trim()
-  if (!env.PLATFORM_URL?.trim()) return null
-  return `${env.PLATFORM_URL.trim().replace(/\/+$/, "")}/v1/jwks`
+  return resolveJwksUrl(env)
 }
 
 const holder = globalThis as typeof globalThis & {

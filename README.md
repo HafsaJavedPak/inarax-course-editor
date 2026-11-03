@@ -35,13 +35,14 @@ the database with `npm run db:import-files`.
 To publish, copy `.env.example` to `.env.local` and set:
 
 ```
-PLATFORM_ADAPTER=protocol
-PLATFORM_URL=http://localhost:3000/api/integrations/course-editor   # the host's protocol endpoint
+PLATFORM=inara-next   # or inara-v2: a profile in config/platforms.json (adapter + endpoints)
 EDITOR_PRIVATE_KEYS='[…]'      # the editor's own Ed25519 private key(s): npm run keys:generate
-# The host's public keys: PLATFORM_JWKS_URL, default <PLATFORM_URL>/v1/jwks. Nothing secret is shared.
+# PLATFORM_URL overrides the profile's base URL for a deployment; the host's public keys are
+# read from <base URL>/v1/jwks (PLATFORM_JWKS_URL to override). Nothing secret is shared.
 ```
 
-With `PLATFORM_ADAPTER=none` (the default), everything works locally and Save only saves locally.
+With `PLATFORM=none` (the default), everything works locally and Save only saves locally.
+Both hosts speak the same protocol, so switching is that one variable.
 [docs/platform-integration.md](docs/platform-integration.md) shows how to connect to inara-next locally
 and how to check a host with `npm run verify-host`.
 

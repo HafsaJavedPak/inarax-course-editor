@@ -279,7 +279,7 @@ export async function acceptJob(
   jobId: string,
   userId: string,
   /** `origin` is this editor's address, for the full URL an image is placed with (images only). */
-  options: { mode?: AcceptJobMode; origin?: string } = {},
+  options: { mode?: AcceptJobMode; origin?: string; /** A reviewer applying it: allowed during review, and leaves the status alone. */ asReviewer?: boolean } = {},
 ): Promise<AcceptJobResult> {
   const mode = options.mode ?? "replace"
   return withTenantScope(scope, async (tx) => {
@@ -302,7 +302,7 @@ export async function acceptJob(
     const applied = await applyAiEditTx(tx, scope, {
       courseId: job.courseId,
       lessonId: job.lessonId,
-      editor: { id: userId, asReviewer: false },
+      editor: { id: userId, asReviewer: options.asReviewer ?? false },
       base: { baseRevisionId: job.baseRevisionId, baseContentHash: job.baseContentHash, baseLessonHash: job.baseLessonHash },
       mutate: (lesson) =>
         job.kind === "image"
