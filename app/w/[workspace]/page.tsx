@@ -5,7 +5,7 @@ import { CourseThumb } from "@/components/course/course-thumb"
 import { StatusBadge } from "@/components/course/status-badge"
 import { CourseActions } from "@/components/dashboard/course-actions"
 import { PersonLabel } from "@/components/admin/person"
-import { resourceOf, workspaceCourses, workspaceForPage } from "@/lib/authz/context"
+import { resourceOf, sharedCourses, workspaceCourses, workspaceForPage } from "@/lib/authz/context"
 import { usersByIds } from "@/lib/authz/identity"
 import { can, canInTenant } from "@/lib/authz/policy"
 import { COURSE_STATUSES, type CourseStatus } from "@/lib/course"
@@ -14,6 +14,7 @@ import { latestNote, summarizeCourse, timeAgo } from "@/lib/course-summary"
 import { tenantSharing } from "@/lib/authz/grants"
 import { WorkspaceSharing } from "@/components/dashboard/workspace-sharing"
 import { AddSampleCourse } from "@/components/dashboard/add-sample-course"
+import { SharedWithYou } from "@/components/dashboard/shared-with-you"
 
 function isStatus(value: unknown): value is CourseStatus {
   return typeof value === "string" && (COURSE_STATUSES as readonly string[]).includes(value)
@@ -32,6 +33,10 @@ export default async function Page({ params, searchParams }: PageProps<"/w/[work
   const samples = new Set(records.filter((r) => r.sample).map((r) => r.course.id))
   // Someone who deleted their sample course can add a fresh copy.
   const offerSample = workspace.kind === "personal" && !records.some((r) => r.sample && r.course.owner_id === ctx.userId)
+
+  // Courses shared with this person from workspaces they aren't in (an accepted invitation lands here too).
+  const shared = await sharedCourses(ctx)
+  const sharedRole = new Map(ctx.grants.map((g) => [g.courseId, g.role]))
 
   const rows = await Promise.all(records.map((r) => summarizeCourse(ctx, r.course)))
   const people = await usersByIds(records.filter((r) => !authored.has(r.course.id)).map((r) => r.course.owner_id))
@@ -118,6 +123,8 @@ export default async function Page({ params, searchParams }: PageProps<"/w/[work
             </Link>
           ))}
         </nav>
+
+        <SharedWithYou records={shared} roleOf={sharedRole} />
 
         {offerSample && <AddSampleCourse />}
 
