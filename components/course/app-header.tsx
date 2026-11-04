@@ -5,6 +5,7 @@ import { getOptionalUser } from "@/lib/auth"
 import { authConfig } from "@/lib/auth-gate"
 import { getRequestContext } from "@/lib/authz/context"
 import { reviewsAnything } from "@/lib/authz/policy"
+import { resolveHostHomeUrl } from "@/lib/platform/profiles"
 
 const ROLE_LABELS = { owner: "Owner", admin: "Admin", creator: "Creator" } as const
 
@@ -16,6 +17,7 @@ export async function AppHeader({ current, workspace }: { current?: "dashboard" 
   const isAdmin = current === "admin"
   const ctx = await getRequestContext()
   const reviewer = reviewsAnything(ctx)
+  const hostHome = reviewer ? resolveHostHomeUrl(process.env) : null
   const active = ctx.workspaces.find((w) => w.tenantId === workspace)
   // Signed in through the platform: show who, and sign out.
   const signedIn = authConfig().mode === "launch" ? await getOptionalUser() : null
@@ -61,8 +63,20 @@ export async function AppHeader({ current, workspace }: { current?: "dashboard" 
             Shared with me
           </Link>
         )}
-        {reviewer && (isAdmin ? <Link href="/dashboard">My courses</Link> : <Link href="/admin">Course reviews</Link>)}
       </nav>
+      {reviewer && (
+        // Admins and platform staff move between the creator view and the review area, and back to the platform.
+        <div className="in-header-switch">
+          <Link href={isAdmin ? "/dashboard" : "/admin"} className="in-btn in-btn-primary in-btn-sm">
+            {isAdmin ? "Switch to course editor" : "Switch to admin view"}
+          </Link>
+          {hostHome && (
+            <a href={hostHome} className="in-btn in-btn-secondary in-btn-sm">
+              ← Back to platform
+            </a>
+          )}
+        </div>
+      )}
       {signedIn && (
         <form action="/sign-out" method="post" className="flex items-center gap-3 text-sm">
           <span className="text-gray-600" title={signedIn.email ?? undefined}>

@@ -343,9 +343,12 @@
   // Block list on the left, a preview of the highlighted block on the right.
   display: grid;
   grid-template-columns: 18rem 17rem;
+  // A definite height, not max-height: with only a max-height the grid row sizes to the whole list in some
+  // browsers (Firefox), the list is never shorter than its content and the overflow is just clipped. The menu
+  // holds 16 block types, always more than this, so it is always full height.
+  height: min(32rem, var(--radix-dropdown-menu-content-available-height, 80vh));
+  grid-template-rows: minmax(0, 1fr);
   padding: 0 !important;
-  // 16 block types: the list scrolls rather than run off a short screen.
-  max-height: min(32rem, var(--radix-dropdown-menu-content-available-height, 80vh));
   overflow: hidden !important;
 
   // No room beside the list: just the list, as before.
@@ -358,16 +361,35 @@
   }
 }
 
-.le-add-block-list {
+// The two columns scroll on their own, with a scroll bar that stays visible so it's clear there is more.
+.le-add-block-list,
+.le-add-block-preview {
   min-height: 0;
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--in-muted) transparent;
+
+  &::-webkit-scrollbar {
+    width: 0.625rem;
+  }
+  &::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: var(--in-muted);
+    background-clip: content-box;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+.le-add-block-list {
   padding: 0.375rem;
-  overflow-y: auto;
 }
 
 .le-add-block-preview {
-  min-height: 0;
   padding: 0.75rem;
-  overflow-y: auto;
   border-left: 1px solid var(--in-border);
   background: var(--in-bg);
 }

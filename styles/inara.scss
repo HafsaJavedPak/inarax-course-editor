@@ -139,6 +139,13 @@ html body {
   }
 }
 
+// Admin-only buttons in the header: switch between the creator view and the review area, and back to the platform.
+.in-header-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 // Workspace switcher in the header: a <details> menu, no JavaScript.
 .in-ws-switcher {
   position: relative;

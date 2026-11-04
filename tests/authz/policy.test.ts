@@ -44,7 +44,7 @@ describe("course access", () => {
   it("personal workspace: the owner writes, staff review and publish, nobody else gets anything", () => {
     expect(allowed(owner, personalCourse)).toEqual(without("course.review", "course.release"))
     // Staff review and publish personal courses; they don't submit or restore them.
-    expect(allowed(staff, personalCourse)).toEqual(without("course.submit", "course.restore", "course.ai.apply"))
+    expect(allowed(staff, personalCourse)).toEqual(without("course.submit", "course.restore"))
     expect(allowed(stranger, personalCourse)).toEqual([])
     expect(allowed(orgAdmin, personalCourse)).toEqual([])
   })
@@ -64,6 +64,7 @@ describe("course access", () => {
       "course.settings",
       "course.share",
       "course.ai",
+      "course.ai.apply",
     ])
     expect(allowed(otherCreator, orgCourse)).toEqual([])
   })
@@ -95,7 +96,8 @@ describe("course access", () => {
       const written = { ...orgCourse, adopted: false }
       expect(can(orgAdmin, "course.submit", written)).toBe(false)
       expect(can(orgAdmin, "course.restore", written)).toBe(false)
-      expect(can(orgAdmin, "course.ai.apply", written)).toBe(false)
+      // ...but they may apply an AI suggestion while reviewing, as a reviewer edit.
+      expect(can(orgAdmin, "course.ai.apply", written)).toBe(true)
     })
 
     it("the sample course is never anyone's to submit, whatever it is marked", () => {
@@ -116,7 +118,7 @@ describe("course access", () => {
   })
 
   it("platform staff review and publish organizations' courses too", () => {
-    expect(allowed(staff, orgCourse)).toEqual(without("course.submit", "course.restore", "course.ai.apply"))
+    expect(allowed(staff, orgCourse)).toEqual(without("course.submit", "course.restore"))
   })
 
   it("the organization stage is for its admin (and staff); the platform stage for staff only", () => {

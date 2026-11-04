@@ -139,7 +139,28 @@ owns a personal workspace and also reviews it, so `/admin` works as before.
 
 ## 2. Configuration
 
-Put these in `.env.local` (see `.env.example`):
+The connected platform is picked with one line in `.env.local`:
+
+```bash
+PLATFORM=inara-v2          # or inara-next, or none for local work
+```
+
+`PLATFORM` names a profile in [config/platforms.json](../config/platforms.json): each
+profile says which adapter talks to the platform and where its endpoints live. Secrets
+never go in the file. For a real deployment (or a second host), override the endpoints
+in the environment without editing the file:
+
+```bash
+PLATFORM_URL=https://inara.example/api/integrations/course-editor   # the profile's base URL, overridden
+PLATFORM_JWKS_URL=https://inara.example/…/v1/jwks                   # optional; default <base URL>/v1/jwks
+```
+
+Both hosts shipped today (`inara-next`, `inara-v2`) speak the protocol, so switching
+platform is exactly this one variable — the adapter is the same. A future platform that
+keeps its own API gets its own adapter plus a profile listing its endpoints; the rest of
+the editor doesn't change.
+
+Without `PLATFORM`, the older direct settings keep working exactly as before:
 
 | Variable | Meaning |
 |---|---|
@@ -207,6 +228,26 @@ old delete-and-recreate.
    admin). To try the creator side, make a user a **Creator** on Admin → Team Directory and open the
    editor from their sidebar. With inara-next's dev auth bypass, `DEV_AUTH_USER=admin` or `student`
    picks who you are.
+
+### Connecting to inara-v2
+
+inara-v2 implements the same protocol in FastAPI under
+`app/api/integrations/course-editor/v1/` (its `docs/course-editor-integration.md`
+has the details — code map, package mapping, actor policy, known gaps). On the
+inara-v2 side set:
+
+```
+COURSE_EDITOR_PRIVATE_KEYS='[…]'                # v2's own Ed25519 key(s): python scripts/generate_course_editor_keys.py
+COURSE_EDITOR_URL=<this editor's public address>  # launch tokens target, and where v2 reads our public keys
+COURSE_EDITOR_ADMIN_IDS=<comma-separated v2 user ids>   # v2 users acting as platform staff here
+```
+
+Then in the editor: `PLATFORM=inara-v2`. Publishing, review statuses, images,
+placement banks, learner-choice metadata, adopt (opening v2 courses here) and
+delete all work the same way they do with inara-next — the platforms differ only
+in what their own models store (see v2's doc for its status mapping) and in the
+actor policy. Check v2 the same way as any host: point `PLATFORM_URL` at it and
+run `npm run verify-host`.
 
 ### Checking a host
 

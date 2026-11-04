@@ -596,4 +596,6 @@ or staging host, never production. A host's CI can run it too.
 10. Run `npm run verify-host` against it.
 
 The inara-next implementation lives in inara-next under
-`app/api/integrations/course-editor/v1/` and `lib/integrations/course-editor/`.
+`app/api/integrations/course-editor/v1/` and `lib/integrations/course-editor/`;
+inara-v2's FastAPI implementation lives in inara-v2 under
+`app/api/integrations/course_editor/` and `app/services/course_editor/`.

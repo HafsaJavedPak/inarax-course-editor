@@ -10,7 +10,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { runJob } from "@/ai/worker"
 import { acceptJob, claimNext, createJob, rejectJob } from "@/lib/ai/jobs"
 import { loadIdentity, syncIdentity } from "@/lib/authz/identity"
-import { ensureHead, insertCourse, readCourseLesson, saveCourseLesson } from "@/lib/course-store"
+import { ensureHead, findCourse, insertCourse, readCourseLesson, saveCourseLesson } from "@/lib/course-store"
 import { aiJobs } from "@/lib/db/schema"
 import { withTenantScope, type Scope } from "@/lib/db/tenant-db"
 import { lessonHash } from "@/lib/revisions/hash"
@@ -41,11 +41,11 @@ beforeEach(async () => {
 })
 
 /** A course + lesson with the sample rich_text block, and a job run to `ready` against it. */
-async function readyJob(overrides: Partial<Parameters<typeof createJob>[1]> = {}) {
+async function readyJob(overrides: Partial<Parameters<typeof createJob>[1]> = {}, status?: "in_review") {
   const courseId = overrides.courseId ?? randomUUID()
   const lesson = sampleLesson()
   if (!overrides.courseId) {
-    await insertCourse(aliceScope, orgTenant, { ...sampleCourse({ owner_id: "alice" }), id: courseId })
+    await insertCourse(aliceScope, orgTenant, { ...sampleCourse({ owner_id: "alice", ...(status ? { status } : {}) }), id: courseId })
     await saveCourseLesson(aliceScope, courseId, LESSON_ID, lesson)
   }
   const head = (await ensureHead(aliceScope, courseId))!
@@ -115,6 +115,19 @@ describe("accepting a ready job", () => {
     // The draft is byte-identical: nothing was overwritten.
     expect(await blockMarkdown(courseId)).toBe("Edited by hand")
     void before
+  })
+
+  it("a course in review refuses the creator's accept, but a reviewer may apply it and the status stays put", async () => {
+    const { courseId, jobId } = await readyJob({}, "in_review")
+
+    const byAuthor = await acceptJob(aliceScope, jobId, "alice", { mode: "replace" })
+    expect(byAuthor).toMatchObject({ ok: false, code: "locked" })
+
+    const byReviewer = await acceptJob(aliceScope, jobId, "reviewer", { mode: "replace", asReviewer: true })
+    expect(byReviewer.ok).toBe(true)
+    expect(await blockMarkdown(courseId)).toBe("Generated explanation: explanation")
+    const record = (await findCourse(aliceScope, courseId))!
+    expect(record.course.status).toBe("in_review")
   })
 
   it("a stranger cannot observe or accept another workspace's job", async () => {
