@@ -69,10 +69,10 @@ export interface PlatformPort {
    */
   publishCourse(input: PublishInput): Promise<PublishSummary>
   /**
-   * Removes the course from the platform. Resolves when it is gone, including
-   * when the platform never had it.
+   * Removes the course from the platform on behalf of `actor`, the person deleting it (protocol 2.7: the platform
+   * checks they may change that course). Resolves when it is gone, including when the platform never had it.
    */
-  deleteCourse(courseId: string): Promise<DeleteSummary>
+  deleteCourse(courseId: string, actor: { id: string }): Promise<DeleteSummary>
   /**
    * Reports a personal workspace's current-month AI spend to the platform so
    * the host's admin can show how much of a creator's budget is used. Safe to

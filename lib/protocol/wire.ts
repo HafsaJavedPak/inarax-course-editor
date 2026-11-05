@@ -11,12 +11,13 @@
 import { z } from "zod"
 
 /** major.minor. A host accepts any package whose major it supports. */
-export const PROTOCOL_VERSION = "2.6"
+export const PROTOCOL_VERSION = "2.7"
 export const PROTOCOL_MAJOR = 2
 
 /** Paths, relative to the host's base URL (PLATFORM_URL). */
 export const PROTOCOL_PATHS = {
   manifest: "/v1/manifest",
+  /** PUT / DELETE; since 2.7 DELETE carries `?actor=` (the person deleting), as GET does since 2.6. */
   course: (courseId: string) => `/v1/courses/${courseId}`,
   /** Since 2.6: the courses an admin may open in the editor, and one course as the host has it; `?actor=` is the host user asking. */
   courses: "/v1/courses",

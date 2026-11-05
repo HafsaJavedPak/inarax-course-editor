@@ -10,6 +10,7 @@ import { LESSON_ID, MODULE_ID, sampleCourse, sampleLesson, UPLOAD_URL } from "..
 import { BASE_URL, createFakeHost, defaultManifest, TEST_KEY } from "../helpers/fake-host"
 
 const IMAGE = new TextEncoder().encode("not really a png")
+const ACTOR = { id: "user_local_creator" }
 
 function setup(options: Parameters<typeof createFakeHost>[0] & { key?: typeof TEST_KEY; publicBaseUrl?: string } = {}) {
   const host = createFakeHost(options)
@@ -141,16 +142,25 @@ describe("protocol adapter: delete", () => {
     const { host, platform } = setup()
     const course = sampleCourse()
     await platform.publishCourse(publishInput(course))
-    await expect(platform.deleteCourse(course.id)).resolves.toEqual({ archived: false, keptOnPlatform: false })
+    await expect(platform.deleteCourse(course.id, ACTOR)).resolves.toEqual({ archived: false, keptOnPlatform: false })
     expect(host.state.courses.has(course.id)).toBe(false)
-    await expect(platform.deleteCourse(course.id)).resolves.toEqual({ archived: false, keptOnPlatform: false })
+    await expect(platform.deleteCourse(course.id, ACTOR)).resolves.toEqual({ archived: false, keptOnPlatform: false })
+  })
+
+  it("names the person deleting in the signed query (protocol 2.7)", async () => {
+    const { host, platform } = setup()
+    const course = sampleCourse()
+    await platform.publishCourse(publishInput(course))
+    await platform.deleteCourse(course.id, { id: "user id/with chars" })
+    const sent = host.state.requests.find((r) => r.method === "DELETE")
+    expect(new URLSearchParams(sent?.query).get("actor")).toBe("user id/with chars")
   })
 
   it("leaves the course on a host that doesn't support deletes", async () => {
     const manifest = defaultManifest()
     manifest.capabilities.delete = false
     const { host, platform } = setup({ manifest })
-    await expect(platform.deleteCourse(sampleCourse().id)).resolves.toEqual({ archived: false, keptOnPlatform: true })
+    await expect(platform.deleteCourse(sampleCourse().id, ACTOR)).resolves.toEqual({ archived: false, keptOnPlatform: true })
     expect(host.state.requests.some((r) => r.method === "DELETE")).toBe(false)
   })
 })

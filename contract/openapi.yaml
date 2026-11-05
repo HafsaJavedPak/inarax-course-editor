@@ -78,7 +78,13 @@ paths:
         default: { $ref: "#/components/responses/Problem" }
     delete:
       operationId: deleteCourse
-      summary: Remove the course
+      summary: Remove the course (since 2.7, on behalf of the person named in `actor`)
+      parameters:
+        - name: actor
+          in: query
+          required: true
+          description: The host's user id of the person deleting (the same id as `actor.id` in a package). The query is part of the signed path.
+          schema: { type: string }
       responses:
         "200":
           description: Removed (or archived)
