@@ -339,13 +339,23 @@ async function main() {
   }
 
   if (m.capabilities.delete) {
+    // Since 2.7 the host is told who is deleting (?actor=, covered by the signature) and checks they may.
+    const deleteAs = `${coursePath}?actor=${encodeURIComponent(actorId)}`
+    if (Number(m.protocol.split(".")[1]) >= 7) {
+      await check("DELETE without an actor is 400", async () => {
+        expectProblem(await send("DELETE", coursePath), 400, "invalid_request")
+      })
+      await check("DELETE by someone who isn't a user of the host is refused", async () => {
+        expectProblem(await send("DELETE", `${coursePath}?actor=${crypto.randomUUID()}`), 403, "forbidden")
+      })
+    }
     await check("DELETE removes the course", async () => {
-      const res = await send("DELETE", coursePath)
+      const res = await send("DELETE", deleteAs)
       expect(res.status === 200, `HTTP ${res.status}: ${JSON.stringify(res.body)}`)
       DeleteResultSchema.parse(res.body)
     })
     await check("DELETE of an unknown course is 404", async () => {
-      expectProblem(await send("DELETE", coursePath), 404, "not_found")
+      expectProblem(await send("DELETE", deleteAs), 404, "not_found")
     })
   } else {
     console.log(`  - host doesn't delete courses; remove “${pkg.course.title}” by hand`)

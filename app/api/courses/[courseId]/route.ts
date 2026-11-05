@@ -74,7 +74,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   // Off the platform first: if that fails the course stays here too, so it can't
   // be left live on the platform with no way to manage it from the editor.
   try {
-    await getPlatform()?.deleteCourse(courseId)
+    await getPlatform()?.deleteCourse(courseId, { id: loaded.ctx.userId })
   } catch (error) {
     if (!(error instanceof PlatformError)) throw error
     console.error(`Failed to delete course ${courseId} on the platform:`, error.message, error.detail)

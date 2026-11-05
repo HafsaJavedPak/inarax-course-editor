@@ -233,12 +233,13 @@ export function createProtocolPlatform(config: ProtocolPlatformConfig): Platform
       await http.put(PROTOCOL_PATHS.aiSpend, { json: report }, AiSpendResultSchema)
     },
 
-    deleteCourse(courseId) {
+    deleteCourse(courseId, actor) {
       return serialized(courseId, async () => {
         try {
           const manifest = await getManifest()
           if (!manifest.capabilities.delete) return { archived: false, keptOnPlatform: true }
-          const result = await http.delete(PROTOCOL_PATHS.course(courseId), DeleteResultSchema)
+          // The actor is in the query, which the signature covers, so it can't be swapped (same as fetchCourse).
+          const result = await http.delete(`${PROTOCOL_PATHS.course(courseId)}?actor=${encodeURIComponent(actor.id)}`, DeleteResultSchema)
           return { archived: result.archived, keptOnPlatform: false }
         } catch (error) {
           // Never published, or already gone: nothing to remove.

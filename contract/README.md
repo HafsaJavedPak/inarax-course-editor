@@ -1,4 +1,4 @@
-# Course Publishing Protocol, version 2.6
+# Course Publishing Protocol, version 2.7
 
 How the course editor publishes courses to a host platform. The editor owns this
 contract; a host implements it in whatever stack it uses (Next.js, FastAPI, …).
@@ -18,6 +18,12 @@ The source of truth is `lib/protocol/wire.ts` (messages) and
 generated files and `npm run contract:check` fails when they are stale.
 `npm run verify-host` checks a running host against this document (see
 [Conformance](#conformance)).
+
+**Changes in 2.7:** `DELETE /v1/courses/{id}` names the person deleting, as `?actor=<host user id>`
+(covered by the signature, like the 2.6 reads), and a host checks they may change that course. A host
+without the query still gets the same deletes from an older editor, so a 2.7 host that insists on it
+(answering `400 invalid_request`) makes older editors unable to delete until they are updated; publishing
+is unaffected. No new field in the package. See [Who](#who) for the per-course check hosts should make.
 
 **Changes in 2.6:** an admin can open **any course on the host in the editor**, however it was made
 (the host's own admin, a bulk import, a script writing to its database). Two read-only endpoints
@@ -97,7 +103,7 @@ editor                                   host (base URL = PLATFORM_URL)
   │  GET  /v1/assets/{sha256}              does the host have this file?
   │  PUT  /v1/assets/{sha256}              store this file
   │  PUT  /v1/courses/{course_id}          make the course look exactly like this
-  │  DELETE /v1/courses/{course_id}        remove the course
+  │  DELETE /v1/courses/{course_id}?actor=  remove the course (2.7: on behalf of this user)
 ```
 
 Design rules:
@@ -187,7 +193,7 @@ changes nothing.
 
 Check an implementation against `fixtures/signing.json`.
 
-**Who.** The signature authenticates the editor installation. The package's `actor`
+<a id="who"></a>**Who.** The signature authenticates the editor installation. The package's `actor`
 is the person who triggered the publish: the `sub` (with name and email) of the
 launch token they signed in with, so it is the host's own user id. Hosts
 **should** check it on every publish, not just trust the editor: the actor must
@@ -198,6 +204,15 @@ course's own organization (the organization stage) and platform admins (either
 stage; the only reviewers of a personal-workspace course). `published` from an
 organization admin is only valid when the organization is trusted on the host
 right now. Refuse with `403 forbidden`.
+
+*Since 2.7, hosts should also check the actor against the course itself.* The role check says the person may
+use the editor, not that this course is theirs: a creator of one organization must not be able to publish
+over, take down (`review.status = unpublished`) or delete a course of another. When a course already
+exists, accept the actor only if they are a platform admin, or belong (as creator or admin) to an
+organization the course is linked to. A host that records who wrote each course can be stricter, and
+should be: the editor enforces the author, co-owner and reviewer rules itself, but that is the only line of
+defence while the host doesn't. A new course needs no such check. `DELETE` has no body, so its actor comes
+from `?actor=`; refuse a request without one.
 
 ## Launch (sign-in)
 
@@ -489,7 +504,10 @@ Errors are below. Nothing is written when the host answers with an error.
 
 ## DELETE /v1/courses/{course_id}
 
-Removes the course. `200 {"course_id", "archived"}`. `archived: true` means the
+Removes the course on behalf of `actor`, the person deleting it (`?actor=<host user id>`, the same id as
+`actor.id` in a package; the query is part of the signed path). Since 2.7. A host answers `400 invalid_request`
+without it, and `403 forbidden` when that person isn't allowed to change this course (see [Who](#who)).
+`200 {"course_id", "archived"}`. `archived: true` means the
 host kept an archived copy (for example because of payment records).
 `404 not_found` if the host doesn't have the course; the editor treats that as
 success.
@@ -587,8 +605,8 @@ or staging host, never production. A host's CI can run it too.
 4. `GET`/`PUT /v1/assets/{sha256}` to your file storage (or report `assets: null`).
 5. `PUT /v1/courses/{id}`: parse, validate everything, then in one transaction
    upsert by editor id, move, remove, set statuses; return counts.
-6. `DELETE /v1/courses/{id}`.
-7. Check the package's `actor` (creators publish, admins decide).
+6. `DELETE /v1/courses/{id}?actor=` (2.7: require the actor).
+7. Check the package's `actor` (creators publish, admins decide) and, for an existing course, their right to that course (2.7).
 8. Launch: let creators and admins open the editor with a launch token that
    lists their organizations (`orgs`, `staff`), and give `host.launch_url` in
    the manifest.

@@ -23,7 +23,7 @@ export const defaultManifest = (): Manifest => ({
   max_package_bytes: 1024 * 1024,
 })
 
-type Recorded = { method: string; path: string; body: Uint8Array }
+type Recorded = { method: string; path: string; query: string; body: Uint8Array }
 
 export function createFakeHost(options: { manifest?: Manifest; keys?: KeyResolver } = {}) {
   const keys = options.keys ?? staticKeyResolver(toJwks([TEST_KEY]))
@@ -45,7 +45,7 @@ export function createFakeHost(options: { manifest?: Manifest; keys?: KeyResolve
     const method = (init?.method ?? "GET").toUpperCase()
     const body = init?.body ? new Uint8Array(init.body as ArrayBuffer) : new Uint8Array()
     const headers = new Headers(init?.headers)
-    state.requests.push({ method, path: url.pathname, body })
+    state.requests.push({ method, path: url.pathname, query: url.search, body })
 
     const verified = await verifyRequest(
       { method, pathWithQuery: url.pathname + url.search, body },
@@ -96,6 +96,8 @@ export function createFakeHost(options: { manifest?: Manifest; keys?: KeyResolve
         })
       }
       if (method === "DELETE") {
+        // Protocol 2.7: the host needs to know who is deleting.
+        if (!url.searchParams.get("actor")) return problem({ title: "Missing actor", status: 400, code: "invalid_request" })
         if (!state.courses.delete(id)) return problem({ title: "Not found", status: 404, code: "not_found" })
         return json(200, { course_id: id, archived: false })
       }

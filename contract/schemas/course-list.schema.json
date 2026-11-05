@@ -1,5 +1,5 @@
 {
-  "$id": "https://inara.dev/course-publishing-protocol/2.6/course-list.schema.json",
+  "$id": "https://inara.dev/course-publishing-protocol/2.7/course-list.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
