@@ -214,6 +214,15 @@ should be: the editor enforces the author, co-owner and reviewer rules itself, b
 defence while the host doesn't. A new course needs no such check. `DELETE` has no body, so its actor comes
 from `?actor=`; refuse a request without one.
 
+*A live course is stricter still.* Taking a live course down (a package that moves it off `published`:
+`unpublished`, `rejected`, `changes_requested`) or deleting it should be the decision of a platform admin
+only, whatever organization it is linked to. The editor makes that a request: the course's author, a
+co-owner or an organization admin asks, a platform admin approves, and the approval reaches the host as
+that admin's own request. A live course that belongs to no organization but the host's default one (the
+platform's own public courses) should be changed by a platform admin alone. And what learners see only
+changes by a reviewer's publish: a creator's package for a live course, even one sent as `published`,
+should wait (apply nothing but links and access mode), as a draft's does.
+
 ## Launch (sign-in)
 
 The editor has no accounts of its own. People sign in on the host and open the
@@ -506,8 +515,11 @@ Errors are below. Nothing is written when the host answers with an error.
 
 Removes the course on behalf of `actor`, the person deleting it (`?actor=<host user id>`, the same id as
 `actor.id` in a package; the query is part of the signed path). Since 2.7. A host answers `400 invalid_request`
-without it, and `403 forbidden` when that person isn't allowed to change this course (see [Who](#who)).
-`200 {"course_id", "archived"}`. `archived: true` means the
+without it, and `403 forbidden` when that person isn't allowed to remove this course (see [Who](#who)): a live
+course only by a platform admin. `200 {"course_id", "archived"}`. Since 2.7 a host should **archive, not delete**:
+the course leaves its catalogue and its lists, but its content, learners' progress and purchases stay (the
+reference host marks it `RETIRED`), and it answers `archived: true`. The editor hides the course on its side the
+same way; nothing is deleted anywhere. `archived: true` means the
 host kept an archived copy (for example because of payment records).
 `404 not_found` if the host doesn't have the course; the editor treats that as
 success.

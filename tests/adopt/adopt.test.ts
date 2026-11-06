@@ -179,9 +179,11 @@ describe("opening a platform course", () => {
     await adoptCourse(await signIn("admin-1", { orgs: [orgAdmin] }), COURSE_ID)
     const second = await signIn("admin-2", { orgs: [orgAdmin] })
     const resource = resourceOf((await findCourse(second, COURSE_ID))!)
-    for (const action of ["course.read", "course.edit", "course.settings", "course.publish", "course.review", "course.share", "course.delete", "course.takedown", "course.submit", "course.restore", "course.ai.apply", "course.transfer"] as const) {
+    for (const action of ["course.read", "course.edit", "course.settings", "course.publish", "course.review", "course.share", "course.submit", "course.restore", "course.ai.apply", "course.transfer"] as const) {
       expect(can(second, action, resource), action).toBe(true)
     }
+    // Taking it down is a platform admin's decision: an organization's admin asks.
+    expect(can(second, "course.takedown", resource)).toBe(false)
   })
 
   it("keeps it from admins of other organizations", async () => {

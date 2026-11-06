@@ -24,8 +24,8 @@ const ALL: CourseAction[] = ["course.read", "course.edit", "course.delete", "cou
 const allowed = (s: Subject, c: CourseResource = course) => ALL.filter((a) => can(s, a, c))
 
 describe("a department manager", () => {
-  it("oversees their department's courses: read, history, share, take down, and nothing else", () => {
-    expect(allowed(salesManager)).toEqual(["course.read", "course.takedown", "course.history", "course.share"])
+  it("oversees their department's courses: read, history, share, and nothing else (taking down is a platform admin's)", () => {
+    expect(allowed(salesManager)).toEqual(["course.read", "course.history", "course.share"])
   })
 
   it("gets nothing from another department, or from a course in no department", () => {

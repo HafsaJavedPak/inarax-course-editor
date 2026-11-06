@@ -10,6 +10,8 @@ import { coursePaths } from "@/lib/admin-mode"
 import { requireReviewArea, resourceOf } from "@/lib/authz/context"
 import { can } from "@/lib/authz/policy"
 import { listCourses } from "@/lib/course-store"
+import { pendingRemovalQueue } from "@/lib/removal/store"
+import { REMOVAL_LABELS } from "@/lib/removal/rules"
 import { usersByIds } from "@/lib/authz/identity"
 import { PersonLabel } from "@/components/admin/person"
 import { summarizeCourse, timeAgo } from "@/lib/course-summary"
@@ -17,10 +19,10 @@ import { AdoptError, listPlatformCourses } from "@/lib/adopt"
 import { PlatformCourseList } from "@/components/dashboard/platform-course-list"
 import { filterPlatform, notYetHere, parsePlatformStatus, platformCounts, type PlatformCourseRow } from "@/lib/platform-courses-view"
 
-type Filter = CourseStatus | "all" | "platform"
+type Filter = CourseStatus | "all" | "platform" | "removals"
 
 function parseFilter(value: unknown): Filter {
-  if (value === "all" || value === "platform") return value
+  if (value === "all" || value === "platform" || value === "removals") return value
   return typeof value === "string" && (COURSE_STATUSES as readonly string[]).includes(value)
     ? (value as CourseStatus)
     : "in_review"
@@ -46,7 +48,9 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
   const reviewable = (await listCourses(ctx)).filter((r) => can(ctx, "course.review", resourceOf(r)))
   const workspaceOf = new Map(reviewable.map((r) => [r.course.id, r.tenantName]))
   const all = await Promise.all(reviewable.map((r) => summarizeCourse(ctx, r.course)))
-  const people = await usersByIds(reviewable.map((r) => r.course.owner_id))
+  // Live courses people have asked to take down or remove: a platform admin decides (the course's page has the decision).
+  const removals = await pendingRemovalQueue(ctx)
+  const people = await usersByIds([...reviewable.map((r) => r.course.owner_id), ...removals.map((q) => q.request.requestedBy)])
 
   const counts = Object.fromEntries(COURSE_STATUSES.map((s) => [s, 0])) as Record<CourseStatus, number>
   for (const row of all) counts[row.course.status]++
@@ -73,6 +77,7 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
   const tabHref = (status: Filter) => `/admin?status=${status}${query ? `&q=${encodeURIComponent(query)}` : ""}`
   const tabs: { id: Filter; label: string; count: number }[] = [
     { id: "in_review", label: "Waiting for review", count: counts.in_review },
+    ...(ctx.staff || removals.length > 0 ? [{ id: "removals" as const, label: "Removal requests", count: removals.length }] : []),
     { id: "approved", label: "Awaiting the platform", count: counts.approved },
     { id: "published", label: STATUS_LABELS.published, count: counts.published },
     { id: "changes_requested", label: STATUS_LABELS.changes_requested, count: counts.changes_requested },
@@ -113,7 +118,30 @@ export default async function Page({ searchParams }: PageProps<"/admin">) {
           ))}
         </nav>
 
-        {onPlatform ? (
+        {filter === "removals" ? (
+          removals.length === 0 ? (
+            <p className="in-empty">No removal requests are waiting.</p>
+          ) : (
+            <ul className="db-rows">
+              {removals.map(({ request, title, workspace }) => (
+                <li key={request.id} className="db-row adm-row">
+                  <div className="db-row-main">
+                    <Link href={`/admin/courses/${request.courseId}`} className="db-row-title">
+                      {title}
+                    </Link>
+                    <p className="db-row-meta">
+                      {REMOVAL_LABELS[request.kind].noun} requested by <PersonLabel id={request.requestedBy} person={people.get(request.requestedBy)} /> in {workspace} · {timeAgo(request.requestedAt)}
+                    </p>
+                    <p className="adm-muted">“{request.reason}”</p>
+                  </div>
+                  <Link href={`/admin/courses/${request.courseId}`} className="in-btn in-btn-secondary in-btn-sm">
+                    {ctx.staff ? "Review the request" : "Open"}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : onPlatform ? (
           <PlatformCourseList
             rows={filterPlatform(platformRows, platformStatus, query)}
             counts={platformCounts(platformRows)}

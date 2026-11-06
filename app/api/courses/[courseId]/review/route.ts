@@ -1,12 +1,13 @@
 import { z } from "zod"
 
 import { flushLiveCourse, LiveFlushError } from "@/lib/collab/live"
-import { courseForRoute, resourceOf } from "@/lib/authz/context"
+import { courseForRoute, LIVE_LOCKED_MESSAGE, resourceOf } from "@/lib/authz/context"
 import { can } from "@/lib/authz/policy"
 import { ChangeRequestSchema } from "@/lib/course"
 import { allowMoreResubmissions, canReview, review, takedown } from "@/lib/course-status"
 import { decisionStage, pipelineTenant, stageAction } from "@/lib/review/pipeline"
 import { decideReview, takeDownCourse, updateCourseWorkflow } from "@/lib/course-store"
+import { decideRemovalRequest } from "@/lib/removal/store"
 import { publishedWorkflowResponse } from "@/lib/workflow-response"
 
 const ReviewSchema = z.object({
@@ -55,8 +56,13 @@ export async function POST(request: Request, ctx: RouteContext<"/api/courses/[co
 
   // Not a stage decision either: taking a live course down from the catalogue.
   if (decision === "takedown") {
-    if (!can(access, "course.takedown", resource)) return forbidden()
-    return publishedWorkflowResponse(access, await takeDownCourse(access, courseId, access.userId, (current) => takedown(current, access.userId, note)))
+    if (!can(access, "course.takedown", resource)) {
+      return Response.json({ error: LIVE_LOCKED_MESSAGE, code: "live_course" }, { status: 403 })
+    }
+    const result = await takeDownCourse(access, courseId, access.userId, (current) => takedown(current, access.userId, note))
+    // A request waiting on this course is moot once an admin takes it down directly.
+    if (result && !("error" in result)) await decideRemovalRequest(access, courseId, access.userId, "approved", "Taken down directly")
+    return publishedWorkflowResponse(access, result)
   }
 
   const tenant = pipelineTenant({ kind: record.tenantKind, settings: record.settings })

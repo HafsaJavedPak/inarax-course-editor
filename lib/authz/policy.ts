@@ -21,6 +21,7 @@
 // is live; one that is only approved is waiting for the platform.
 
 import { isDepartmentManager, type DepartmentMembership } from "@/lib/authz/departments"
+import type { CourseStatus } from "@/lib/course"
 import type { GrantRole, MembershipRole, TenantKind } from "@/lib/db/schema"
 
 export type Subject = {
@@ -42,6 +43,8 @@ export type CourseResource = {
   departmentId?: string | null
   /** A copy of the sample course (lib/sample-course). */
   sample?: boolean
+  /** Where it stands in review. `published` is live: it comes down only by a platform admin's decision (course.removal.*). */
+  status?: CourseStatus
   /**
    * Taken from the platform rather than written here. It has no author, so the admins of its organization and platform
    * staff act as its authors: edit, submit, restore, use AI on it, as the owner does. Courses written in the editor keep
@@ -62,8 +65,12 @@ export type CourseAction =
   | "course.review"
   /** The platform stage: publish an approved course, or send it back. Platform staff only. */
   | "course.release"
-  /** Take a live course down from the catalogue. */
+  /** Take a live course down from the catalogue. A platform admin's decision; everyone else asks (course.removal.request). */
   | "course.takedown"
+  /** Ask a platform admin to take a live course down, or to remove it from view. The author, a co-owner or an org admin. */
+  | "course.removal.request"
+  /** Decide a removal request (and take a live course down, or remove it, directly). Platform staff only. */
+  | "course.removal.decide"
   /** See the course's history and compare versions. */
   | "course.history"
   /** Restore an earlier version (written forward as a new one). Reviewers request changes instead. */
@@ -124,6 +131,10 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
   const author = isAuthor(subject, course, role) || (course.adopted === true && !course.sample && (isOrgAdmin(course, role) || subject.staff))
   const reviewer = isReviewer(subject, course, role)
   const grant = grantRole(subject, course)
+  // A live course is changed in place only by platform staff and the admins of its organization (their edits wait on
+  // the platform until a reviewer publishes them). Everyone else, an author included, asks for it to come down first.
+  const live = course.status === "published"
+  const frozenByLive = live && !(subject.staff || isOrgAdmin(course, role))
   // A manager of the course's department oversees it: reads it, sees its history, shares it, takes it down.
   const manager = isDepartmentManager(subject, course, role)
   const coOwner = grant === "co_owner"
@@ -135,25 +146,32 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
     case "course.history":
       return author || isOrgAdmin(course, role) || manager || reviewer || (grant !== null && grant !== "viewer")
     case "course.edit":
-      return author || reviewer || coOwner || editor
+      return (author || reviewer || coOwner || editor) && !frozenByLive
     case "course.restore":
-      return author || coOwner || editor
+      return (author || coOwner || editor) && !frozenByLive
     case "course.settings":
+      return (author || reviewer || coOwner) && !frozenByLive
     case "course.export":
       return author || reviewer || coOwner
     case "course.publish":
-      return (author || reviewer || coOwner) && !course.sample
+      return (author || reviewer || coOwner) && !course.sample && !frozenByLive
     case "course.submit":
       return author || coOwner
     case "course.delete":
-      return author || reviewer
+      // A live course is removed from view by a platform admin only (on a request); any other course by its author or a reviewer.
+      return live ? isPublisher(subject, course) : author || reviewer
     case "course.review":
       return reviewer
     case "course.release":
       return isPublisher(subject, course)
     case "course.takedown":
-      // The author, a co-owner, an org admin in their org, a manager of its department, or platform staff.
-      return (author || coOwner || isOrgAdmin(course, role) || manager || subject.staff) && !course.sample
+      // Platform staff only. The author, a co-owner, an org admin or a department manager ask (course.removal.request).
+      return isPublisher(subject, course)
+    case "course.removal.request":
+      // Only for a live course: any other can be removed by its author. Staff decide instead of asking.
+      return live && !course.sample && !subject.staff && (author || coOwner || isOrgAdmin(course, role))
+    case "course.removal.decide":
+      return isPublisher(subject, course)
     case "course.sponsor":
       // Only an organization has members to sponsor; the decision is the admin's (or the platform's), never the author's.
       return (isOrgAdmin(course, role) || subject.staff) && course.tenantKind === "org" && !course.sample
@@ -166,11 +184,11 @@ export function can(subject: Subject, action: CourseAction, course: CourseResour
     case "course.ai":
       // Whoever may edit may ask the AI; the result is a suggestion, not an edit.
       // (Whether the course is locked in review is enforced where the job is written.)
-      return author || reviewer || coOwner || editor
+      return (author || reviewer || coOwner || editor) && !frozenByLive
     case "course.ai.apply":
       // Turning a candidate into content is an edit, and follows the same rules: reviewers (org admins, platform
       // staff) edit during review as reviewers, so they may apply it too.
-      return author || reviewer || coOwner || editor
+      return (author || reviewer || coOwner || editor) && !frozenByLive
   }
 }
 

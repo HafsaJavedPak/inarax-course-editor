@@ -5,6 +5,7 @@ import { DecisionPanel } from "@/components/admin/decision-panel"
 import { PersonLabel } from "@/components/admin/person"
 import { DeleteCourseButton } from "@/components/admin/delete-course-button"
 import { TakeDownButton } from "@/components/admin/take-down-button"
+import { RemovalPanel } from "@/components/course/removal-panel"
 import { AppHeader } from "@/components/course/app-header"
 import { StatusBadge } from "@/components/course/status-badge"
 import { coursePaths } from "@/lib/admin-mode"
@@ -16,6 +17,7 @@ import { approvalOutcome, decisionStage, pipelineFor, pipelineTenant, stageActio
 import { courseForPage, resourceOf } from "@/lib/authz/context"
 import { can } from "@/lib/authz/policy"
 import { ensureHead } from "@/lib/course-store"
+import { latestRemovalRequest } from "@/lib/removal/store"
 import { usersByIds } from "@/lib/authz/identity"
 import { summarizeCourse, timeAgo } from "@/lib/course-summary"
 
@@ -45,6 +47,9 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
   const approveOutcome = stage ? approvalOutcome(stage, tenant) : "published"
   const revoking = course.status === "approved" && stage === "org"
   const canTakeDown = can(ctx, "course.takedown", resource)
+  const canDelete = can(ctx, "course.delete", resource)
+  // A live course comes down only by a platform admin: an organization's admin asks, and a platform admin decides here.
+  const removal = await latestRemovalRequest(ctx, course.id)
   // The version on screen: a decision is recorded against exactly this content.
   const head = await ensureHead(ctx, course.id)
 
@@ -80,7 +85,7 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
             <a href={`/api/courses/${course.id}/export`} className="in-btn in-btn-secondary in-btn-sm" download>
               Download
             </a>
-            <DeleteCourseButton courseId={course.id} title={course.title} />
+            {canDelete && <DeleteCourseButton courseId={course.id} title={course.title} />}
           </div>
         </div>
 
@@ -93,6 +98,20 @@ export default async function Page({ params }: PageProps<"/admin/courses/[course
             })}
           />
         </section>
+
+        {course.status === "published" && (
+          <RemovalPanel
+            courseId={course.id}
+            title={course.title}
+            status={course.status}
+            initial={removal}
+            mayRequest={can(ctx, "course.removal.request", resource)}
+            mayDecide={can(ctx, "course.removal.decide", resource)}
+            mayRemove={false}
+            mayEdit={can(ctx, "course.edit", resource)}
+            isAdmin
+          />
+        )}
 
         <div className="adm-layout">
           <div className="adm-main">

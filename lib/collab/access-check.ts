@@ -71,6 +71,7 @@ export async function checkLiveAccess(who: LiveIdentity, options: { allowLocal: 
     ownerId: record.course.owner_id,
     departmentId: record.departmentId,
     sample: record.sample,
+    status: record.course.status,
   }
   if (!can(subject, "course.read", resource) || !findLessonRef(record.course, who.lessonId)) return { ok: false, reason: CLOSE_REASONS.revoked }
 

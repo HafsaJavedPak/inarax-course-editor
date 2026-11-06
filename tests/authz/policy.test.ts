@@ -42,7 +42,7 @@ const allowed = (s: Subject, course: CourseResource) => ALL.filter((a) => can(s,
 
 describe("course access", () => {
   it("personal workspace: the owner writes, staff review and publish, nobody else gets anything", () => {
-    expect(allowed(owner, personalCourse)).toEqual(without("course.review", "course.release"))
+    expect(allowed(owner, personalCourse)).toEqual(without("course.review", "course.release", "course.takedown"))
     // Staff review and publish personal courses; they don't submit or restore them.
     expect(allowed(staff, personalCourse)).toEqual(without("course.submit", "course.restore"))
     expect(allowed(stranger, personalCourse)).toEqual([])
@@ -50,7 +50,7 @@ describe("course access", () => {
   })
 
   it("organization: the author writes and submits, admins review, other creators see nothing", () => {
-    expect(allowed(author, orgCourse)).toEqual(without("course.review", "course.release"))
+    expect(allowed(author, orgCourse)).toEqual(without("course.review", "course.release", "course.takedown"))
     // An org admin reviews at the organization stage and oversees, but doesn't submit, restore or publish at the platform stage.
     expect(allowed(orgAdmin, orgCourse)).toEqual([
       "course.read",
@@ -59,7 +59,6 @@ describe("course access", () => {
       "course.publish",
       "course.export",
       "course.review",
-      "course.takedown",
       "course.history",
       "course.settings",
       "course.share",
@@ -74,7 +73,7 @@ describe("course access", () => {
     const otherOrgAdmin = subject("admin-elsewhere", [{ tenantId: "elsewhere", role: "admin" }])
 
     it("an admin of its organization does everything the owner does, plus reviews", () => {
-      expect(allowed(orgAdmin, adopted)).toEqual(without("course.release"))
+      expect(allowed(orgAdmin, adopted)).toEqual(without("course.release", "course.takedown"))
     })
 
     it("so does platform staff, except that they alone release it", () => {
@@ -141,7 +140,7 @@ describe("course access", () => {
   })
 
   it("an org admin's own course: they write, submit and review it at the organization stage, but never release it", () => {
-    expect(allowed(orgAdmin, { ...orgCourse, ownerId: "admin" })).toEqual(without("course.release"))
+    expect(allowed(orgAdmin, { ...orgCourse, ownerId: "admin" })).toEqual(without("course.release", "course.takedown"))
   })
 
   it("an org admin gets nothing from another organization's course", () => {
@@ -173,7 +172,6 @@ describe("shared courses (course grants)", () => {
       "course.publish",
       "course.export",
       "course.submit",
-      "course.takedown",
       "course.history",
       "course.restore",
       "course.settings",
@@ -220,5 +218,56 @@ describe("course.sponsor (access mode)", () => {
   it("never applies to a personal workspace or a sample course", () => {
     expect(can({ userId: "s", staff: true, memberships: [] }, "course.sponsor", { ...orgCourse, tenantKind: "personal" })).toBe(false)
     expect(can(member("a", "admin"), "course.sponsor", { ...orgCourse, sample: true })).toBe(false)
+  })
+})
+
+describe("a live course (published) comes down, or is removed, only by a platform admin", () => {
+  const liveOrg = { ...orgCourse, status: "published" as const }
+  const livePersonal = { ...personalCourse, status: "published" as const }
+  const REMOVAL: CourseAction[] = ["course.removal.request", "course.removal.decide"]
+  const decided = (s: Subject, course: CourseResource) => REMOVAL.filter((a) => can(s, a, course))
+
+  it("only platform staff take it down or delete it", () => {
+    for (const course of [liveOrg, livePersonal]) {
+      expect(can(staff, "course.takedown", course)).toBe(true)
+      expect(can(staff, "course.delete", course)).toBe(true)
+    }
+    for (const [who, course] of [[author, liveOrg], [orgAdmin, liveOrg], [owner, livePersonal]] as const) {
+      expect(can(who, "course.takedown", course)).toBe(false)
+      expect(can(who, "course.delete", course)).toBe(false)
+    }
+  })
+
+  it("the author, a co-owner and an organization admin ask; staff decide; nobody else does either", () => {
+    expect(decided(author, liveOrg)).toEqual(["course.removal.request"])
+    expect(decided(orgAdmin, liveOrg)).toEqual(["course.removal.request"])
+    expect(decided(owner, livePersonal)).toEqual(["course.removal.request"])
+    expect(decided({ ...otherCreator, grants: [{ courseId: "c", role: "co_owner" }] }, { ...liveOrg, courseId: "c" })).toEqual(["course.removal.request"])
+    expect(decided({ ...otherCreator, grants: [{ courseId: "c", role: "editor" }] }, { ...liveOrg, courseId: "c" })).toEqual([])
+    expect(decided(staff, liveOrg)).toEqual(["course.removal.decide"])
+    for (const who of [otherCreator, stranger, formerAuthor]) expect(decided(who, liveOrg)).toEqual([])
+  })
+
+  it("a course that isn't live needs no request: its author deletes it, and nobody decides anything", () => {
+    for (const status of ["draft", "in_review", "changes_requested", "approved", "rejected", "unpublished"] as const) {
+      const course = { ...orgCourse, status }
+      expect(can(author, "course.delete", course)).toBe(true)
+      expect(can(author, "course.removal.request", course)).toBe(false)
+    }
+  })
+
+  it("the author can't change it in place; staff and the organization's admins still can (their edits wait on the platform)", () => {
+    const CHANGES: CourseAction[] = ["course.edit", "course.restore", "course.settings", "course.publish", "course.ai", "course.ai.apply"]
+    expect(CHANGES.filter((a) => can(author, a, liveOrg))).toEqual([])
+    expect(CHANGES.filter((a) => can(owner, a, livePersonal))).toEqual([])
+    expect(CHANGES.filter((a) => can(orgAdmin, a, liveOrg))).toEqual(["course.edit", "course.settings", "course.publish", "course.ai", "course.ai.apply"])
+    expect(CHANGES.filter((a) => can(staff, a, livePersonal))).toEqual(["course.edit", "course.settings", "course.publish", "course.ai", "course.ai.apply"])
+    // Reading, exporting and sharing stay.
+    expect(can(author, "course.read", liveOrg)).toBe(true)
+    expect(can(author, "course.export", liveOrg)).toBe(true)
+  })
+
+  it("the same author edits again once the course is no longer live", () => {
+    expect(can(author, "course.edit", { ...orgCourse, status: "unpublished" })).toBe(true)
   })
 })

@@ -17,6 +17,7 @@ import { TrashIcon } from "@/components/tiptap-icons/trash-icon"
 
 // --- Course ---
 import { LevelTabs } from "@/components/course/level-tabs"
+import { RemovalPanel, type RemovalView } from "@/components/course/removal-panel"
 import { StatusPanel, type Workflow } from "@/components/course/status-panel"
 import { courseReducer, type CourseAction } from "@/components/course/course-state"
 import { PlacementEditor } from "@/components/course/placement-editor"
@@ -56,6 +57,9 @@ const ALL_PERMISSIONS: CoursePermissions = {
   history: true,
   restore: true,
   takedown: true,
+  delete: false,
+  requestRemoval: false,
+  decideRemoval: false,
   sponsor: false,
   transfer: false,
   ai: true,
@@ -72,6 +76,7 @@ export function CourseBuilder({
   publishingEnabled = true,
   permissions,
   pipeline,
+  removal,
 }: {
   initialCourse: Course
   initialReport: CourseReport
@@ -83,6 +88,8 @@ export function CourseBuilder({
   permissions?: CoursePermissions
   /** The review stages this course goes through, for the lifecycle track (lib/review/pipeline.ts); the platform's alone when omitted. */
   pipeline?: readonly ReviewStage[]
+  /** The course's latest removal request, for the author's page; omitted where removal is handled elsewhere (the review area). */
+  removal?: RemovalView | null
 }) {
   const may = permissions ?? ALL_PERMISSIONS
   const [sharing, setSharing] = useState(false)
@@ -364,6 +371,18 @@ export function CourseBuilder({
             pipeline={pipeline}
             publishedAt={publisher.publishedAt?.toISOString() ?? null}
             platformEnabled={publisher.enabled}
+          />
+        )}
+        {removal !== undefined && !may.sample && (
+          <RemovalPanel
+            courseId={course.id}
+            title={course.title}
+            status={workflow.status}
+            initial={removal}
+            mayRequest={may.requestRemoval}
+            mayDecide={may.decideRemoval}
+            mayRemove={may.delete}
+            mayEdit={may.edit}
           />
         )}
         {sharing && <ShareDialog courseId={course.id} onClose={() => setSharing(false)} />}

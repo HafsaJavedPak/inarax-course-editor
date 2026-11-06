@@ -203,6 +203,13 @@ export const courses = pgTable(
      * admins of its organization (and platform staff) act as its authors. Not part of the content.
      */
     adopted: boolean("adopted").notNull().default(false),
+    /**
+     * Set when the course is removed. A removed course is hidden everywhere in the editor and on the platform (which
+     * archives it) but never deleted: its rows, revisions and history stay. Null: not removed. Not part of the content.
+     */
+    removedAt: timestamp("removed_at", { withTimezone: true, mode: "string" }),
+    /** Who removed it (a platform admin approving a request, or the author of a course that wasn't live). */
+    removedBy: text("removed_by"),
   },
   (t) => [
     // Target of the lessons' composite foreign key.
@@ -728,4 +735,41 @@ export const tenantAiBudgets = pgTable(
     periodStart: timestamp("period_start", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
+)
+
+/**
+ * Removal requests: a live course comes down (taken back to unpublished, or removed from view) only when a platform
+ * admin approves. Its author, a co-owner or an organization admin asks, with a reason; the request is the record.
+ * Rows are kept after the decision (lib/removal). Not part of any course's content: they never touch revisions.
+ */
+export const REMOVAL_KINDS = ["takedown", "delete"] as const
+export type RemovalKind = (typeof REMOVAL_KINDS)[number]
+export const REMOVAL_STATES = ["pending", "approved", "declined", "withdrawn"] as const
+export type RemovalState = (typeof REMOVAL_STATES)[number]
+
+export const removalRequests = pgTable(
+  "removal_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+    kind: text("kind", { enum: REMOVAL_KINDS }).notNull(),
+    reason: text("reason").notNull(),
+    state: text("state", { enum: REMOVAL_STATES }).notNull().default("pending"),
+    requestedBy: text("requested_by").notNull(),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    /** What the platform admin said when approving or declining; for the requester to read. */
+    decisionNote: text("decision_note"),
+  },
+  (t) => [
+    index("removal_requests_course_idx").on(t.courseId, t.requestedAt),
+    // The queue's index: only pending rows, so it stays small as decisions pile up.
+    index("removal_requests_pending_idx").on(t.requestedAt).where(sql`${t.state} = 'pending'`),
+    // One open request per course: asking twice is a no-op for the person, not a second row.
+    uniqueIndex("removal_requests_one_pending_idx").on(t.courseId).where(sql`${t.state} = 'pending'`),
+    // A request can never reference another tenant's course.
+    foreignKey({ name: "removal_requests_course_fk", columns: [t.tenantId, t.courseId], foreignColumns: [courses.tenantId, courses.id] }).onDelete("cascade"),
+  ],
 )

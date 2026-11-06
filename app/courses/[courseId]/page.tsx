@@ -2,6 +2,7 @@ import { CourseBuilder } from "@/components/course/course-builder"
 import { coursePaths } from "@/lib/admin-mode"
 import { authorCourseForPage, permissionsFor } from "@/lib/authz/context"
 import { getCourseReport } from "@/lib/course-store"
+import { latestRemovalRequest } from "@/lib/removal/store"
 import { pipelineFor, pipelineTenant } from "@/lib/review/pipeline"
 import { publishingEnabled } from "@/lib/platform"
 
@@ -14,6 +15,7 @@ export default async function Page({ params }: PageProps<"/courses/[courseId]">)
       initialReport={await getCourseReport(ctx, record.course)}
       publishingEnabled={publishingEnabled()}
       permissions={permissionsFor(ctx, record)}
+      removal={await latestRemovalRequest(ctx, courseId)}
       pipeline={pipelineFor(pipelineTenant({ kind: record.tenantKind, settings: record.settings }))}
     />
   )

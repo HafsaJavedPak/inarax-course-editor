@@ -7,13 +7,14 @@ import { CourseSchema } from "@/lib/course"
 import {
   ApprovedLockedError,
   CourseLockedError,
-  deleteCourse,
   getCourseReport,
+  removeCourse,
   RevisionConflictError,
   saveCourseContent,
 } from "@/lib/course-store"
 import { audit } from "@/lib/authz/identity"
 import { notifyCourseDeleted } from "@/lib/collab/notify"
+import { decideRemovalRequest } from "@/lib/removal/store"
 import { getPlatform, PLATFORM_ERROR_STATUS, PlatformError } from "@/lib/platform"
 
 type Ctx = RouteContext<"/api/courses/[courseId]">
@@ -62,7 +63,10 @@ function settingsOf(course: Parameters<typeof courseContent>[0]): string {
   return canonicalJson(Object.fromEntries(Object.entries(courseContent(course)).filter(([key]) => key !== "levels")))
 }
 
-/** Delete a course and its lessons: reviewers any time, authors unless it's in review. */
+/**
+ * Remove a course from view: reviewers any time, authors unless it's in review. It is hidden here and archived on the
+ * platform, never deleted. A live course is removed only by a platform admin (others ask: ./removal).
+ */
 export async function DELETE(_req: Request, ctx: Ctx) {
   const { courseId } = await ctx.params
   const loaded = await courseForRoute(courseId, "course.delete")
@@ -83,8 +87,10 @@ export async function DELETE(_req: Request, ctx: Ctx) {
       { status: PLATFORM_ERROR_STATUS[error.kind] },
     )
   }
-  await deleteCourse(loaded.ctx, courseId)
+  // A request waiting on this course is moot once an admin removes it directly.
+  await decideRemovalRequest(loaded.ctx, courseId, loaded.ctx.userId, "approved", "Removed directly")
+  await removeCourse(loaded.ctx, courseId, loaded.ctx.userId)
   await notifyCourseDeleted(courseId)
-  await audit({ actorId: loaded.ctx.userId, action: "course.delete", tenantId: loaded.record.tenantId, courseId, target: courseId })
+  await audit({ actorId: loaded.ctx.userId, action: "course.delete", tenantId: loaded.record.tenantId, courseId, target: courseId, detail: { hidden: true } })
   return new Response(null, { status: 204 })
 }

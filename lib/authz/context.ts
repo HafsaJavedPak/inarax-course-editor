@@ -66,6 +66,7 @@ export function resourceOf(record: CourseRecord): CourseResource {
     departmentId: record.departmentId,
     sample: record.sample,
     adopted: record.adopted,
+    status: record.course.status,
   }
 }
 
@@ -80,6 +81,12 @@ export type CoursePermissions = {
   restore: boolean
   /** Take a live course down from the catalogue (its organization's, or the main host). */
   takedown: boolean
+  /** Remove a course that isn't live from view (a live one: a platform admin only). */
+  delete: boolean
+  /** Ask a platform admin to take this live course down or remove it. */
+  requestRemoval: boolean
+  /** Decide a removal request on this course (platform staff). */
+  decideRemoval: boolean
   sponsor: boolean
   /** Hand the course to another member of its organization. */
   transfer: boolean
@@ -102,6 +109,9 @@ export function permissionsFor(ctx: RequestContext, record: CourseRecord): Cours
     history: can(ctx, "course.history", resource),
     restore: can(ctx, "course.restore", resource),
     takedown: can(ctx, "course.takedown", resource),
+    delete: can(ctx, "course.delete", resource),
+    requestRemoval: can(ctx, "course.removal.request", resource),
+    decideRemoval: can(ctx, "course.removal.decide", resource),
     sponsor: can(ctx, "course.sponsor", resource),
     transfer: can(ctx, "course.transfer", resource),
     ai: can(ctx, "course.ai", resource),
@@ -145,6 +155,20 @@ export async function sharedCourses(ctx: RequestContext): Promise<CourseRecord[]
   return listCoursesByIds(ctx, ids)
 }
 
+/** What a live course refuses to most people: changing it in place, taking it down, removing it. */
+const LIVE_LOCKED_ACTIONS: ReadonlySet<CourseAction> = new Set([
+  "course.edit",
+  "course.restore",
+  "course.settings",
+  "course.publish",
+  "course.ai",
+  "course.ai.apply",
+  "course.delete",
+  "course.takedown",
+])
+export const LIVE_LOCKED_MESSAGE =
+  "This course is live, so it can't be changed or removed here. Ask a platform admin to take it down (Request removal), then edit it and submit it again."
+
 /** For API routes: the course and context, or the error response to send (404 when unreadable, 403 when not allowed). */
 export async function courseForRoute(
   courseId: string,
@@ -156,6 +180,9 @@ export async function courseForRoute(
     return { ok: false, error: Response.json({ error: "Course not found" }, { status: 404 }) }
   }
   if (!can(ctx, action, resourceOf(record))) {
+    if (record.course.status === "published" && LIVE_LOCKED_ACTIONS.has(action)) {
+      return { ok: false, error: Response.json({ error: LIVE_LOCKED_MESSAGE, code: "live_course" }, { status: 403 }) }
+    }
     return { ok: false, error: Response.json({ error: "You don't have permission to do that." }, { status: 403 }) }
   }
   return { ok: true, ctx, record }

@@ -1,6 +1,6 @@
 import "server-only"
 
-import { and, desc, eq, inArray, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 
 import { jobStaleness } from "@/lib/ai/staleness"
 import { CourseSchema, getCourseLimits, type Course, type ReviewStage } from "@/lib/course"
@@ -160,12 +160,12 @@ async function selectCourse(tx: Tx, scope: Scope, courseId: string, lock = false
     .select(recordColumns)
     .from(courses)
     .innerJoin(tenants, eq(tenants.id, courses.tenantId))
-    .where(and(eq(courses.id, courseId), tenantFilter(courses, scope)))
+    .where(and(eq(courses.id, courseId), tenantFilter(courses, scope), isNull(courses.removedAt)))
   const [row] = lock ? await query.for("update", { of: courses }) : await query
   return row ? toRecord(row) : null
 }
 
-/** The course, if it's in one of the scope's tenants. Whether the user may use it is up to the caller (lib/authz). */
+/** The course, if it's in one of the scope's tenants and hasn't been removed. Whether the user may use it is up to the caller (lib/authz). */
 export async function findCourse(scope: Scope, courseId: string): Promise<CourseRecord | null> {
   if (!isUuid(courseId)) return null
   return withTenantScope(scope, (tx) => selectCourse(tx, scope, courseId))
@@ -180,7 +180,7 @@ export async function listCoursesByIds(scope: Scope, ids: readonly string[]): Pr
       .select(recordColumns)
       .from(courses)
       .innerJoin(tenants, eq(tenants.id, courses.tenantId))
-      .where(and(inArray(courses.id, valid), tenantFilter(courses, scope)))
+      .where(and(inArray(courses.id, valid), tenantFilter(courses, scope), isNull(courses.removedAt)))
       .orderBy(desc(courses.updatedAt))
     return rows.map(toRecord)
   })
@@ -193,7 +193,7 @@ export async function listCourses(scope: Scope, tenantId?: string): Promise<Cour
       .select(recordColumns)
       .from(courses)
       .innerJoin(tenants, eq(tenants.id, courses.tenantId))
-      .where(and(tenantFilter(courses, scope), tenantId ? eq(courses.tenantId, tenantId) : undefined))
+      .where(and(tenantFilter(courses, scope), isNull(courses.removedAt), tenantId ? eq(courses.tenantId, tenantId) : undefined))
       .orderBy(desc(courses.updatedAt))
     return rows.map(toRecord)
   })
@@ -763,7 +763,27 @@ export async function transferOwner(scope: Scope, courseId: string, newOwnerId: 
   })
 }
 
-/** Deletes a course with all its lessons. Uploaded images are kept (they may be shared). */
+/**
+ * Removes a course from view: it is marked removed and then found by nothing (not the dashboard, the review queue,
+ * the API or live editing), but nothing is deleted: its rows, revisions, lessons and uploads stay. Returns whether
+ * a course was removed (false: not found in this scope, or already removed).
+ */
+export async function removeCourse(scope: Scope, courseId: string, by: string): Promise<boolean> {
+  if (!isUuid(courseId)) return false
+  const rows = await withTenantScope(scope, (tx) =>
+    tx
+      .update(courses)
+      .set({ removedAt: new Date().toISOString(), removedBy: by })
+      .where(and(eq(courses.id, courseId), tenantFilter(courses, scope), isNull(courses.removedAt)))
+      .returning({ id: courses.id }),
+  )
+  return rows.length > 0
+}
+
+/**
+ * Deletes a course with all its lessons for good. Uploaded images are kept (they may be shared). Nothing in the
+ * product calls this any more (removeCourse hides instead); it is for tests and by-hand cleanup.
+ */
 export async function deleteCourse(scope: Scope, courseId: string): Promise<void> {
   await withTenantScope(scope, (tx) => tx.delete(courses).where(and(eq(courses.id, courseId), tenantFilter(courses, scope))))
 }

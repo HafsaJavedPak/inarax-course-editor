@@ -282,14 +282,16 @@ describe("personal course: only the platform stage", () => {
 })
 
 describe("taking a published course down", () => {
-  it("an org admin takes it down from every catalogue", async () => {
+  it("a platform admin takes it down from every catalogue; an org admin can't (they ask)", async () => {
     const id = await newCourse(untrustedTenant, "alice")
     await submitDirect(id, "alice")
     await decide("dave", id)
     await decide("sam", id)
     expect((await courseNow(id)).status).toBe("published")
 
-    expect((await decide("dave", id, { decision: "takedown" })).status).toBe(200)
+    expect((await decide("dave", id, { decision: "takedown" })).status).toBe(403)
+    expect((await courseNow(id)).status).toBe("published")
+    expect((await decide("sam", id, { decision: "takedown" })).status).toBe(200)
     expect((await courseNow(id)).status).toBe("unpublished")
     expect(await visibility(id)).toEqual({ orgApproved: false, platformPublished: false })
     expect(published.at(-1)!.course.status).toBe("unpublished")
@@ -299,7 +301,7 @@ describe("taking a published course down", () => {
     const id = await newCourse(untrustedTenant, "alice")
     await submitDirect(id, "alice")
     await decide("dave", id)
-    expect((await decide("dave", id, { decision: "takedown" })).status).toBe(409)
+    expect((await decide("sam", id, { decision: "takedown" })).status).toBe(409)
   })
 
   it("someone who can't read the course can't take it down", async () => {
